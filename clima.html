@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Café Real IA — Clima Avançado</title>
+<meta name="description" content="Clima em tempo real, previsão de chuva, padrão climatológico, adubação e pulverização para café — Café Real IA." />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { theme: { extend: { colors: {
+  agro: "#2d5016", agua: "#1e40af", sol: "#f59e0b", alerta: "#dc2626", neutro: "#6b7280"
+} } } };</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { -webkit-font-smoothing: antialiased; background:#f5f5f4; }
+  #map { height: 340px; border-radius: 12px; z-index: 0; }
+  .leaflet-container { font: inherit; }
+  .tabbtn { white-space: nowrap; }
+  .tabbtn.active { color:#2d5016; border-color:#2d5016; }
+  @media print {
+    @page { margin: 12mm; }
+    body { background:#fff !important; }
+    .no-print { display:none !important; }
+    #parecer-print { display:block !important; }
+  }
+  .fade { animation: f .3s ease both; } @keyframes f { from {opacity:0; transform:translateY(6px);} to {opacity:1;} }
+</style>
+</head>
+<body class="text-stone-800">
+
+<!-- HEADER -->
+<header class="bg-agro text-white sticky top-0 z-20 no-print">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M5 8h14a3 3 0 0 1 0 6h-1"/><path d="M6 8v6a5 5 0 0 0 10 0V8"/></svg>
+      <div>
+        <h1 class="font-bold leading-tight">Café Real IA — Clima</h1>
+        <p id="loc-label" class="text-emerald-100 text-xs">Localizando…</p>
+      </div>
+    </div>
+    <a href="cafe-real-ia.html" class="text-xs bg-white/15 hover:bg-white/25 rounded-lg px-3 py-1.5">← Voltar ao app</a>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-4 space-y-4">
+
+  <!-- BUSCA + MAPA -->
+  <section class="no-print">
+    <div class="flex gap-2 mb-2">
+      <input id="busca" type="text" placeholder="Buscar município (ex: Ouro Fino, MG)" class="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm" />
+      <button id="btn-busca" class="bg-agro text-white rounded-lg px-3 py-2 text-sm font-medium">Buscar</button>
+      <button id="btn-gps" class="bg-agua text-white rounded-lg px-3 py-2 text-sm font-medium" title="Usar minha localização">📍 GPS</button>
+    </div>
+    <div id="busca-result" class="text-xs text-stone-500 mb-2"></div>
+    <div id="map"></div>
+    <p id="coord" class="text-xs text-neutro mt-1">—</p>
+  </section>
+
+  <!-- CARDS CLIMA -->
+  <section id="cards" class="grid grid-cols-2 md:grid-cols-4 gap-3"></section>
+  <p id="atualizado" class="text-xs text-neutro no-print"></p>
+
+  <!-- ABAS -->
+  <nav class="flex overflow-x-auto gap-1 border-b border-stone-200 no-print">
+    <button data-tab="clima" class="tabbtn active flex items-center gap-1 px-3 py-2.5 text-xs font-medium border-b-2">📊 Clima</button>
+    <button data-tab="chuva" class="tabbtn flex items-center gap-1 px-3 py-2.5 text-xs font-medium border-b-2 border-transparent text-neutro">💧 Chuva 7d</button>
+    <button data-tab="meses" class="tabbtn flex items-center gap-1 px-3 py-2.5 text-xs font-medium border-b-2 border-transparent text-neutro">📅 Meses</button>
+    <button data-tab="parecer" class="tabbtn flex items-center gap-1 px-3 py-2.5 text-xs font-medium border-b-2 border-transparent text-neutro">✍️ Parecer</button>
+    <button data-tab="adubacao" class="tabbtn flex items-center gap-1 px-3 py-2.5 text-xs font-medium border-b-2 border-transparent text-neutro">🌱 Adubação</button>
+    <button data-tab="pulver" class="tabbtn flex items-center gap-1 px-3 py-2.5 text-xs font-medium border-b-2 border-transparent text-neutro">🚜 Pulverização</button>
+    <button data-tab="historico" class="tabbtn flex items-center gap-1 px-3 py-2.5 text-xs font-medium border-b-2 border-transparent text-neutro">📋 Histórico</button>
+  </nav>
+
+  <section id="tab-clima" class="tab space-y-3"></section>
+
+  <section id="tab-chuva" class="tab hidden space-y-3">
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold mb-2">Precipitação — próximos 7 dias</p>
+      <canvas id="chart-chuva" height="150"></canvas>
+    </div>
+    <div id="chuva-tabela" class="bg-white rounded-xl border border-stone-200 p-4"></div>
+  </section>
+
+  <section id="tab-meses" class="tab hidden space-y-3">
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold">Padrão climatológico dos próximos meses</p>
+      <p class="text-xs text-neutro mb-2">Médias reais dos últimos anos (Open-Meteo Archive) — é um <b>padrão histórico</b> para planejamento, não uma previsão determinística.</p>
+      <canvas id="chart-meses" height="150"></canvas>
+    </div>
+    <div id="meses-tabela" class="bg-white rounded-xl border border-stone-200 p-4"></div>
+  </section>
+
+  <section id="tab-parecer" class="tab hidden space-y-3">
+    <div id="parecer-box" class="bg-white rounded-xl border border-stone-200 p-4"></div>
+  </section>
+
+  <section id="tab-adubacao" class="tab hidden space-y-3"></section>
+
+  <section id="tab-pulver" class="tab hidden space-y-3"></section>
+
+  <section id="tab-historico" class="tab hidden space-y-3"></section>
+
+  <p class="text-xs text-neutro text-center pt-4 pb-8">
+    Ferramenta de apoio à decisão. Recomendações de adubação (Boletim 100/CFSEMG) e fitossanitárias exigem validação e receituário do engenheiro agrônomo responsável (CREA/CFTA) e confirmação no AGROFIT.
+  </p>
+</main>
+
+<!-- DADOS EMBUTIDOS -->
+<script id="db-produtos" type="application/json">
+{"produtos":[
+  {"nome":"Calcário Dolomítico PRNT 95%","npk":[0,0,0],"uso":"Correção de acidez e V% (Ca e Mg)","doseKgHa":[1000,3000],"estacao":["abril","maio","junho","julho"],"fase":["preparo","pos_colheita"]},
+  {"nome":"Biophos 00-16-00","npk":[0,16,0],"uso":"Fósforo (correção/manutenção)","doseKgHa":[50,80],"estacao":["setembro","outubro"],"fase":["plantio","crescimento","producao"]},
+  {"nome":"NPK 19-04-19 Turbo","npk":[19,4,19],"uso":"Fórmula completa equilibrada de produção","doseKgHa":[150,250],"estacao":["outubro","novembro","dezembro"],"fase":["producao"]},
+  {"nome":"NPK 27-00-10 Turbo","npk":[27,0,10],"uso":"Arranque vegetativo, forte demanda de N","doseKgHa":[100,150],"estacao":["setembro","outubro","novembro"],"fase":["crescimento","producao"]},
+  {"nome":"NPK 20-00-20 Turbo","npk":[20,0,20],"uso":"Granação/enchimento (N e K)","doseKgHa":[150,200],"estacao":["dezembro","janeiro","fevereiro"],"fase":["producao"]}
+]}
+</script>
+<script id="db-pragas" type="application/json">
+{"itens":[
+  {"nome":"Ferrugem-do-cafeeiro","tipo":"doença","cientifico":"Hemileia vastatrix","sintomas":"Pústulas alaranjadas na face inferior das folhas; desfolha","epocas":["dezembro","janeiro","fevereiro","março"],"condicoes":"21–25 °C + molhamento foliar/alta umidade","recomendacao":"Fungicida triazol + estrobilurina (registrado p/ café); preventivo antes do pico de chuvas"},
+  {"nome":"Cercosporiose (olho-pardo)","tipo":"doença","cientifico":"Cercospora coffeicola","sintomas":"Manchas circulares pardas com halo amarelo","epocas":["novembro","dezembro","janeiro"],"condicoes":"Estresse nutricional, alta insolação, umidade","recomendacao":"Nutrição equilibrada + fungicida; reduzir estresse hídrico/nutricional"},
+  {"nome":"Bicho-mineiro","tipo":"praga","cientifico":"Leucoptera coffeella","sintomas":"Minas marrons irregulares nas folhas; queda foliar","epocas":["junho","julho","agosto","setembro"],"condicoes":"Tempo seco e quente","recomendacao":"Monitorar; inseticida registrado (IRAC alternado) ou biológico"},
+  {"nome":"Broca-do-café","tipo":"praga","cientifico":"Hypothenemus hampei","sintomas":"Furos na coroa do fruto; grãos brocados","epocas":["dezembro","janeiro","fevereiro","março"],"condicoes":"Clima quente e úmido; frutos em formação","recomendacao":"Colheita bem feita, monitoramento, Beauveria bassiana (biológico)"},
+  {"nome":"Ácaro-vermelho","tipo":"praga","cientifico":"Oligonychus ilicis","sintomas":"Folhas bronzeadas/avermelhadas, perda de brilho","epocas":["junho","julho","agosto"],"condicoes":"Períodos secos e de poeira","recomendacao":"Acaricida registrado; controle de poeira nas ruas"}
+]}
+</script>
+
+<script>
+/* ---------------- utilidades ---------------- */
+const $ = (s) => document.querySelector(s);
+const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const MESES_FULL = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const PRODUTOS = JSON.parse($("#db-produtos").textContent).produtos;
+const PRAGAS = JSON.parse($("#db-pragas").textContent).itens;
+const CACHE_KEY = "cafe_clima_v1";
+const DEFAULT = { lat: -22.2786, lon: -46.3736, place: "Ouro Fino, MG" };
+
+let state = { lat: null, lon: null, place: "", cur: null, daily: null, hourly: null, monthly: null, ts: null };
+let map, marker, chartChuva, chartMeses;
+
+function nf(n, d = 0) { return n == null || isNaN(n) ? "—" : Number(n).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(state)); } catch (e) {} }
+function loadCache() { try { const r = localStorage.getItem(CACHE_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+
+/* ---------------- mapa ---------------- */
+function initMap(lat, lon) {
+  map = L.map("map", { scrollWheelZoom: true }).setView([lat, lon], 11);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18, attribution: "© OpenStreetMap"
+  }).addTo(map);
+  const icon = L.divIcon({ html: "<div style='font-size:26px;line-height:26px'>🏡</div>", className: "", iconSize: [26, 26], iconAnchor: [13, 26] });
+  marker = L.marker([lat, lon], { icon, draggable: true }).addTo(map);
+  marker.on("dragend", () => { const p = marker.getLatLng(); setLocation(p.lat, p.lng, "Ponto selecionado no mapa"); });
+  map.on("click", (e) => { marker.setLatLng(e.latlng); setLocation(e.latlng.lat, e.latlng.lng, "Ponto selecionado no mapa"); });
+  map.on("mousemove", (e) => { $("#coord").textContent = `Lat ${e.latlng.lat.toFixed(4)} · Lon ${e.latlng.lng.toFixed(4)}`; });
+}
+
+/* ---------------- geocoding ---------------- */
+async function buscarMunicipio(nome) {
+  $("#busca-result").textContent = "Buscando…";
+  try {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nome)}&count=5&language=pt&format=json`);
+    const d = await r.json();
+    if (!d.results || !d.results.length) { $("#busca-result").textContent = "Nada encontrado. Tente incluir o estado (ex: 'Socorro, SP')."; return; }
+    $("#busca-result").innerHTML = d.results.map((x, i) =>
+      `<button data-i="${i}" class="opt underline mr-3">${x.name}${x.admin1 ? " — " + x.admin1 : ""}</button>`).join("");
+    $("#busca-result").querySelectorAll(".opt").forEach((b) => b.addEventListener("click", () => {
+      const x = d.results[b.dataset.i];
+      $("#busca-result").textContent = "";
+      map.setView([x.latitude, x.longitude], 11); marker.setLatLng([x.latitude, x.longitude]);
+      setLocation(x.latitude, x.longitude, `${x.name}${x.admin1 ? ", " + x.admin1 : ""}`);
+    }));
+  } catch (e) { $("#busca-result").textContent = "Erro na busca: " + e.message; }
+}
+
+/* ---------------- open-meteo ---------------- */
+async function fetchWeather(lat, lon) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+    + `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m,surface_pressure,dew_point_2m,uv_index,shortwave_radiation,weather_code`
+    + `&hourly=precipitation,precipitation_probability`
+    + `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,uv_index_max,wind_speed_10m_max,relative_humidity_2m_mean`
+    + `&timezone=auto&forecast_days=7`;
+  const r = await fetch(url);
+  const d = await r.json();
+  return d;
+}
+
+async function fetchClimatologia(lat, lon) {
+  // média mensal dos últimos 5 anos completos (padrão histórico)
+  const now = new Date();
+  const endY = now.getUTCFullYear() - 1;
+  const start = `${endY - 4}-01-01`, end = `${endY}-12-31`;
+  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}`
+    + `&start_date=${start}&end_date=${end}&daily=precipitation_sum,temperature_2m_mean&timezone=auto`;
+  const r = await fetch(url);
+  const d = await r.json();
+  const t = d.daily.time, prec = d.daily.precipitation_sum, temp = d.daily.temperature_2m_mean;
+  const mP = Array.from({ length: 12 }, () => []), mT = Array.from({ length: 12 }, () => []);
+  // soma por mês/ano p/ precip, média p/ temp
+  const yearMonthP = {};
+  for (let i = 0; i < t.length; i++) {
+    const dt = t[i]; const m = parseInt(dt.slice(5, 7)) - 1; const y = dt.slice(0, 4);
+    const key = y + "-" + m;
+    if (prec[i] != null) yearMonthP[key] = (yearMonthP[key] || 0) + prec[i];
+    if (temp[i] != null) mT[m].push(temp[i]);
+  }
+  for (const key in yearMonthP) { const m = parseInt(key.split("-")[1]); mP[m].push(yearMonthP[key]); }
+  const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  return { precip: mP.map(avg), temp: mT.map(avg) };
+}
+
+/* ---------------- render ---------------- */
+function iconFor(code) {
+  if (code == null) return "🌡️";
+  if (code === 0) return "☀️"; if (code <= 2) return "🌤️"; if (code === 3) return "☁️";
+  if (code >= 45 && code <= 48) return "🌫️"; if (code >= 51 && code <= 67) return "🌦️";
+  if (code >= 71 && code <= 77) return "❄️"; if (code >= 80 && code <= 82) return "🌧️";
+  if (code >= 95) return "⛈️"; return "🌥️";
+}
+
+function renderCards() {
+  const c = state.cur, dly = state.daily;
+  if (!c) return;
+  const chuva7 = dly ? dly.precipitation_sum.reduce((a, b) => a + (b || 0), 0) : null;
+  const cards = [
+    { t: "Temperatura", v: `${nf(c.temperature_2m, 1)}°C`, s: dly ? `mín ${nf(dly.temperature_2m_min[0])}° · máx ${nf(dly.temperature_2m_max[0])}°` : "", i: iconFor(c.weather_code), col: "sol" },
+    { t: "Chuva 7 dias", v: `${nf(chuva7)} mm`, s: dly ? `hoje ${nf(dly.precipitation_sum[0])} mm (${nf(dly.precipitation_probability_max[0])}%)` : "", i: "🌧️", col: "agua" },
+    { t: "Umidade", v: `${nf(c.relative_humidity_2m)}%`, s: `orvalho ${nf(c.dew_point_2m, 1)}°C`, i: "💧", col: "agua" },
+    { t: "Índice UV", v: `${nf(c.uv_index, 1)}`, s: uvLabel(c.uv_index), i: "🔆", col: "sol" },
+    { t: "Vento", v: `${nf(c.wind_speed_10m, 1)} km/h`, s: "10 m", i: "🌬️", col: "neutro" },
+    { t: "Radiação solar", v: `${nf(c.shortwave_radiation)} W/m²`, s: "onda curta", i: "🌞", col: "sol" },
+    { t: "Pressão", v: `${nf(c.surface_pressure)} hPa`, s: "superfície", i: "📈", col: "neutro" },
+    { t: "Sensação", v: `${nf(c.apparent_temperature, 1)}°C`, s: "aparente", i: "🌡️", col: "sol" },
+  ];
+  $("#cards").innerHTML = cards.map((x) => `
+    <div class="bg-white rounded-xl border border-stone-200 p-3 fade">
+      <div class="flex items-center justify-between"><p class="text-xs text-neutro">${x.t}</p><span>${x.i}</span></div>
+      <p class="text-xl font-bold text-${x.col}">${x.v}</p>
+      <p class="text-xs text-neutro">${x.s}</p>
+    </div>`).join("");
+}
+function uvLabel(uv) { if (uv == null) return ""; if (uv < 3) return "baixo"; if (uv < 6) return "moderado"; if (uv < 8) return "alto"; if (uv < 11) return "muito alto"; return "extremo"; }
+
+function renderClimaTab() {
+  const c = state.cur, dly = state.daily;
+  const pulv = statusPulverizacao();
+  $("#tab-clima").innerHTML = `
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold mb-1">Janela de pulverização — agora</p>
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-2xl">${pulv.emoji}</span>
+        <span class="font-semibold" style="color:${pulv.cor}">${pulv.label}</span>
+      </div>
+      <ul class="text-xs text-neutro mt-2 space-y-0.5">${pulv.motivos.map((m) => `<li>• ${m}</li>`).join("")}</ul>
+    </div>
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold mb-2">Próximos 7 dias</p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        ${dly.time.map((t, i) => `
+          <div class="bg-stone-50 rounded-lg p-2">
+            <p class="text-neutro">${diaSemana(t)}</p>
+            <p class="font-semibold">${iconFor(null)} ${nf(dly.temperature_2m_min[i])}°/${nf(dly.temperature_2m_max[i])}°</p>
+            <p class="text-agua">🌧️ ${nf(dly.precipitation_sum[i])} mm (${nf(dly.precipitation_probability_max[i])}%)</p>
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+function diaSemana(iso) { const d = new Date(iso + "T12:00:00"); return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d.getDay()] + " " + d.getDate() + "/" + (d.getMonth() + 1); }
+
+function renderChuva() {
+  const dly = state.daily;
+  const ctx = $("#chart-chuva").getContext("2d");
+  if (chartChuva) chartChuva.destroy();
+  chartChuva = new Chart(ctx, {
+    data: {
+      labels: dly.time.map((t) => diaSemana(t)),
+      datasets: [
+        { type: "bar", label: "Chuva (mm)", data: dly.precipitation_sum, backgroundColor: "#1e40af", borderRadius: 4, yAxisID: "y" },
+        { type: "line", label: "Prob. (%)", data: dly.precipitation_probability_max, borderColor: "#f59e0b", backgroundColor: "#f59e0b", tension: .3, yAxisID: "y1" },
+      ],
+    },
+    options: { responsive: true, plugins: { legend: { labels: { boxWidth: 12, font: { size: 10 } } } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: "mm" } }, y1: { position: "right", beginAtZero: true, max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: "%" } } } },
+  });
+  const total = dly.precipitation_sum.reduce((a, b) => a + (b || 0), 0);
+  const chuvosos = dly.precipitation_sum.filter((x) => x >= 1).length;
+  const alerta = dly.precipitation_sum.some((x) => x > 50);
+  $("#chuva-tabela").innerHTML = `
+    <div class="flex flex-wrap gap-2 text-xs mb-2">
+      <span class="bg-stone-100 px-2 py-1 rounded">Total 7d: <b>${nf(total)} mm</b></span>
+      <span class="bg-stone-100 px-2 py-1 rounded">Dias com chuva: <b>${chuvosos}</b></span>
+    </div>
+    ${alerta ? `<div class="bg-red-50 border border-red-200 text-alerta rounded-lg p-2.5 text-xs mb-2">⚠️ Previsão de mais de 50 mm em um dia — risco de <b>lavagem de nutrientes</b>. Evite adubação de cobertura na véspera.</div>` : ``}
+    <table class="w-full text-xs">
+      <thead><tr class="text-left text-neutro"><th class="py-1">Dia</th><th>Chuva</th><th>Prob.</th><th>Pulverizar?</th></tr></thead>
+      <tbody>${state.daily.time.map((t, i) => {
+        const mm = state.daily.precipitation_sum[i], pr = state.daily.precipitation_probability_max[i];
+        const ok = mm < 4 && pr < 60;
+        return `<tr class="border-t border-stone-100"><td class="py-1">${diaSemana(t)}</td><td>${nf(mm)} mm</td><td>${nf(pr)}%</td><td>${ok ? "🟢 Ótimo" : (mm < 10 ? "🟡 Cuidado" : "🔴 Evitar")}</td></tr>`;
+      }).join("")}</tbody>
+    </table>`;
+}
+
+function renderMeses() {
+  const m = state.monthly; if (!m) { $("#meses-tabela").innerHTML = "<p class='text-xs text-neutro'>Carregando padrão histórico…</p>"; return; }
+  const now = new Date().getMonth();
+  const ordem = Array.from({ length: 6 }, (_, k) => (now + k) % 12);
+  const ctx = $("#chart-meses").getContext("2d");
+  if (chartMeses) chartMeses.destroy();
+  chartMeses = new Chart(ctx, {
+    data: {
+      labels: ordem.map((i) => MESES[i]),
+      datasets: [
+        { type: "bar", label: "Chuva média (mm)", data: ordem.map((i) => m.precip[i]), backgroundColor: "#1e40af", borderRadius: 4, yAxisID: "y" },
+        { type: "line", label: "Temp. média (°C)", data: ordem.map((i) => m.temp[i]), borderColor: "#f59e0b", tension: .3, yAxisID: "y1" },
+      ],
+    },
+    options: { responsive: true, plugins: { legend: { labels: { boxWidth: 12, font: { size: 10 } } } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: "mm" } }, y1: { position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "°C" } } } },
+  });
+  $("#meses-tabela").innerHTML = `
+    <table class="w-full text-xs">
+      <thead><tr class="text-left text-neutro"><th class="py-1">Mês</th><th>Chuva média</th><th>Temp. média</th><th>Situação</th></tr></thead>
+      <tbody>${ordem.map((i) => {
+        const p = m.precip[i]; const situacao = p == null ? "—" : p < 40 ? "🔴 Seca" : p > 250 ? "🔵 Excesso" : "🟢 Normal";
+        return `<tr class="border-t border-stone-100"><td class="py-1 font-medium">${MESES_FULL[i]}</td><td>${nf(p)} mm</td><td>${nf(m.temp[i], 1)}°C</td><td>${situacao}</td></tr>`;
+      }).join("")}</tbody>
+    </table>`;
+}
+
+/* ---------------- parecer técnico ---------------- */
+function gerarParecer() {
+  const c = state.cur, dly = state.daily, m = state.monthly;
+  if (!c) return "";
+  const chuva3 = dly ? dly.precipitation_sum.slice(0, 3).reduce((a, b) => a + (b || 0), 0) : 0;
+  const chuva7 = dly ? dly.precipitation_sum.reduce((a, b) => a + (b || 0), 0) : 0;
+  const linhas = [];
+  linhas.push(`Condições atuais em ${state.place}: ${nf(c.temperature_2m, 1)} °C, umidade relativa ${nf(c.relative_humidity_2m)}%, vento ${nf(c.wind_speed_10m, 1)} km/h, UV ${nf(c.uv_index, 1)} (${uvLabel(c.uv_index)}).`);
+
+  // temperatura
+  if (c.temperature_2m > 30) linhas.push("Temperatura elevada aumenta a demanda hídrica e o estresse da planta; monitore sintomas de deficiência hídrica e priorize aplicações no início da manhã ou fim da tarde.");
+  else if (c.temperature_2m < 12) linhas.push("Temperaturas baixas reduzem a atividade metabólica e a absorção de nutrientes; em episódios de frio com vento, atenção à mancha-aureolada.");
+
+  // umidade + doença
+  if (c.relative_humidity_2m > 80 && c.temperature_2m >= 20 && c.temperature_2m <= 26)
+    linhas.push("Umidade alta combinada a temperatura de 20–26 °C configura janela favorável à ferrugem (Hemileia vastatrix). Reforce o monitoramento e avalie a antecipação do controle preventivo.");
+
+  // chuva
+  if (chuva3 > 50) linhas.push(`Previsão de ${nf(chuva3)} mm nos próximos 3 dias — volume alto. NÃO recomendo adubação de cobertura agora (risco de lixiviação/lavagem, sobretudo do N e do K). Aguarde a estabilização das chuvas.`);
+  else if (chuva7 < 5) linhas.push("Baixa expectativa de chuva na semana — período seco. Evite adubação sem previsão de água para incorporação; se irrigado, ajuste a lâmina. Boa janela para pulverização, respeitando temperatura/umidade.");
+  else linhas.push(`Distribuição de chuva moderada na semana (${nf(chuva7)} mm) — condição adequada para adubação de cobertura em solo com boa umidade, preferencialmente logo após uma chuva leve.`);
+
+  // sazonal
+  const now = new Date().getMonth();
+  if (m && m.precip[now] != null) {
+    if (m.precip[now] > 200) linhas.push(`O mês de ${MESES_FULL[now]} historicamente é chuvoso na região (~${nf(m.precip[now])} mm) — planeje o parcelamento do N/K para reduzir perdas.`);
+    else if (m.precip[now] < 50) linhas.push(`Historicamente ${MESES_FULL[now]} é de baixa precipitação (~${nf(m.precip[now])} mm) — fase mais indicada para manejo, poda e correções que dependem de tempo seco.`);
+  }
+
+  linhas.push("Recomendação geral: correlacione sempre a adubação à previsão de chuva (evitar > 50 mm/3 dias), parcele N e K no período chuvoso e confirme dose/registro dos defensivos no AGROFIT.");
+  return linhas.map((l) => `<p class="mb-2">${l}</p>`).join("");
+}
+
+function renderParecer() {
+  const data = new Date();
+  $("#parecer-box").innerHTML = `
+    <div id="parecer-print">
+      <div class="flex justify-between items-start mb-3">
+        <div>
+          <h2 class="text-lg font-bold text-agro">Parecer Técnico do Clima — Café</h2>
+          <p class="text-xs text-neutro">${state.place} · ${data.toLocaleString("pt-BR")}</p>
+        </div>
+        <button onclick="window.print()" class="no-print text-xs bg-agro text-white rounded px-3 py-1.5">🖨️ Salvar PDF</button>
+      </div>
+      <div class="text-sm text-stone-700">${gerarParecer()}</div>
+      <div class="mt-4 pt-3 border-t border-stone-200 text-sm">
+        <p class="font-semibold">Igor Souza</p>
+        <p class="text-xs text-neutro">Consultoria Técnica — Adubos Real · CREA/CFTA: ____________</p>
+        <p class="text-[11px] text-neutro mt-2">Parecer de apoio gerado com dados meteorológicos (Open-Meteo). Não substitui a visita a campo, a análise de solo/foliar e o receituário do responsável técnico.</p>
+      </div>
+    </div>`;
+}
+
+/* ---------------- adubação ---------------- */
+let adubForm = { fase: "producao", area: 1, meta: 60 };
+function renderAdubacao() {
+  const c = state.cur, dly = state.daily;
+  const chuva3 = dly ? dly.precipitation_sum.slice(0, 3).reduce((a, b) => a + (b || 0), 0) : 0;
+  const mesAtual = MESES_FULL[new Date().getMonth()];
+  const rec = PRODUTOS.filter((p) => p.fase && p.fase.includes(adubForm.fase));
+  const janela = chuva3 > 50
+    ? { cor: "#dc2626", txt: `🔴 NÃO adubar agora — ${nf(chuva3)} mm previstos em 3 dias (risco de lixiviação). Aguardar.` }
+    : chuva3 < 2
+      ? { cor: "#f59e0b", txt: `🟡 Sem chuva prevista (3 dias) — adube só se houver irrigação/umidade para incorporar.` }
+      : { cor: "#2d5016", txt: `🟢 Boa janela — ${nf(chuva3)} mm em 3 dias favorecem a incorporação. Aplicar após chuva leve.` };
+  $("#tab-adubacao").innerHTML = `
+    <div class="bg-white rounded-xl border border-stone-200 p-4 space-y-3">
+      <p class="text-sm font-semibold">Recomendação de adubação — linha Adubos Real</p>
+      <div class="grid grid-cols-3 gap-2 text-xs">
+        <label>Fase da lavoura
+          <select id="ad-fase" class="w-full border border-stone-300 rounded px-2 py-1.5 mt-1">
+            <option value="plantio">Plantio</option>
+            <option value="crescimento">Crescimento</option>
+            <option value="producao">Produção</option>
+            <option value="pos_colheita">Pós-colheita</option>
+          </select>
+        </label>
+        <label>Área (ha)<input id="ad-area" type="number" value="${adubForm.area}" class="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+        <label>Meta (sc/ha)<input id="ad-meta" type="number" value="${adubForm.meta}" class="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+      </div>
+      <div class="rounded-lg p-2.5 text-xs" style="background:#f8f8f6;border:1px solid #e7e5e4;color:${janela.cor}">${janela.txt}</div>
+      <div class="space-y-2">
+        ${rec.length ? rec.map((p) => {
+          const doseMed = (p.doseKgHa[0] + p.doseKgHa[1]) / 2;
+          const total = doseMed * (Number(adubForm.area) || 1);
+          return `<div class="bg-stone-50 rounded-lg p-2.5 text-xs">
+            <div class="flex justify-between"><b>${p.nome}</b><span>${nf(p.doseKgHa[0])}–${nf(p.doseKgHa[1])} kg/ha</span></div>
+            <p class="text-neutro">${p.uso} · época: ${Array.isArray(p.estacao) ? p.estacao.join(", ") : p.estacao}</p>
+            <p class="text-neutro">Total estimado p/ ${nf(adubForm.area)} ha: <b>${nf(total)} kg</b> (dose média)</p>
+          </div>`;
+        }).join("") : `<p class="text-xs text-neutro">Sem produto pré-mapeado para esta fase — consulte a aba de adubação do app principal (Boletim 100).</p>`}
+      </div>
+      <p class="text-xs text-neutro">Mês atual: <b>${mesAtual}</b>. Doses são faixas de referência da linha Adubos Real; a dose final depende da análise de solo/foliar e do Boletim 100 — confirme com o agrônomo responsável.</p>
+    </div>`;
+  $("#ad-fase").value = adubForm.fase;
+  $("#ad-fase").addEventListener("change", (e) => { adubForm.fase = e.target.value; renderAdubacao(); });
+  $("#ad-area").addEventListener("input", (e) => { adubForm.area = e.target.value; renderAdubacao(); });
+  $("#ad-meta").addEventListener("input", (e) => { adubForm.meta = e.target.value; });
+}
+
+/* ---------------- pulverização ---------------- */
+function statusPulverizacao() {
+  const c = state.cur, dly = state.daily, hly = state.hourly;
+  const motivos = []; let score = 0;
+  if (!c) return { emoji: "⏳", label: "Sem dados", cor: "#6b7280", motivos: [] };
+  // temp
+  if (c.temperature_2m >= 15 && c.temperature_2m <= 28) { score++; motivos.push(`Temperatura ${nf(c.temperature_2m, 1)}°C — na faixa ideal (15–28°C).`); }
+  else motivos.push(`Temperatura ${nf(c.temperature_2m, 1)}°C — fora do ideal (15–28°C).`);
+  // umidade
+  if (c.relative_humidity_2m >= 55 && c.relative_humidity_2m <= 90) { score++; motivos.push(`Umidade ${nf(c.relative_humidity_2m)}% — adequada (55–90%).`); }
+  else motivos.push(`Umidade ${nf(c.relative_humidity_2m)}% — fora do ideal (55–90%).`);
+  // vento
+  if (c.wind_speed_10m <= 10) { score++; motivos.push(`Vento ${nf(c.wind_speed_10m, 1)} km/h — dentro do limite (≤10 km/h).`); }
+  else motivos.push(`Vento ${nf(c.wind_speed_10m, 1)} km/h — acima do limite (deriva).`);
+  // chuva nas próximas 4h
+  let chuva4 = 0;
+  if (hly && hly.time) {
+    const now = Date.now();
+    for (let i = 0; i < hly.time.length; i++) { const t = new Date(hly.time[i]).getTime(); if (t >= now && t <= now + 4 * 3600 * 1000) chuva4 += hly.precipitation[i] || 0; }
+  }
+  if (chuva4 < 0.5) { score++; motivos.push("Sem chuva significativa nas próximas 4 h."); }
+  else motivos.push(`Chuva de ~${nf(chuva4, 1)} mm prevista em 4 h — pode lavar a calda.`);
+
+  let emoji, label, cor;
+  if (score === 4) { emoji = "🟢"; label = "Ótimo para pulverizar"; cor = "#2d5016"; }
+  else if (score === 3) { emoji = "🟡"; label = "Aceitável — atenção"; cor = "#f59e0b"; }
+  else { emoji = "🔴"; label = "Não recomendado"; cor = "#dc2626"; }
+  return { emoji, label, cor, motivos, score };
+}
+
+function renderPulver() {
+  const p = statusPulverizacao();
+  const mesIdx = new Date().getMonth();
+  const relevantes = PRAGAS.filter((x) => x.epocas.includes(MESES_FULL[mesIdx]));
+  $("#tab-pulver").innerHTML = `
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold mb-1">Condição de aplicação — agora</p>
+      <div class="flex items-center gap-2"><span class="text-2xl">${p.emoji}</span><span class="font-bold" style="color:${p.cor}">${p.label}</span></div>
+      <ul class="text-xs text-neutro mt-2 space-y-0.5">${p.motivos.map((m) => `<li>• ${m}</li>`).join("")}</ul>
+    </div>
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold mb-2">Alvos com maior risco no mês (${MESES_FULL[mesIdx]})</p>
+      ${(relevantes.length ? relevantes : PRAGAS).map((x) => `
+        <div class="border-t border-stone-100 py-2 text-xs first:border-0">
+          <p class="font-semibold">${x.nome} <span class="text-neutro font-normal italic">${x.cientifico} · ${x.tipo}</span></p>
+          <p class="text-neutro">Sintomas: ${x.sintomas}</p>
+          <p class="text-neutro">Condições: ${x.condicoes}</p>
+          <p class="text-agro">Manejo: ${x.recomendacao}</p>
+        </div>`).join("")}
+    </div>
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold mb-2">Registrar pulverização</p>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <input id="pu-prod" placeholder="Produto aplicado" class="border border-stone-300 rounded px-2 py-1.5"/>
+        <input id="pu-alvo" placeholder="Alvo (praga/doença)" class="border border-stone-300 rounded px-2 py-1.5"/>
+        <input id="pu-dose" placeholder="Dose" class="border border-stone-300 rounded px-2 py-1.5"/>
+        <input id="pu-obs" placeholder="Observação" class="border border-stone-300 rounded px-2 py-1.5"/>
+      </div>
+      <button id="pu-add" class="mt-2 bg-agro text-white text-xs rounded px-3 py-1.5">+ Registrar (vai para Histórico)</button>
+    </div>`;
+  $("#pu-add").addEventListener("click", () => {
+    const prod = $("#pu-prod").value.trim(); if (!prod) return;
+    const h = getHist();
+    h.unshift({ id: Date.now(), tipo: "Pulverização", produto: prod, alvo: $("#pu-alvo").value, dose: $("#pu-dose").value, obs: $("#pu-obs").value, local: state.place, cond: statusPulverizacao().label, data: new Date().toLocaleString("pt-BR") });
+    setHist(h); renderHistorico(); alert("Registrado no Histórico.");
+  });
+}
+
+/* ---------------- histórico ---------------- */
+function getHist() { try { return JSON.parse(localStorage.getItem("cafe_clima_hist") || "[]"); } catch (e) { return []; } }
+function setHist(h) { localStorage.setItem("cafe_clima_hist", JSON.stringify(h.slice(0, 200))); }
+function renderHistorico() {
+  const h = getHist();
+  $("#tab-historico").innerHTML = `
+    <div class="bg-white rounded-xl border border-stone-200 p-4">
+      <p class="text-sm font-semibold mb-2">Histórico de pulverizações</p>
+      ${h.length ? h.map((x) => `
+        <div class="border-t border-stone-100 py-2 text-xs first:border-0 flex justify-between gap-2">
+          <div><b>${x.produto}</b> — alvo: ${x.alvo || "—"} · dose: ${x.dose || "—"}<br><span class="text-neutro">${x.local} · cond.: ${x.cond} ${x.obs ? "· " + x.obs : ""}</span></div>
+          <div class="text-right text-neutro whitespace-nowrap">${x.data}<br><button data-id="${x.id}" class="del text-alerta">excluir</button></div>
+        </div>`).join("") : `<p class="text-xs text-neutro">Nenhum registro ainda. Use a aba Pulverização para registrar.</p>`}
+    </div>`;
+  $("#tab-historico").querySelectorAll(".del").forEach((b) => b.addEventListener("click", () => { setHist(getHist().filter((x) => x.id != b.dataset.id)); renderHistorico(); }));
+}
+
+/* ---------------- orquestração ---------------- */
+async function setLocation(lat, lon, place) {
+  state.lat = lat; state.lon = lon; state.place = place || state.place;
+  $("#loc-label").textContent = state.place;
+  $("#coord").textContent = `Lat ${lat.toFixed(4)} · Lon ${lon.toFixed(4)}`;
+  await carregarTudo();
+}
+
+async function carregarTudo() {
+  $("#atualizado").textContent = "Atualizando dados climáticos…";
+  try {
+    const d = await fetchWeather(state.lat, state.lon);
+    state.cur = d.current; state.daily = d.daily; state.hourly = d.hourly; state.ts = Date.now();
+    renderCards(); renderClimaTab(); renderParecer(); renderAdubacao(); renderPulver(); renderHistorico();
+    if (chartAtivo("chuva")) renderChuva();
+    $("#atualizado").textContent = "Última atualização: " + new Date().toLocaleString("pt-BR") + " (cache 1 h)";
+    saveCache();
+    // climatologia em paralelo (mais lenta)
+    fetchClimatologia(state.lat, state.lon).then((m) => { state.monthly = m; saveCache(); if (chartAtivo("meses")) renderMeses(); }).catch(() => {});
+  } catch (e) {
+    $("#atualizado").textContent = "Erro ao obter clima: " + e.message + " — usando cache se houver.";
+  }
+}
+function chartAtivo(tab) { return !$("#tab-" + tab).classList.contains("hidden"); }
+
+/* abas */
+document.querySelectorAll(".tabbtn").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabbtn").forEach((x) => { x.classList.remove("active"); x.classList.add("text-neutro", "border-transparent"); });
+  b.classList.add("active"); b.classList.remove("text-neutro", "border-transparent");
+  document.querySelectorAll(".tab").forEach((t) => t.classList.add("hidden"));
+  const tab = b.dataset.tab; $("#tab-" + tab).classList.remove("hidden");
+  if (tab === "chuva" && state.daily) renderChuva();
+  if (tab === "meses") { if (state.monthly) renderMeses(); else $("#meses-tabela").innerHTML = "<p class='text-xs text-neutro'>Carregando padrão histórico…</p>"; }
+}));
+
+/* init */
+$("#btn-busca").addEventListener("click", () => buscarMunicipio($("#busca").value));
+$("#busca").addEventListener("keydown", (e) => { if (e.key === "Enter") buscarMunicipio($("#busca").value); });
+$("#btn-gps").addEventListener("click", () => {
+  if (!navigator.geolocation) { alert("GPS não disponível neste navegador."); return; }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { const { latitude, longitude } = pos.coords; map.setView([latitude, longitude], 12); marker.setLatLng([latitude, longitude]); setLocation(latitude, longitude, "Minha localização (GPS)"); },
+    () => alert("Não foi possível obter o GPS. Use a busca por município."), { enableHighAccuracy: true, timeout: 8000 });
+});
+
+(function start() {
+  const cache = loadCache();
+  const useCache = cache && cache.ts && (Date.now() - cache.ts < 3600 * 1000) && cache.lat != null;
+  const init = useCache ? cache : DEFAULT;
+  const lat = init.lat, lon = init.lon;
+  initMap(lat, lon);
+  if (useCache) { state = cache; $("#loc-label").textContent = state.place; renderCards(); renderClimaTab(); renderParecer(); renderAdubacao(); renderPulver(); renderHistorico(); $("#atualizado").textContent = "Dados em cache — atualizando…"; carregarTudo(); }
+  else {
+    // usa Ouro Fino por padrão; o GPS é acionado só pelo botão 📍 (evita prompt intrusivo ao abrir)
+    setLocation(DEFAULT.lat, DEFAULT.lon, DEFAULT.place);
+  }
+  renderHistorico();
+})();
+</script>
+</body>
+</html>
