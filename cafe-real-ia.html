@@ -1333,6 +1333,17 @@ function CafeRealIA() {
     if (theme === "dark") el.classList.add("dark"); else el.classList.remove("dark");
   }, [theme]);
 
+  // Ponte com o módulo de clima (iframe): recebe risco de ferrugem e alimenta o Dashboard
+  useEffect(() => {
+    function onMsg(e) {
+      const d = e.data;
+      if (!d || d.type !== "cafe-clima" || !Array.isArray(d.days)) return;
+      setClimaData({ local: d.local, days: d.days, riscoFerrugem: d.riscoFerrugem });
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
   const [apiKey, setApiKeyState] = useState(persisted.apiKey || "");
   const [googleVisionKey, setGoogleVisionKey] = useState(persisted.googleVisionKey || "");
   const [azureOcrKey, setAzureOcrKey] = useState(persisted.azureOcrKey || "");
@@ -1928,7 +1939,7 @@ ${lista}`;
                   <div className="flex items-center gap-3">
                     <div className="w-1/2"><${Gauge} value=${indices.fitossanitario} label="sanidade" /></div>
                     <div className="w-1/2 text-xs space-y-1">
-                      <p className="flex justify-between"><span className="text-stone-400">Risco de ferrugem</span> <b>${climaData.riscoFerrugem}/10 dias</b></p>
+                      <p className="flex justify-between"><span className="text-stone-400">Risco de ferrugem</span> <b>${climaData.riscoFerrugem} dias favoráveis</b></p>
                       <p className="flex justify-between"><span className="text-stone-400">Máx. próx. dia</span> <b>${climaData.days && climaData.days[0] ? Math.round(climaData.days[0].tmax) + "°C" : "—"}</b></p>
                       <p className="flex justify-between"><span className="text-stone-400">Chuva próx. dia</span> <b>${climaData.days && climaData.days[0] ? climaData.days[0].chuva + " mm" : "—"}</b></p>
                     </div>
@@ -2465,46 +2476,14 @@ ${lista}`;
         `}
 
         ${tab === "clima" && html`
-          <div className="space-y-4">
-            <a href="clima.html" className="block bg-emerald-800 text-white rounded-lg p-4 hover:bg-emerald-900 transition">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold flex items-center gap-2"><${CloudRain} size=${16}/> Abrir Clima Avançado</p>
-                  <p className="text-xs text-emerald-100 mt-0.5">Mapa interativo, previsão de chuva 7 dias, padrão dos próximos meses, parecer técnico, janela de pulverização e adubação por clima.</p>
-                </div>
-                <span className="text-2xl">→</span>
-              </div>
-            </a>
-            <div className="bg-white rounded-lg border border-stone-200 p-4">
-              <p className="text-sm font-medium mb-2">Previsão do tempo (10 dias)</p>
-              <div className="flex gap-2">
-                <input placeholder="Cidade (ex: Ouro Fino, MG)" value=${cidade} onChange=${(e) => setCidade(e.target.value)} onKeyDown=${(e) => e.key === "Enter" && buscarClima()} className="flex-1 border border-stone-300 rounded px-2 py-1.5 text-sm" />
-                <button onClick=${buscarClima} disabled=${climaLoading || !cidade} className="bg-emerald-800 text-white rounded px-3 py-1.5 text-sm flex items-center gap-1 disabled:opacity-40">
-                  ${climaLoading ? html`<${Loader2} size=${14} className="animate-spin"/>` : html`<${MapPin} size=${14}/>`} Buscar
-                </button>
-              </div>
-              ${climaError && html`<p className="text-xs text-red-600 mt-2">${climaError}</p>`}
+          <div className="space-y-2">
+            <div className="bg-white rounded-xl border border-stone-200 overflow-hidden" style=${{ height: "80vh", minHeight: "600px" }}>
+              <iframe src="clima.html" title="Clima Avançado — Café Real IA" allow="geolocation" className="w-full h-full" style=${{ border: "0" }}></iframe>
             </div>
-            ${climaData && html`
-              <div className="bg-white rounded-lg border border-stone-200 p-4 space-y-3">
-                <p className="text-sm font-medium">${climaData.local}</p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  ${climaData.days.map((d, i) => html`
-                    <div key=${i} className="bg-stone-50 rounded p-2">
-                      <p className="text-stone-400">${d.data}</p>
-                      <p className="font-medium">${Math.round(d.tmin)}°–${Math.round(d.tmax)}°C</p>
-                      <p className="text-stone-500">Chuva: ${d.chuva} mm (${d.probChuva}%)</p>
-                    </div>
-                  `)}
-                </div>
-                <div className="bg-amber-50 rounded p-3 text-xs text-amber-900 flex items-start gap-2">
-                  <${Sun} size=${14} className="mt-0.5 flex-shrink-0"/>
-                  <span>${climaData.riscoFerrugem >= 3
-                    ? `Atenção: ${climaData.riscoFerrugem} dias com temperatura e umidade favoráveis à ferrugem (Hemileia vastatrix) na janela de 10 dias. Avalie monitoramento e janela de aplicação preventiva.`
-                    : "Condições atuais indicam risco moderado a baixo para ferrugem nos próximos 10 dias, com base apenas em temperatura/umidade — combine com monitoramento de campo."}</span>
-                </div>
-              </div>
-            `}
+            <div className="flex items-center justify-between text-xs text-stone-400">
+              <span>${climaData ? `Sincronizado: ${climaData.local} · risco de ferrugem ${climaData.riscoFerrugem}/7 dias (alimenta o Dashboard).` : "Módulo de clima avançado — mapa, previsão, parecer, adubação e pulverização."}</span>
+              <a href="clima.html" target="_blank" className="underline whitespace-nowrap ml-2">Tela cheia ↗</a>
+            </div>
           </div>
         `}
 

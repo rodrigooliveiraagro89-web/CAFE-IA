@@ -531,6 +531,7 @@ async function carregarTudo() {
     if (chartAtivo("chuva")) renderChuva();
     $("#atualizado").textContent = "Última atualização: " + new Date().toLocaleString("pt-BR") + " (cache 1 h)";
     saveCache();
+    enviarParaApp();
     // climatologia em paralelo (mais lenta)
     fetchClimatologia(state.lat, state.lon).then((m) => { state.monthly = m; saveCache(); if (chartAtivo("meses")) renderMeses(); }).catch(() => {});
   } catch (e) {
@@ -538,6 +539,21 @@ async function carregarTudo() {
   }
 }
 function chartAtivo(tab) { return !$("#tab-" + tab).classList.contains("hidden"); }
+
+// Envia resumo do clima ao app pai (quando embutido em iframe) para alimentar o Dashboard
+function enviarParaApp() {
+  try {
+    if (!window.parent || window.parent === window || !state.daily) return;
+    const dly = state.daily;
+    const dias = dly.time.map((t, i) => ({
+      data: t, tmax: dly.temperature_2m_max[i], tmin: dly.temperature_2m_min[i],
+      chuva: dly.precipitation_sum[i], probChuva: dly.precipitation_probability_max[i],
+      umidade: dly.relative_humidity_2m_mean ? dly.relative_humidity_2m_mean[i] : null,
+    }));
+    const risco = dias.filter((d) => d.tmax >= 21 && d.tmax <= 26 && (d.umidade == null || d.umidade > 75)).length;
+    window.parent.postMessage({ type: "cafe-clima", local: state.place, riscoFerrugem: risco, days: dias }, "*");
+  } catch (e) {}
+}
 
 /* abas */
 document.querySelectorAll(".tabbtn").forEach((b) => b.addEventListener("click", () => {
