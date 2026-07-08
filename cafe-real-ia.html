@@ -6,6 +6,9 @@
 <title>Café Real IA — Consultoria Agronômica</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { darkMode: "class" };</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <style>
@@ -69,9 +72,193 @@
   }
   @keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
   .anim-in { animation: fadeInUp .35s ease both; }
+
+  /* ================================================================== */
+  /* CAMADA PREMIUM 3D — só visual; nenhuma lógica é alterada.          */
+  /* Glassmorphism, sombras multicamadas, microanimações e fundo vivo.  */
+  /* ================================================================== */
+
+  body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing: -0.011em; }
+  h1, h2, h3 { letter-spacing: -0.02em; }
+
+  /* --- Tela de fundo (canvas) com luz suave --- */
+  body.bg-stone-50 {
+    background:
+      radial-gradient(1100px 750px at 88% -8%, rgba(16,185,129,.10), transparent 60%),
+      radial-gradient(900px 650px at -12% 35%, rgba(217,164,65,.09), transparent 55%),
+      linear-gradient(180deg, #f8f7f4 0%, #efede8 100%);
+    background-attachment: fixed;
+  }
+  html.dark body.bg-stone-50 {
+    background:
+      radial-gradient(1000px 700px at 88% -10%, rgba(16,185,129,.13), transparent 60%),
+      radial-gradient(800px 600px at -10% 40%, rgba(217,164,65,.07), transparent 55%),
+      linear-gradient(180deg, #0d0c0a 0%, #090807 100%) !important;
+    background-attachment: fixed;
+  }
+  .min-h-screen.bg-stone-50 { background: transparent !important; }
+  html.dark .min-h-screen.bg-stone-50 { background: transparent !important; }
+
+  /* --- Fundo interativo: auroras + marca d'água de café (parallax) --- */
+  #bg-fx { position: fixed; inset: -6%; z-index: -1; pointer-events: none; overflow: hidden;
+    transform: translate3d(calc(var(--mx, 0) * -14px), calc(var(--my, 0) * -10px), 0);
+    transition: transform .3s ease-out; }
+  .fx-blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .5; will-change: transform; }
+  .fx-b1 { width: 560px; height: 560px; left: -130px; top: -150px;
+    background: radial-gradient(circle at 35% 35%, rgba(16,185,129,.32), transparent 70%);
+    animation: fxDrift1 26s ease-in-out infinite alternate; }
+  .fx-b2 { width: 480px; height: 480px; right: -140px; top: 12%;
+    background: radial-gradient(circle at 60% 40%, rgba(217,164,65,.26), transparent 70%);
+    animation: fxDrift2 32s ease-in-out infinite alternate; }
+  .fx-b3 { width: 620px; height: 620px; left: 28%; bottom: -260px;
+    background: radial-gradient(circle at 50% 30%, rgba(5,150,105,.20), transparent 70%);
+    animation: fxDrift3 38s ease-in-out infinite alternate; }
+  @keyframes fxDrift1 { to { transform: translate(70px, 50px) scale(1.08); } }
+  @keyframes fxDrift2 { to { transform: translate(-60px, 70px) scale(1.12); } }
+  @keyframes fxDrift3 { to { transform: translate(50px, -60px) scale(1.05); } }
+  .fx-pattern { position: absolute; inset: 0; opacity: .05;
+    transform: translate3d(calc(var(--mx, 0) * 9px), calc(var(--my, 0) * 7px - var(--sy, 0px) * 0.18), 0);
+    transition: transform .3s ease-out;
+    background-size: 215px 215px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='190' viewBox='0 0 190 190'%3E%3Cg fill='none' stroke='%23065f46' stroke-width='2.4' stroke-linecap='round'%3E%3Cellipse cx='48' cy='48' rx='18' ry='26' transform='rotate(-28 48 48)'/%3E%3Cpath d='M38 30q14 18 3 38'/%3E%3Cpath d='M118 124q24-32 54-36q-6 32-32 44q-14 6-22-8z'/%3E%3Cpath d='M122 120q22-23 44-29'/%3E%3Cellipse cx='150' cy='42' rx='11' ry='15' transform='rotate(22 150 42)'/%3E%3Cpath d='M145 31q9 11 3 23'/%3E%3C/g%3E%3C/svg%3E"); }
+  html.dark .fx-pattern { opacity: .055;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='190' viewBox='0 0 190 190'%3E%3Cg fill='none' stroke='%2334d399' stroke-width='2.4' stroke-linecap='round'%3E%3Cellipse cx='48' cy='48' rx='18' ry='26' transform='rotate(-28 48 48)'/%3E%3Cpath d='M38 30q14 18 3 38'/%3E%3Cpath d='M118 124q24-32 54-36q-6 32-32 44q-14 6-22-8z'/%3E%3Cpath d='M122 120q22-23 44-29'/%3E%3Cellipse cx='150' cy='42' rx='11' ry='15' transform='rotate(22 150 42)'/%3E%3Cpath d='M145 31q9 11 3 23'/%3E%3C/g%3E%3C/svg%3E"); }
+  html.dark .fx-b1 { opacity: .38; } html.dark .fx-b2 { opacity: .3; } html.dark .fx-b3 { opacity: .34; }
+
+  /* --- Cartões de vidro com profundidade --- */
+  .bg-white {
+    background: linear-gradient(165deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.68) 100%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(1.35);
+    backdrop-filter: blur(12px) saturate(1.35);
+    box-shadow: 0 1px 2px rgba(28,25,23,.04), 0 6px 16px -6px rgba(28,25,23,.08),
+                0 18px 40px -18px rgba(28,25,23,.14), inset 0 1px 0 rgba(255,255,255,.85);
+    transition: transform .25s ease, box-shadow .3s ease, background-color .25s ease;
+  }
+  html.dark .bg-white {
+    background: linear-gradient(165deg, rgba(41,36,31,.9) 0%, rgba(24,21,18,.74) 100%) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -12px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  @media (hover: hover) {
+    main .bg-white.rounded-xl:hover, main .bg-white.rounded-lg:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 2px 4px rgba(28,25,23,.05), 0 14px 30px -8px rgba(28,25,23,.14), 0 34px 70px -24px rgba(28,25,23,.2), inset 0 1px 0 rgba(255,255,255,.9);
+    }
+    html.dark main .bg-white.rounded-xl:hover, html.dark main .bg-white.rounded-lg:hover {
+      box-shadow: 0 2px 4px rgba(0,0,0,.45), 0 20px 44px -14px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+  }
+  main .rounded-lg { border-radius: .8rem; }
+  main .rounded-xl { border-radius: 1.05rem; }
+  .border-stone-200 { border-color: rgba(120,113,108,.18) !important; }
+  html.dark .border-stone-200 { border-color: rgba(255,255,255,.08) !important; }
+
+  /* --- Blocos internos (tiles) com relevo sutil --- */
+  main .bg-stone-50 {
+    background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(245,244,241,.55)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 2px rgba(28,25,23,.04), 0 1px 2px rgba(28,25,23,.04);
+  }
+  html.dark main .bg-stone-50 {
+    background: linear-gradient(180deg, rgba(50,44,38,.5), rgba(24,21,18,.45)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  }
+
+  /* --- Botões: gradiente, brilho e resposta ao toque --- */
+  button { transition: transform .18s ease, box-shadow .25s ease, filter .2s ease, background-color .2s ease, color .2s ease; }
+  button:active { transform: scale(.965); }
+  .bg-emerald-800 {
+    background-image: linear-gradient(180deg, #0aa572 0%, #077b56 52%, #065f46 100%) !important;
+    box-shadow: 0 2px 6px rgba(6,78,59,.3), 0 10px 22px -8px rgba(6,95,70,.45),
+                inset 0 1px 0 rgba(255,255,255,.28), inset 0 -1px 0 rgba(0,0,0,.16);
+    border: none;
+  }
+  .bg-emerald-800:hover { filter: brightness(1.07) saturate(1.05); }
+  input[type="checkbox"], input[type="radio"] { accent-color: #059669; }
+
+  /* --- Campos com anel de foco suave --- */
+  main input, main select, main textarea, .fixed input, .fixed select, .fixed textarea {
+    border-radius: .625rem !important;
+    box-shadow: inset 0 1px 2px rgba(28,25,23,.05);
+    transition: box-shadow .2s ease, border-color .2s ease, background-color .25s ease;
+  }
+  main input:focus, main select:focus, main textarea:focus, .fixed input:focus, .fixed select:focus, .fixed textarea:focus {
+    outline: none; border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16,185,129,.2), inset 0 1px 2px rgba(28,25,23,.04);
+  }
+
+  /* --- Cabeçalho e navegação de vidro --- */
+  header.bg-emerald-900 {
+    background: radial-gradient(140% 200% at 92% -30%, rgba(217,164,65,.3), transparent 46%),
+                linear-gradient(120deg, #04382a 0%, #075540 55%, #0a6b4f 100%) !important;
+    box-shadow: 0 10px 30px -12px rgba(3,40,30,.5);
+  }
+  .sticky nav {
+    background: rgba(252,251,249,.72) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.5);
+    border-bottom-color: rgba(28,25,23,.06) !important;
+  }
+  html.dark .sticky nav { background: rgba(15,13,11,.68) !important; border-bottom-color: rgba(255,255,255,.06) !important; }
+
+  /* --- Entrada dos cartões em cascata --- */
+  @keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+  main > div > * { animation: cardIn .5s cubic-bezier(.22,.9,.3,1) both; }
+  main > div > *:nth-child(2) { animation-delay: .05s; }
+  main > div > *:nth-child(3) { animation-delay: .1s; }
+  main > div > *:nth-child(4) { animation-delay: .15s; }
+  main > div > *:nth-child(5) { animation-delay: .2s; }
+  main > div > *:nth-child(6) { animation-delay: .25s; }
+  main > div > *:nth-child(n+7) { animation-delay: .3s; }
+
+  /* --- Tabelas e detalhes --- */
+  main tbody tr { transition: background-color .15s ease; }
+  main tbody tr:hover { background: rgba(16,185,129,.06); }
+  html.dark main tbody tr:hover { background: rgba(52,211,153,.08); }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #c8c3bd, #b3ada6); border-radius: 8px; }
+  html.dark ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #4a443f, #37322d); }
+  :focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+
+  /* --- Acessibilidade e impressão protegidas --- */
+  @media (prefers-reduced-motion: reduce) {
+    #bg-fx, .fx-blob, .fx-pattern, main > div > *, .anim-in { animation: none !important; transition: none !important; }
+    button, .bg-white { transition: none !important; }
+  }
+  @media (max-width: 640px) {
+    .bg-white { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  }
+  @media print {
+    #bg-fx { display: none !important; }
+    .bg-white, main .bg-stone-50 { background: #fff !important; box-shadow: none !important;
+      -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    main > div > *, .anim-in { animation: none !important; }
+    button, .bg-emerald-800 { box-shadow: none !important; }
+  }
 </style>
 </head>
 <body class="bg-stone-50">
+<!-- Fundo interativo: marca d'água de café + auroras com parallax (decorativo) -->
+<div id="bg-fx" aria-hidden="true">
+  <div class="fx-blob fx-b1"></div>
+  <div class="fx-blob fx-b2"></div>
+  <div class="fx-blob fx-b3"></div>
+  <div class="fx-pattern"></div>
+</div>
+<script>
+(function () {
+  var el = document.documentElement, raf = null;
+  function set(name, v) { el.style.setProperty(name, v); }
+  window.addEventListener("pointermove", function (e) {
+    var mx = (e.clientX / window.innerWidth - 0.5) * 2;
+    var my = (e.clientY / window.innerHeight - 0.5) * 2;
+    if (raf) return;
+    raf = requestAnimationFrame(function () {
+      set("--mx", mx.toFixed(3)); set("--my", my.toFixed(3)); raf = null;
+    });
+  }, { passive: true });
+  window.addEventListener("scroll", function () {
+    set("--sy", (window.scrollY * 0.06).toFixed(1) + "px");
+  }, { passive: true });
+})();
+</script>
 <div id="root">
   <div style="padding:40px;text-align:center;color:#78716c;font-family:sans-serif;font-size:14px;">Carregando Café Real IA…</div>
 </div>
