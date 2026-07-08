@@ -213,6 +213,14 @@ const FOTO_CATEGORIAS = {
 const CONF_COR = { alta: "#10b981", media: "#f59e0b", baixa: "#dc2626" };
 const CONF_LABEL = { alta: "Confiança alta", media: "Confiança média", baixa: "Confiança baixa" };
 
+// Fotos da capa (lavouras de café reais — Wikimedia Commons, licenças CC; verificadas uma a uma).
+// Sem internet, o gradiente de fundo segura o visual.
+const HERO_IMGS = [
+  { src: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/P%C3%B4r_do_Sol_na_Cafeicultura.jpg/1280px-P%C3%B4r_do_Sol_na_Cafeicultura.jpg", alt: "Pôr do sol na lavoura de café" },
+  { src: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Coffee_Berries.jpg/1280px-Coffee_Berries.jpg", alt: "Frutos maduros de café no pé" },
+  { src: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Caf%C3%A9_cultura_altin%C3%B3polis.jpg/1280px-Caf%C3%A9_cultura_altin%C3%B3polis.jpg", alt: "Talhões de café sob céu azul" },
+];
+
 /* ---------------------------------------------------------------------- */
 /* Base de defensivos (planilha Adubos Real, injetada como JSON no HTML)   */
 /* Regra de ouro: só recomendar o que consta na base, registrado para a    */
@@ -1326,6 +1334,13 @@ function CafeRealIA() {
   });
   const [editProp, setEditProp] = useState(false);
 
+  // Capa rotativa do painel: troca de foto a cada 7 s
+  const [heroIdx, setHeroIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_IMGS.length), 7000);
+    return () => clearInterval(id);
+  }, []);
+
   // Aplica o tema no <html> e persiste
   useEffect(() => {
     const el = document.documentElement;
@@ -1381,6 +1396,7 @@ function CafeRealIA() {
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoResult, setPhotoResult] = useState(persisted.photoResult || null);
   const photoInputRef = useRef(null);
+  const photoCameraRef = useRef(null);
 
   const [defensivos, setDefensivos] = useState(persisted.defensivos || []);
   const [defForm, setDefForm] = useState({ nome: "", ia: "", alvo: "", doseMin: "", doseMax: "", volumeCalda: "", carencia: "", classeTox: "", epis: "" });
@@ -1811,6 +1827,37 @@ ${lista}`;
       <main className="p-4 max-w-3xl mx-auto">
         ${tab === "dashboard" && html`
           <div className="space-y-4">
+            <!-- Capa -->
+            <div className="relative rounded-2xl overflow-hidden anim-in shadow-lg" style=${{ minHeight: "215px", background: "linear-gradient(120deg,#064e3b 0%,#052e22 100%)" }}>
+              ${HERO_IMGS.map((im, i) => html`
+                <img key=${i} src=${im.src} alt=${im.alt} loading=${i === 0 ? "eager" : "lazy"}
+                  className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+                  style=${{ opacity: heroIdx === i ? 1 : 0 }}
+                  onError=${(e) => { e.target.style.display = "none"; }} />
+              `)}
+              <div className="absolute inset-0" style=${{ background: "linear-gradient(100deg, rgba(4,38,28,.94) 0%, rgba(6,58,44,.62) 48%, rgba(2,20,14,.18) 100%)" }}></div>
+              <div className="absolute bottom-2.5 right-3 flex items-center gap-1.5 z-10">
+                ${HERO_IMGS.map((_, i) => html`
+                  <button key=${i} onClick=${() => setHeroIdx(i)} title=${HERO_IMGS[i].alt}
+                    className="rounded-full transition-all"
+                    style=${{ width: heroIdx === i ? "18px" : "7px", height: "7px", background: heroIdx === i ? "#fff" : "rgba(255,255,255,.45)" }}></button>
+                `)}
+              </div>
+              <span className="absolute bottom-1 left-3 text-[9px] text-white/40 z-10">Fotos: Wikimedia Commons (CC)</span>
+              <div className="relative p-5 sm:p-6 text-white">
+                <span className="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 rounded-full px-2.5 py-0.5 text-[11px] font-medium mb-2"><${Sprout} size=${11}/> Café arábica de montanha · Sul de Minas</span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight drop-shadow">${propriedade.nome || "Sua lavoura, sob controle"}</h2>
+                <p className="text-emerald-100 text-xs sm:text-sm mt-1 max-w-md">${soilData
+                  ? `${soilData.talhao ? "Talhão " + soilData.talhao + " · " : ""}pH ${soilData.pH ?? "—"} · V% ${soilData.V ?? "—"} · meta ${meta} sc/ha`
+                  : "Leia sua análise de solo e o painel se preenche sozinho — calagem, adubação e custo por saca."}</p>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <button onClick=${() => setTab("solo")} className="bg-white text-emerald-900 font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-emerald-50 transition"><${Droplet} size=${13}/> Ler análise de solo</button>
+                  <button onClick=${() => setTab("foto")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${Camera} size=${13}/> Diagnóstico por foto</button>
+                  <button onClick=${() => setTab("clima")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${CloudRain} size=${13}/> Clima</button>
+                </div>
+              </div>
+            </div>
+
             <!-- Perfil da propriedade -->
             <div className="bg-white rounded-xl border border-stone-200 p-4 anim-in">
               <div className="flex items-center justify-between mb-3">
@@ -2345,10 +2392,17 @@ ${lista}`;
 
             <div className="bg-white rounded-xl border border-stone-200 p-4">
               <p className="text-sm font-medium mb-2 flex items-center gap-2"><${Camera} size=${15} className="text-emerald-700"/> Enviar foto (folha, fruto, raiz ou solo)</p>
-              <input ref=${photoInputRef} type="file" accept=".jpg,.jpeg,.png,.heic,.heif,image/*" capture="environment" onChange=${handlePhotoUpload} className="hidden" />
-              <button onClick=${() => photoInputRef.current.click()} className="flex items-center gap-2 border border-dashed border-stone-300 rounded-lg px-4 py-6 w-full justify-center text-stone-500 hover:border-emerald-400 hover:text-emerald-700 text-sm">
-                <${Upload} size=${16}/> ${photoFile ? photoFile.name : "Selecionar ou tirar foto"}
-              </button>
+              <input ref=${photoInputRef} type="file" accept=".jpg,.jpeg,.png,.heic,.heif,image/*" onChange=${handlePhotoUpload} className="hidden" />
+              <input ref=${photoCameraRef} type="file" accept="image/*" capture="environment" onChange=${handlePhotoUpload} className="hidden" />
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick=${() => photoInputRef.current.click()} className="flex flex-col items-center gap-1.5 border border-dashed border-stone-300 rounded-lg px-3 py-5 justify-center text-stone-500 hover:border-emerald-400 hover:text-emerald-700 text-sm">
+                  <${Upload} size=${20}/> Escolher da galeria
+                </button>
+                <button onClick=${() => photoCameraRef.current.click()} className="flex flex-col items-center gap-1.5 border border-dashed border-stone-300 rounded-lg px-3 py-5 justify-center text-stone-500 hover:border-emerald-400 hover:text-emerald-700 text-sm">
+                  <${Camera} size=${20}/> Tirar foto agora
+                </button>
+              </div>
+              ${photoFile && html`<p className="text-xs text-stone-500 mt-2 text-center">Arquivo: <b>${photoFile.name}</b></p>`}
               ${photoPreview && html`<img src=${photoPreview} alt="preview" className="mt-3 max-h-56 rounded-lg border border-stone-200 mx-auto" />`}
               <button onClick=${diagnosePhoto} disabled=${!photoFile || photoLoading} className="mt-3 w-full bg-emerald-800 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2">
                 ${photoLoading ? html`<${Loader2} size=${16} className="animate-spin"/>` : html`<${Camera} size=${16}/>`}
