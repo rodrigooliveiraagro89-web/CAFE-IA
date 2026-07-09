@@ -283,7 +283,8 @@ import {
   Leaf, Droplet, CloudRain, Calculator, FileText, Camera, Upload, Sprout,
   AlertTriangle, CheckCircle, Plus, Trash2, Loader2, Sun, Moon, MapPin, ClipboardList,
   Bug, Settings, KeyRound, Download, UploadCloud, X, Info, Eye, Edit3, ScrollText,
-  Coffee, Mountain, TrendingUp, Activity, Layers, Ruler, ShieldCheck, FlaskConical, Gauge as GaugeIcon
+  Coffee, Mountain, TrendingUp, Activity, Layers, Ruler, ShieldCheck, FlaskConical, Gauge as GaugeIcon,
+  MessageCircle, Box
 } from "https://esm.sh/lucide-react@0.383.0?external=react&deps=react@18.3.1";
 
 const html = htm.bind(React.createElement);
@@ -1393,6 +1394,241 @@ function StatCard({ icon, label, value, sub, color, progress }) {
 }
 
 /* ---------------------------------------------------------------------- */
+/* 3D (Three.js) — carregado sob demanda, só quando a seção 3D aparece.   */
+/* Sem bundler, o "code-splitting" é o import() dinâmico do CDN: quem     */
+/* nunca rola até o 3D nunca baixa a biblioteca.                          */
+/* ---------------------------------------------------------------------- */
+
+let _threePromise = null;
+function loadThree() {
+  if (!_threePromise) {
+    _threePromise = import("https://esm.sh/three@0.160.0").catch((e) => { _threePromise = null; throw e; });
+  }
+  return _threePromise;
+}
+
+// Hook comum: observa visibilidade, carrega o Three, monta a cena e descarta
+// tudo (geometrias, materiais, contexto WebGL) quando o componente sai da tela.
+function useThreeScene(build) {
+  const hostRef = useRef(null);
+  const apiRef = useRef(null);
+  const [status, setStatus] = useState("idle"); // idle → loading → ready | error
+  useEffect(() => {
+    const el = hostRef.current;
+    // viewports sem medida (raro) e navegadores sem IO: carrega direto
+    if (!el || !("IntersectionObserver" in window) || window.innerHeight < 50) { setStatus("loading"); return; }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { setStatus((s) => (s === "idle" ? "loading" : s)); io.disconnect(); }
+    }, { threshold: 0, rootMargin: "160px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (status !== "loading") return;
+    let alive = true;
+    loadThree().then((THREE) => {
+      if (!alive || !hostRef.current) return;
+      apiRef.current = build(THREE, hostRef.current);
+      setStatus("ready");
+    }).catch((e) => { console.warn("3D indisponível:", e); if (alive) setStatus("error"); });
+    return () => { alive = false; };
+  }, [status]);
+  useEffect(() => () => { if (apiRef.current && apiRef.current.dispose) apiRef.current.dispose(); apiRef.current = null; }, []);
+  return { hostRef, status, apiRef };
+}
+
+// Base compartilhada: renderer transparente (o cartão de vidro fica atrás),
+// órbita automática suave + arrastar para girar, redimensionamento e limpeza.
+function threeBase(THREE, host, opts) {
+  const o = Object.assign({ dist: 10.5, height: 3.2, minEl: 0.12, maxEl: 1.1, el: 0.42, angle: 0.8, auto: 0.0016, lookY: 0.5 }, opts);
+  const W = host.clientWidth || 300, H = host.clientHeight || 260;
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(W, H);
+  host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+  scene.add(new THREE.HemisphereLight(0xeafff3, 0x3a2b1c, 0.95));
+  const sun = new THREE.DirectionalLight(0xfff2cf, 1.15);
+  sun.position.set(6, 9, 4);
+  scene.add(sun);
+
+  let angle = o.angle, targetAngle = angle, el = o.el, targetEl = el;
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let dragging = false, px = 0, py = 0;
+  const cv = renderer.domElement;
+  cv.style.touchAction = "pan-y"; // não rouba o scroll vertical no celular
+  cv.style.cursor = "grab";
+  cv.addEventListener("pointerdown", (e) => { dragging = true; px = e.clientX; py = e.clientY; cv.style.cursor = "grabbing"; try { cv.setPointerCapture(e.pointerId); } catch (x) {} });
+  cv.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    targetAngle += (e.clientX - px) * 0.008;
+    targetEl = Math.max(o.minEl, Math.min(o.maxEl, targetEl + (e.clientY - py) * 0.004));
+    px = e.clientX; py = e.clientY;
+  });
+  ["pointerup", "pointercancel"].forEach((ev) => cv.addEventListener(ev, () => { dragging = false; cv.style.cursor = "grab"; }));
+
+  let raf = null, disposed = false;
+  const onFrame = [];
+  function tick() {
+    if (disposed) return;
+    if (!reduced && !dragging) targetAngle += o.auto;
+    angle += (targetAngle - angle) * 0.08;
+    el += (targetEl - el) * 0.08;
+    camera.position.set(Math.cos(angle) * o.dist, o.height + Math.sin(el) * 4.5, Math.sin(angle) * o.dist);
+    camera.lookAt(0, o.lookY, 0);
+    onFrame.forEach((f) => f());
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(tick);
+  }
+  tick();
+  const ro = new ResizeObserver(() => {
+    const w = host.clientWidth || 300, h = host.clientHeight || 260;
+    camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+  });
+  ro.observe(host);
+  function dispose() {
+    disposed = true;
+    if (raf) cancelAnimationFrame(raf);
+    ro.disconnect();
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) (Array.isArray(obj.material) ? obj.material : [obj.material]).forEach((m) => m.dispose());
+    });
+    renderer.dispose();
+    if (cv.parentNode) cv.parentNode.removeChild(cv);
+  }
+  return { renderer, scene, camera, onFrame, dispose };
+}
+
+// Cena 1 — plantação de café: fileiras low-poly, frutos instanciados;
+// a cor da folhagem e do solo reage aos índices do talhão.
+function buildLavouraScene(THREE, host) {
+  const base = threeBase(THREE, host, { dist: 10.5, angle: 0.8 });
+  const { scene } = base;
+
+  const soilMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1 });
+  const soil = new THREE.Mesh(new THREE.CylinderGeometry(7.4, 7.8, 0.5, 40), soilMat);
+  soil.position.y = -0.26;
+  scene.add(soil);
+
+  const foliageMat = new THREE.MeshStandardMaterial({ color: 0x1f8a45, roughness: 0.8 });
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5d4024, roughness: 1 });
+  const trunkGeo = new THREE.CylinderGeometry(0.05, 0.08, 0.5, 6);
+  const folGeo1 = new THREE.IcosahedronGeometry(0.42, 1);
+  const folGeo2 = new THREE.IcosahedronGeometry(0.3, 1);
+  const plants = new THREE.Group();
+  const rows = 5, cols = 7;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const g = new THREE.Group();
+    g.position.set(
+      (c - (cols - 1) / 2) * 1.35 + Math.sin(r * 12.9 + c * 78.2) * 0.12, 0,
+      (r - (rows - 1) / 2) * 1.9 + Math.cos(r * 45.7 + c * 3.1) * 0.12
+    );
+    const t = new THREE.Mesh(trunkGeo, trunkMat); t.position.y = 0.25; g.add(t);
+    const s = 0.85 + ((r * 31 + c * 17) % 10) / 30;
+    const f1 = new THREE.Mesh(folGeo1, foliageMat); f1.position.y = 0.72; f1.scale.setScalar(s); g.add(f1);
+    const f2 = new THREE.Mesh(folGeo2, foliageMat); f2.position.y = 1.05; f2.scale.setScalar(s * 0.9); g.add(f2);
+    plants.add(g);
+  }
+  scene.add(plants);
+
+  // frutos vermelhos: um único draw call (InstancedMesh)
+  const NB = 240;
+  const berries = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.045, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0xd23b2f, roughness: 0.5 }), NB);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < NB; i++) {
+    const p = plants.children[i % plants.children.length];
+    const a = (i * 2.399) % (Math.PI * 2);
+    dummy.position.set(
+      p.position.x + Math.cos(a) * (0.34 + ((i * 7) % 10) / 60),
+      0.55 + ((i * 13) % 20) / 28,
+      p.position.z + Math.sin(a) * (0.34 + ((i * 7) % 10) / 60));
+    dummy.updateMatrix();
+    berries.setMatrixAt(i, dummy.matrix);
+  }
+  scene.add(berries);
+
+  return {
+    setHealth(saude, solo) {
+      const t = Math.max(0, Math.min(1, (saude == null ? 65 : saude) / 100));
+      foliageMat.color.lerpColors(new THREE.Color(0x9aa03a), new THREE.Color(0x156b38), t);
+      const s = Math.max(0, Math.min(1, (solo == null ? 55 : solo) / 100));
+      soilMat.color.lerpColors(new THREE.Color(0xb08a5e), new THREE.Color(0x4c3018), s);
+    },
+    dispose: base.dispose,
+  };
+}
+
+// Cena 2 — barras N·P·K com animação até o valor (tempo real com a calculadora)
+function buildNpkScene(THREE, host) {
+  const base = threeBase(THREE, host, { dist: 6.4, height: 2.2, angle: 0.55, auto: 0.0011, lookY: 1.1, maxEl: 0.9 });
+  const { scene, onFrame } = base;
+
+  const floor = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.4, 3.5, 0.22, 36),
+    new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1 }));
+  floor.position.y = -0.12;
+  scene.add(floor);
+
+  const geo = new THREE.BoxGeometry(0.9, 1, 0.9);
+  geo.translate(0, 0.5, 0); // cresce a partir do chão
+  const defs = [
+    { key: "n", cor: 0x10b981, x: -1.35 },
+    { key: "p", cor: 0xd9a441, x: 0 },
+    { key: "k", cor: 0x3b82f6, x: 1.35 },
+  ];
+  const bars = {};
+  defs.forEach((d) => {
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.cor, roughness: 0.35, metalness: 0.15 }));
+    m.position.x = d.x;
+    m.scale.y = 0.02;
+    scene.add(m);
+    bars[d.key] = { mesh: m, alvo: 0.02 };
+  });
+  onFrame.push(() => {
+    for (const k in bars) {
+      const b = bars[k];
+      b.mesh.scale.y += (b.alvo - b.mesh.scale.y) * 0.09;
+    }
+  });
+
+  return {
+    setValues(n, p, k) {
+      const mx = Math.max(n || 0, p || 0, k || 0, 1);
+      bars.n.alvo = 0.06 + ((n || 0) / mx) * 3;
+      bars.p.alvo = 0.06 + ((p || 0) / mx) * 3;
+      bars.k.alvo = 0.06 + ((k || 0) / mx) * 3;
+    },
+    dispose: base.dispose,
+  };
+}
+
+function Lavoura3D({ saude, solo }) {
+  const { hostRef, status, apiRef } = useThreeScene(buildLavouraScene);
+  useEffect(() => { if (status === "ready" && apiRef.current) apiRef.current.setHealth(saude, solo); }, [saude, solo, status]);
+  return html`
+    <div ref=${hostRef} className="relative w-full rounded-lg overflow-hidden" style=${{ height: "265px" }}>
+      ${status !== "ready" && html`<div className="absolute inset-0 flex items-center justify-center text-xs text-stone-400">
+        ${status === "error" ? "Visualização 3D indisponível neste aparelho." : "Carregando lavoura 3D…"}
+      </div>`}
+    </div>`;
+}
+
+function Npk3D({ n, p, k }) {
+  const { hostRef, status, apiRef } = useThreeScene(buildNpkScene);
+  useEffect(() => { if (status === "ready" && apiRef.current) apiRef.current.setValues(n, p, k); }, [n, p, k, status]);
+  return html`
+    <div ref=${hostRef} className="relative w-full rounded-lg overflow-hidden" style=${{ height: "215px" }}>
+      ${status !== "ready" && html`<div className="absolute inset-0 flex items-center justify-center text-xs text-stone-400">
+        ${status === "error" ? "Visualização 3D indisponível neste aparelho." : "Carregando 3D…"}
+      </div>`}
+    </div>`;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Error boundary — evita tela branca em caso de erro inesperado          */
 /* ---------------------------------------------------------------------- */
 
@@ -1422,6 +1658,48 @@ class ErrorBoundary extends React.Component {
     }
     return this.props.children;
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Modal de consulta — monta a mensagem e abre o WhatsApp/e-mail do       */
+/* usuário (sem backend, nada é enviado pelo app)                         */
+/* ---------------------------------------------------------------------- */
+
+function ConsultaModal({ onClose, propriedade }) {
+  const [nome, setNome] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [msg, setMsg] = useState("");
+  const texto = `Olá! Sou ${nome || "produtor(a)"}${cidade ? ", de " + cidade : ""}.`
+    + (propriedade && propriedade.nome ? ` Propriedade: ${propriedade.nome}.` : "")
+    + "\n" + (msg || "Gostaria de uma consultoria para minha lavoura de café.");
+  return html`
+    <div className="fixed inset-0 bg-black/45 flex items-center justify-center z-50 p-4" style=${{ backdropFilter: "blur(4px)" }} onClick=${onClose}>
+      <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-3 anim-in" onClick=${(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center">
+          <p className="text-sm font-semibold flex items-center gap-2"><${MessageCircle} size=${16} className="text-emerald-700"/> Falar com o consultor</p>
+          <button onClick=${onClose} className="text-stone-400 hover:text-stone-700"><${X} size=${18}/></button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <label className="block">Seu nome
+            <input value=${nome} onChange=${(e) => setNome(e.target.value)} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1" placeholder="Nome" />
+          </label>
+          <label className="block">Cidade
+            <input value=${cidade} onChange=${(e) => setCidade(e.target.value)} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1" placeholder="Ouro Fino, MG" />
+          </label>
+          <label className="block col-span-2">O que você precisa?
+            <textarea rows="3" value=${msg} onChange=${(e) => setMsg(e.target.value)} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1" placeholder="Ex.: quero um programa de adubação para 5 ha de Catuaí..."></textarea>
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <a href=${"https://wa.me/?text=" + encodeURIComponent(texto)} target="_blank" rel="noopener"
+            className="bg-emerald-800 text-white text-xs font-semibold rounded-lg py-2.5 text-center">Enviar por WhatsApp</a>
+          <a href=${"mailto:?subject=" + encodeURIComponent("Consultoria Café Real IA") + "&body=" + encodeURIComponent(texto)}
+            className="border border-stone-300 text-stone-700 text-xs font-semibold rounded-lg py-2.5 text-center">Enviar por e-mail</a>
+        </div>
+        <p className="text-[11px] text-stone-400">Abre o seu WhatsApp ou e-mail com a mensagem pronta — nada é enviado automaticamente pelo app.</p>
+      </div>
+    </div>
+  `;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1513,6 +1791,7 @@ function CafeRealIA() {
 
   const [tab, setTab] = useState("dashboard");
   const [showConfig, setShowConfig] = useState(false);
+  const [showConsulta, setShowConsulta] = useState(false);
   const [theme, setTheme] = useState(persisted.theme || "light");
 
   const [propriedade, setPropriedade] = useState(persisted.propriedade || {
@@ -2041,6 +2320,7 @@ ${lista}`;
                   <button onClick=${() => setTab("solo")} className="bg-white text-emerald-900 font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-emerald-50 transition"><${Droplet} size=${13}/> Ler análise de solo</button>
                   <button onClick=${() => setTab("foto")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${Camera} size=${13}/> Diagnóstico por foto</button>
                   <button onClick=${() => setTab("clima")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${CloudRain} size=${13}/> Clima</button>
+                  <button onClick=${() => setShowConsulta(true)} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${MessageCircle} size=${13}/> Consultoria</button>
                 </div>
               </div>
             </div>
@@ -2101,6 +2381,16 @@ ${lista}`;
               `)}
             </div>
             ${!soilData && html`<p className="text-xs text-stone-400 -mt-1">Os índices de fertilidade, nutricional e sustentabilidade são calculados a partir da sua análise de solo. Faça a leitura de um laudo na aba <b>Análise de Solo</b> para preenchê-los. O índice fitossanitário usa o risco climático (aba Clima).</p>`}
+
+            <!-- Lavoura 3D interativa -->
+            <div className="bg-white rounded-xl border border-stone-200 p-4 anim-in">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-medium flex items-center gap-2"><${Box} size=${15} className="text-emerald-700"/> Sua lavoura em 3D</p>
+                <span className="text-[11px] text-stone-400">🖐️ arraste para girar</span>
+              </div>
+              <p className="text-xs text-stone-400 mb-2">A cor da folhagem acompanha o índice nutricional do talhão; a cor do solo, o índice de fertilidade — leia uma análise de solo e veja a lavoura mudar.</p>
+              <${Lavoura3D} saude=${indices.nutricional} solo=${indices.fertilidade} />
+            </div>
 
             <!-- Radar + Pizza das bases -->
             ${soilData && html`
@@ -2450,6 +2740,15 @@ ${lista}`;
                 <div className="bg-stone-50 rounded p-2"><p className="text-stone-400">S (kg/ha)</p><p className="font-medium">${adub.sTotal}</p></div>
               </div>
               <p className="text-xs text-stone-400">Faixa do Boletim 100: ${adub.faixaLabel} kg/ha beneficiado. · N: ${adub.nJustificativa} · P₂O₅: ${adub.pJustificativa} · K₂O: ${adub.kJustificativa} · S: ${adub.sJustificativa}</p>
+
+              <div className="mt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium flex items-center gap-2"><${Box} size=${14} className="text-emerald-700"/> Doses em 3D — tempo real</p>
+                  <span className="text-[11px] text-stone-400">🖐️ arraste para girar</span>
+                </div>
+                <p className="text-xs text-stone-400 mb-1">As barras respondem na hora quando você muda a meta ou o N foliar. <span style=${{ color: "#10b981" }}>■</span> N ${adub.nTotal} · <span style=${{ color: "#d9a441" }}>■</span> P₂O₅ ${adub.pTotal} · <span style=${{ color: "#3b82f6" }}>■</span> K₂O ${adub.kTotal} kg/ha</p>
+                <${Npk3D} n=${adub.nTotal} p=${adub.pTotal} k=${adub.kTotal} />
+              </div>
 
               <p className="text-sm font-medium mt-2">Programa Adubos Real — meta ${meta} sc/ha</p>
               <div className="space-y-1.5">
@@ -2890,6 +3189,7 @@ ${lista}`;
         `}
       </main>
 
+      ${showConsulta && html`<${ConsultaModal} onClose=${() => setShowConsulta(false)} propriedade=${propriedade} />`}
       ${showConfig && html`<${ConfigModal}
         apiKey=${apiKey}
         setApiKey=${setApiKey}
