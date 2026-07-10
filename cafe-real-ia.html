@@ -318,9 +318,6 @@ const TABS = [
   { id: "ia", label: "Café IA", icon: MessageCircle },
   { id: "solo", label: "Análise de Solo", icon: Droplet },
   { id: "adubacao", label: "Calagem e Adubação", icon: Leaf },
-  { id: "foliar", label: "Programa Foliar", icon: ClipboardList },
-  { id: "foto", label: "Diagnóstico por Foto", icon: Camera },
-  { id: "defensivos", label: "Receituário", icon: Bug },
   { id: "clima", label: "Clima", icon: CloudRain },
   { id: "calc", label: "Calculadoras", icon: Calculator },
   { id: "relatorio", label: "Relatório", icon: FileText },
@@ -2394,7 +2391,6 @@ Regras invioláveis:
                 <div className="flex flex-wrap gap-2 mt-4">
                   <button onClick=${() => setTab("solo")} className="bg-white text-emerald-900 font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-emerald-50 transition"><${Droplet} size=${13}/> Ler análise de solo</button>
                   <button onClick=${() => setTab("ia")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${MessageCircle} size=${13}/> Café IA</button>
-                  <button onClick=${() => setTab("foto")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${Camera} size=${13}/> Diagnóstico por foto</button>
                   <button onClick=${() => setTab("clima")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${CloudRain} size=${13}/> Clima</button>
                   <button onClick=${() => setShowConsulta(true)} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${MessageCircle} size=${13}/> Consultoria</button>
                 </div>
