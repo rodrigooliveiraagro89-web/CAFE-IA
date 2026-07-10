@@ -315,6 +315,7 @@ function loadPdfjsLib() {
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: Sprout },
+  { id: "ia", label: "Café IA", icon: MessageCircle },
   { id: "solo", label: "Análise de Solo", icon: Droplet },
   { id: "adubacao", label: "Calagem e Adubação", icon: Leaf },
   { id: "foliar", label: "Programa Foliar", icon: ClipboardList },
@@ -1794,6 +1795,13 @@ function CafeRealIA() {
   const [showConsulta, setShowConsulta] = useState(false);
   const [theme, setTheme] = useState(persisted.theme || "light");
 
+  // Assistente "Café IA" (chat) — histórico só da sessão
+  const [chat, setChat] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef(null);
+  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" }); }, [chat, chatLoading]);
+
   const [propriedade, setPropriedade] = useState(persisted.propriedade || {
     nome: "", cultivar: "", idade: "", altitude: "", sistema: "Convencional",
     prodEstimada: "", prodHistorico: "",
@@ -2175,6 +2183,73 @@ ${lista}`;
     setPhotoLoading(false);
   }
 
+  // Monta um retrato compacto e REAL da propriedade para ancorar o assistente
+  function buildFarmContext() {
+    const L = [];
+    L.push(`Cultura: café arábica (Sul de Minas). Meta de produtividade: ${meta} sc/ha.`);
+    if (propriedade && (propriedade.nome || propriedade.cultivar || propriedade.altitude)) {
+      L.push(`Propriedade: ${propriedade.nome || "—"} · cultivar ${propriedade.cultivar || "—"} · idade ${propriedade.idade || "—"} anos · altitude ${propriedade.altitude || "—"} m · sistema ${propriedade.sistema || "—"} · área ${nf(areaHa, areaHa % 1 ? 1 : 0)} ha.`);
+    }
+    if (soilData) {
+      L.push(`ANÁLISE DE SOLO${soilData.talhao ? " (talhão " + soilData.talhao + ")" : ""}: pH ${soilData.pH ?? "?"}, V% ${soilData.V ?? "?"}, CTC ${soilData.CTC_pH7 ?? "?"}, MO ${soilData.MO ?? "?"} g/dm³, P ${soilData.P ?? "?"} mg/dm³, K ${soilData.K ?? "?"} mg/dm³, Ca ${soilData.Ca ?? "?"}, Mg ${soilData.Mg ?? "?"} cmolc, Al ${soilData.Al ?? "?"}, m% ${soilData.m ?? "?"}, S ${soilData.S ?? "?"}, B ${soilData.B ?? "?"}, Zn ${soilData.Zn ?? "?"}.`);
+      if (diag) {
+        const j = (a) => a && a.length ? a.join("; ") : "nenhum";
+        L.push(`Diagnóstico do solo — deficiências: ${j(diag.deficiencias)}. Excessos: ${j(diag.excessos)}. Limitações: ${j(diag.limitacoes)}.`);
+      }
+      if (calagem) L.push(`Calagem: ${calagem.necessario ? calagem.qtdTonHa + " t/ha de " + calagem.tipo + " (PRNT " + prnt + "%)" : "não necessária no momento"}.`);
+    } else {
+      L.push("ANÁLISE DE SOLO: ainda não enviada pelo produtor (não há dados de solo).");
+    }
+    if (indices) L.push(`Índices (0–100): fertilidade ${indices.fertilidade ?? "—"}, nutricional ${indices.nutricional ?? "—"}, fitossanitário ${indices.fitossanitario ?? "—"}, sustentabilidade ${indices.sustentabilidade ?? "—"}.`);
+    if (adub) {
+      L.push(`Adubação Boletim 100 (meta ${meta} sc/ha): N ${adub.nTotal}, P₂O₅ ${adub.pTotal}, K₂O ${adub.kTotal}, S ${adub.sTotal} kg/ha. Programa: ${adub.produtos.map((p) => p.nome + " " + nf(p.kgHa, 0) + " kg/ha").join(" + ")}.`);
+    }
+    if (climaData) {
+      L.push(`Clima (${climaData.local}): risco de ferrugem ${climaData.riscoFerrugem}/10 dias.` + (climaData.days && climaData.days[0] ? ` Próximo dia: máx ${Math.round(climaData.days[0].tmax)}°C, chuva ${climaData.days[0].chuva} mm.` : ""));
+    } else {
+      L.push("Clima: produtor ainda não consultou a previsão (aba Clima).");
+    }
+    const pragasCafe = DEFDB.pragas.filter((p) => normTxt(p.culturas_atacadas).includes("cafe")).map((p) => p.nome_comum);
+    const doencasCafe = DEFDB.doencas.filter((d) => normTxt(d.culturas).includes("cafe")).map((d) => d.nome_comum);
+    L.push(`Base de defensivos do app cobre p/ café — pragas: ${pragasCafe.join(", ")}; doenças: ${doencasCafe.join(", ")}. Produtos com dose/registro devem ser confirmados no AGROFIT.`);
+    return L.join("\n");
+  }
+
+  const IA_SUGESTOES = [
+    "Interprete minha análise de solo",
+    "Qual adubação você recomenda?",
+    "Como está o risco de doença agora?",
+    "Como aumentar minha produtividade?",
+    "Tenho risco de geada?",
+  ];
+
+  async function askAssistant(pergunta) {
+    const q = (pergunta || chatInput).trim();
+    if (!q || chatLoading) return;
+    if (!apiKey) { setShowConfig(true); return; }
+    setChatInput("");
+    const historico = chat.concat({ role: "user", text: q });
+    setChat(historico);
+    setChatLoading(true);
+    const sistema = `Você é o "Café IA", assistente agronômico especialista em cafeicultura de montanha do Sul de Minas, dentro do app Café Real IA. Fale português técnico e direto, como consultor de campo experiente.
+Regras invioláveis:
+- Baseie-se no CONTEXTO DA PROPRIEDADE abaixo (dados reais do produtor). Se um dado necessário não existir (ex.: sem análise de solo), diga claramente o que falta e oriente onde obter no app.
+- Adubação e calagem seguem o Boletim 100 (IAC)/CFSEMG.
+- Só cite defensivos que existam na base do app e sejam registrados para café; NUNCA invente produto, dose, carência ou registro — mande confirmar no AGROFIT.
+- Toda recomendação é apoio à decisão; a aplicação exige validação e receituário do engenheiro agrônomo responsável (CREA/CFTA), com EPI e intervalo de segurança.
+- Não dê conselho médico nem financeiro/investimento. Seja conciso (máx ~180 palavras); use listas curtas quando ajudar.`;
+    const conversa = historico.map((m) => (m.role === "user" ? "Produtor" : "Café IA") + ": " + m.text).join("\n");
+    const prompt = `${sistema}\n\n=== CONTEXTO DA PROPRIEDADE ===\n${buildFarmContext()}\n\n=== CONVERSA ===\n${conversa}\nCafé IA:`;
+    try {
+      const text = await callClaude(apiKey, [{ type: "text", text: prompt }], 800);
+      setChat((c) => [...c, { role: "assistant", text: (text || "").trim() || "(sem resposta)" }]);
+      addToHistory("Pergunta ao Café IA", q.slice(0, 60));
+    } catch (err) {
+      setChat((c) => [...c, { role: "assistant", text: "Não consegui responder agora: " + err.message }]);
+    }
+    setChatLoading(false);
+  }
+
   function addDefensivo() {
     if (!defForm.nome) return;
     setDefensivos((d) => [...d, { ...defForm, id: Date.now() }]);
@@ -2318,6 +2393,7 @@ ${lista}`;
                   : "Leia sua análise de solo e o painel se preenche sozinho — calagem, adubação e custo por saca."}</p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   <button onClick=${() => setTab("solo")} className="bg-white text-emerald-900 font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-emerald-50 transition"><${Droplet} size=${13}/> Ler análise de solo</button>
+                  <button onClick=${() => setTab("ia")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${MessageCircle} size=${13}/> Café IA</button>
                   <button onClick=${() => setTab("foto")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${Camera} size=${13}/> Diagnóstico por foto</button>
                   <button onClick=${() => setTab("clima")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${CloudRain} size=${13}/> Clima</button>
                   <button onClick=${() => setShowConsulta(true)} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${MessageCircle} size=${13}/> Consultoria</button>
@@ -2503,6 +2579,73 @@ ${lista}`;
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900">
               Seus dados ficam salvos automaticamente neste navegador, mesmo depois de fechar a página. Use "Exportar" em Configurações para levar seu backup para outro computador.
             </div>
+          </div>
+        `}
+
+        ${tab === "ia" && html`
+          <div className="space-y-3">
+            <div className="rounded-2xl overflow-hidden anim-in shadow-lg" style=${{ background: "linear-gradient(120deg,#04382a 0%,#075540 60%,#0a6b4f 100%)" }}>
+              <div className="p-4 sm:p-5 text-white">
+                <p className="text-xs text-emerald-200 flex items-center gap-1.5"><${MessageCircle} size=${13}/> Assistente agronômico</p>
+                <h2 className="text-xl sm:text-2xl font-extrabold mt-0.5">Pergunte qualquer coisa sobre sua lavoura</h2>
+                <p className="text-emerald-100 text-xs mt-1">Respondo com base nos seus dados (solo, índices, adubação, clima) e nas regras técnicas do app. ${soilData ? "Sua análise de solo já está no contexto." : "Envie uma análise de solo para respostas ainda mais precisas."}</p>
+              </div>
+            </div>
+
+            ${!apiKey && html`
+              <div className="bg-white rounded-xl border border-stone-200 p-4 anim-in">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="bg-emerald-100 text-emerald-700 rounded-lg p-1.5"><${KeyRound} size=${16}/></div>
+                  <p className="text-sm font-semibold">Ative o Café IA</p>
+                </div>
+                <p className="text-xs text-stone-500 mb-3">O assistente usa a IA da Anthropic (Claude) direto do seu navegador. Informe sua chave — fica salva só neste aparelho.</p>
+                <button onClick=${() => setShowConfig(true)} className="w-full bg-emerald-800 text-white rounded-lg py-2.5 text-sm font-medium flex items-center justify-center gap-2"><${KeyRound} size=${15}/> Configurar chave e ativar</button>
+              </div>
+            `}
+
+            <div className="bg-white rounded-xl border border-stone-200 flex flex-col" style=${{ height: "62vh", minHeight: "420px" }}>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                ${chat.length === 0 && html`
+                  <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                    <div className="text-4xl mb-2">🌱</div>
+                    <p className="text-sm font-medium text-stone-600">Olá! Sou o Café IA.</p>
+                    <p className="text-xs text-stone-400 mt-1 max-w-xs">Posso interpretar sua análise, sugerir adubação pelo Boletim 100, avaliar risco de doença/geada e orientar o manejo. Toque numa pergunta abaixo para começar.</p>
+                  </div>
+                `}
+                ${chat.map((m, i) => html`
+                  <div key=${i} className=${"flex " + (m.role === "user" ? "justify-end" : "justify-start")}>
+                    <div className=${"max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap " + (m.role === "user" ? "bg-emerald-800 text-white rounded-br-sm" : "bg-stone-100 text-stone-800 rounded-bl-sm")}>
+                      ${m.role === "assistant" ? html`<span className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1 mb-0.5"><${Sprout} size=${11}/> Café IA</span>` : null}
+                      ${m.text}
+                    </div>
+                  </div>
+                `)}
+                ${chatLoading && html`
+                  <div className="flex justify-start">
+                    <div className="bg-stone-100 text-stone-500 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm flex items-center gap-2">
+                      <${Loader2} size=${14} className="animate-spin"/> pensando…
+                    </div>
+                  </div>
+                `}
+                <div ref=${chatEndRef}></div>
+              </div>
+
+              ${chat.length === 0 && html`
+                <div className="px-3 pb-2 flex flex-wrap gap-1.5">
+                  ${IA_SUGESTOES.map((s, i) => html`
+                    <button key=${i} onClick=${() => askAssistant(s)} disabled=${chatLoading} className="text-xs border border-stone-300 rounded-full px-3 py-1.5 text-stone-600 hover:border-emerald-400 hover:text-emerald-700 disabled:opacity-40">${s}</button>
+                  `)}
+                </div>
+              `}
+
+              <div className="border-t border-stone-200 p-2.5 flex gap-2">
+                <input value=${chatInput} onChange=${(e) => setChatInput(e.target.value)} onKeyDown=${(e) => { if (e.key === "Enter") askAssistant(); }}
+                  placeholder=${apiKey ? "Escreva sua pergunta…" : "Configure a chave para conversar"}
+                  className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm" />
+                <button onClick=${() => askAssistant()} disabled=${chatLoading || (!chatInput.trim())} className="bg-emerald-800 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40">Enviar</button>
+              </div>
+            </div>
+            <p className="text-xs text-stone-400 flex items-start gap-1.5"><${AlertTriangle} size=${12} className="mt-0.5 flex-shrink-0"/> Respostas de apoio geradas por IA, sujeitas a erro. Produto, dose e registro devem ser confirmados no AGROFIT; a recomendação final é ato do agrônomo responsável (CREA/CFTA).</p>
           </div>
         `}
 
