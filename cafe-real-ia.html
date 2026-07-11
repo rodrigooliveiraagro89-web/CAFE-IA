@@ -290,6 +290,11 @@ import {
 const html = htm.bind(React.createElement);
 const STORAGE_KEY = "cafe_real_ia_v2";
 
+// Projeto Supabase padrão do app (chave anon é PÚBLICA por design — protegida por RLS).
+// Assim o app já cai no login/cadastro sem precisar configurar nada.
+const SB_DEFAULT_URL = "https://eqtacmanqmdcjvxezuah.supabase.co";
+const SB_DEFAULT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdGFjbWFucW1kY2p2eGV6dWFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3OTk4ODgsImV4cCI6MjA5OTM3NTg4OH0.AoKiYwBYI4SLW67Aa8Q0lMNfkw0SzhCBIAw3_nrakhk";
+
 // pdf.js é carregado sob demanda (dinamicamente), não no topo do arquivo: assim, se o CDN
 // falhar por qualquer motivo, apenas a leitura de PDF fica indisponível — o resto do app
 // continua funcionando normalmente, em vez de travar a tela de carregamento inteira.
@@ -1952,8 +1957,8 @@ function CafeRealIA() {
   useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" }); }, [chat, chatLoading]);
 
   // Nuvem opcional (Supabase) — config + sessão. Sem config, tudo fica local.
-  const [sbUrl, setSbUrl] = useState(persisted.sbUrl || "");
-  const [sbKey, setSbKey] = useState(persisted.sbKey || "");
+  const [sbUrl, setSbUrl] = useState(persisted.sbUrl || SB_DEFAULT_URL);
+  const [sbKey, setSbKey] = useState(persisted.sbKey || SB_DEFAULT_KEY);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
