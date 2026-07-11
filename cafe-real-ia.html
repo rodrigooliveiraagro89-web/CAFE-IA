@@ -284,7 +284,7 @@ import {
   AlertTriangle, CheckCircle, Plus, Trash2, Loader2, Sun, Moon, MapPin, ClipboardList,
   Bug, Settings, KeyRound, Download, UploadCloud, X, Info, Eye, Edit3, ScrollText,
   Coffee, Mountain, TrendingUp, Activity, Layers, Ruler, ShieldCheck, FlaskConical, Gauge as GaugeIcon,
-  MessageCircle, Box
+  MessageCircle, Box, User, Cloud, LogOut
 } from "https://esm.sh/lucide-react@0.383.0?external=react&deps=react@18.3.1";
 
 const html = htm.bind(React.createElement);
@@ -512,6 +512,20 @@ function savePersisted(partial) {
   } catch (e) {
     console.warn("Não foi possível salvar dados localmente:", e);
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Nuvem opcional (Supabase via CDN) — carregado sob demanda só quando o   */
+/* usuário configura URL + chave pública. Sem config, o app é 100% local.  */
+/* ---------------------------------------------------------------------- */
+
+let _sbLibPromise = null;
+function loadSupabaseLib() {
+  if (!_sbLibPromise) {
+    _sbLibPromise = import("https://esm.sh/@supabase/supabase-js@2.45.4")
+      .catch((e) => { _sbLibPromise = null; throw e; });
+  }
+  return _sbLibPromise;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1701,6 +1715,141 @@ function ConsultaModal({ onClose, propriedade }) {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Modal de Conta / Nuvem (Supabase) — configuração + login/cadastro       */
+/* ---------------------------------------------------------------------- */
+
+function AuthModal({ sbUrl, setSbUrl, sbKey, setSbKey, client, session, profile, onClose }) {
+  const [localUrl, setLocalUrl] = useState(sbUrl);
+  const [localKey, setLocalKey] = useState(sbKey);
+  const [modo, setModo] = useState("login"); // login | signup
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [nome, setNome] = useState("");
+  const [tipo, setTipo] = useState("produtor");
+  const [busy, setBusy] = useState(false);
+  const [erro, setErro] = useState("");
+  const [aviso, setAviso] = useState("");
+
+  const configurado = !!(sbUrl && sbKey);
+
+  function salvarConfig() {
+    setSbUrl(localUrl.trim());
+    setSbKey(localKey.trim());
+    setErro(""); setAviso("Conectando ao seu projeto…");
+  }
+
+  async function entrar() {
+    if (!client) { setErro("Ainda conectando ao Supabase — aguarde 1 segundo e tente de novo."); return; }
+    setBusy(true); setErro(""); setAviso("");
+    try {
+      if (modo === "signup") {
+        if (senha.length < 6) { setErro("A senha precisa ter ao menos 6 caracteres."); setBusy(false); return; }
+        const { error } = await client.auth.signUp({ email: email.trim(), password: senha, options: { data: { nome: nome.trim(), tipo } } });
+        if (error) throw error;
+        setAviso("Conta criada! Se o projeto exigir confirmação de e-mail, confirme antes de entrar. Você já pode fazer login.");
+        setModo("login");
+      } else {
+        const { error } = await client.auth.signInWithPassword({ email: email.trim(), password: senha });
+        if (error) throw error;
+        onClose();
+      }
+    } catch (e) {
+      setErro(traduzErroAuth(e.message || String(e)));
+    }
+    setBusy(false);
+  }
+
+  async function sair() {
+    if (client) { try { await client.auth.signOut(); } catch (e) {} }
+    onClose();
+  }
+
+  return html`
+    <div className="fixed inset-0 bg-black/45 flex items-center justify-center z-50 p-4" style=${{ backdropFilter: "blur(4px)" }} onClick=${onClose}>
+      <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-3 max-h-[92vh] overflow-y-auto anim-in" onClick=${(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center">
+          <p className="text-sm font-semibold flex items-center gap-2"><${Cloud} size=${16} className="text-emerald-700"/> Conta & Nuvem</p>
+          <button onClick=${onClose} className="text-stone-400 hover:text-stone-700"><${X} size=${18}/></button>
+        </div>
+
+        ${!configurado ? html`
+          <div className="space-y-2">
+            <p className="text-xs text-stone-500">Para ter login e sincronizar seus dados entre celular e computador, conecte um projeto gratuito do <b>Supabase</b> (leva 3 minutos):</p>
+            <ol className="text-xs text-stone-500 list-decimal pl-4 space-y-0.5">
+              <li>Crie um projeto em <b>supabase.com</b>.</li>
+              <li>No projeto: <b>SQL Editor → New query</b>, cole o conteúdo do arquivo <b>supabase-schema.sql</b> e clique em Run.</li>
+              <li>Em <b>Project Settings → API</b>, copie a <b>Project URL</b> e a chave <b>anon public</b>, e cole abaixo.</li>
+            </ol>
+            <label className="block text-xs">Project URL
+              <input value=${localUrl} onChange=${(e) => setLocalUrl(e.target.value)} placeholder="https://xxxx.supabase.co" className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1 text-sm" />
+            </label>
+            <label className="block text-xs">Chave pública (anon)
+              <input value=${localKey} onChange=${(e) => setLocalKey(e.target.value)} placeholder="eyJhbGciOi..." className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1 text-sm" />
+            </label>
+            <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-900 flex gap-2">
+              <${Info} size=${13} className="mt-0.5 flex-shrink-0"/>
+              <span>A chave <b>anon</b> é pública por design (protegida pelo RLS que o schema ativa). Nunca use a chave <b>service_role</b> aqui.</span>
+            </div>
+            <button onClick=${salvarConfig} disabled=${!localUrl.trim() || !localKey.trim()} className="w-full bg-emerald-800 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-40">Conectar</button>
+          </div>
+        ` : session ? html`
+          <div className="space-y-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900">
+              <p className="font-semibold flex items-center gap-1"><${CheckCircle} size=${13}/> Você está conectado</p>
+              <p className="mt-1">${session.user.email}${profile && profile.nome ? " · " + profile.nome : ""} · perfil: <b>${profile ? profile.tipo : "—"}</b></p>
+              <p className="text-emerald-700 mt-1">Seus dados sincronizam automaticamente entre seus aparelhos.</p>
+            </div>
+            <button onClick=${sair} className="w-full border border-stone-300 text-stone-700 rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2"><${LogOut} size=${15}/> Sair da conta</button>
+            <button onClick=${() => { setSbUrl(""); setSbKey(""); onClose(); }} className="w-full text-xs text-stone-400 hover:text-stone-600">Desconectar este projeto Supabase</button>
+          </div>
+        ` : html`
+          <div className="space-y-2">
+            <div className="flex gap-1 bg-stone-100 rounded-lg p-1 text-xs">
+              <button onClick=${() => { setModo("login"); setErro(""); }} className=${"flex-1 rounded-md py-1.5 font-medium " + (modo === "login" ? "bg-white shadow text-emerald-800" : "text-stone-500")}>Entrar</button>
+              <button onClick=${() => { setModo("signup"); setErro(""); }} className=${"flex-1 rounded-md py-1.5 font-medium " + (modo === "signup" ? "bg-white shadow text-emerald-800" : "text-stone-500")}>Criar conta</button>
+            </div>
+            ${modo === "signup" && html`
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs">Nome
+                  <input value=${nome} onChange=${(e) => setNome(e.target.value)} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1 text-sm" />
+                </label>
+                <label className="block text-xs">Perfil
+                  <select value=${tipo} onChange=${(e) => setTipo(e.target.value)} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1 text-sm">
+                    <option value="produtor">Produtor</option>
+                    <option value="consultor">Consultor</option>
+                  </select>
+                </label>
+              </div>
+            `}
+            <label className="block text-xs">E-mail
+              <input type="email" value=${email} onChange=${(e) => setEmail(e.target.value)} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1 text-sm" />
+            </label>
+            <label className="block text-xs">Senha
+              <input type="password" value=${senha} onChange=${(e) => setSenha(e.target.value)} onKeyDown=${(e) => e.key === "Enter" && entrar()} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1 text-sm" />
+            </label>
+            <button onClick=${entrar} disabled=${busy || !email.trim() || !senha} className="w-full bg-emerald-800 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2">
+              ${busy ? html`<${Loader2} size=${15} className="animate-spin"/>` : null} ${modo === "signup" ? "Criar conta" : "Entrar"}
+            </button>
+            <button onClick=${() => { setSbUrl(""); setSbKey(""); }} className="w-full text-xs text-stone-400 hover:text-stone-600">Trocar projeto Supabase</button>
+          </div>
+        `}
+        ${erro && html`<p className="text-xs text-red-600">${erro}</p>`}
+        ${aviso && html`<p className="text-xs text-emerald-700">${aviso}</p>`}
+      </div>
+    </div>
+  `;
+}
+
+function traduzErroAuth(m) {
+  if (/Invalid login credentials/i.test(m)) return "E-mail ou senha incorretos.";
+  if (/already registered|already been registered/i.test(m)) return "Este e-mail já tem conta. Use 'Entrar'.";
+  if (/Email not confirmed/i.test(m)) return "Confirme seu e-mail antes de entrar (ou desative a confirmação nas configs do Supabase).";
+  if (/Failed to fetch|NetworkError/i.test(m)) return "Não consegui falar com o Supabase. Confira a Project URL e sua conexão.";
+  if (/Invalid API key/i.test(m)) return "Chave anon inválida. Confira em Project Settings → API.";
+  return m;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Modal de Configurações (chave de API + backup de dados)                */
 /* ---------------------------------------------------------------------- */
 
@@ -1802,6 +1951,15 @@ function CafeRealIA() {
   const chatEndRef = useRef(null);
   useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" }); }, [chat, chatLoading]);
 
+  // Nuvem opcional (Supabase) — config + sessão. Sem config, tudo fica local.
+  const [sbUrl, setSbUrl] = useState(persisted.sbUrl || "");
+  const [sbKey, setSbKey] = useState(persisted.sbKey || "");
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const sbRef = useRef(null);
+  const cloudTimer = useRef(null);
+
   const [propriedade, setPropriedade] = useState(persisted.propriedade || {
     nome: "", cultivar: "", idade: "", altitude: "", sistema: "Convencional",
     prodEstimada: "", prodHistorico: "",
@@ -1884,18 +2042,91 @@ function CafeRealIA() {
   const [espac, setEspac] = useState(persisted.espac || { entreLinhas: 3.5, entrePlantas: 0.7, area: 1, dose: 400 });
   const [spray, setSpray] = useState(persisted.spray || { volumeCalda: 400, tanque: 2000, dose: 2, area: 5 });
 
-  // Persiste automaticamente (exceto pré-visualizações de imagem e texto bruto de OCR, para não estourar o localStorage)
+  // Dados da lavoura (sem chaves de API e sem config de nuvem) — salvos
+  // localmente E sincronizados com a nuvem quando o usuário está logado.
+  function buildDataPayload() {
+    return {
+      history, soilData, soilSamples, foliarCatalog, photoResult, defensivos,
+      cidade, climaData, conv, espac, spray,
+      meta, areaHa, prnt, tipoCalcario, nFoliar, precos, theme, propriedade,
+    };
+  }
+
+  // Aplica um pacote de dados (backup importado ou vindo da nuvem)
+  function applyImported(obj) {
+    if (!obj) return;
+    if (obj.history) setHistory(obj.history);
+    if (obj.soilData) setSoilData(obj.soilData);
+    if (obj.soilSamples) setSoilSamples(obj.soilSamples);
+    if (obj.foliarCatalog) setFoliarCatalog(obj.foliarCatalog);
+    if (obj.defensivos) setDefensivos(obj.defensivos);
+    if (obj.photoResult) setPhotoResult(obj.photoResult);
+    if (obj.climaData) setClimaData(obj.climaData);
+    if (obj.cidade) setCidade(obj.cidade);
+    if (obj.conv) setConv(obj.conv);
+    if (obj.espac) setEspac(obj.espac);
+    if (obj.spray) setSpray(obj.spray);
+    if (obj.meta) setMeta(obj.meta);
+    if (obj.areaHa != null) setAreaHa(obj.areaHa);
+    if (obj.prnt != null) setPrnt(obj.prnt);
+    if (obj.tipoCalcario) setTipoCalcario(obj.tipoCalcario);
+    if (obj.nFoliar != null) setNFoliar(obj.nFoliar);
+    if (obj.precos) setPrecos(obj.precos);
+    if (obj.propriedade) setPropriedade(obj.propriedade);
+    if (obj.theme) setTheme(obj.theme);
+  }
+
+  // Sobe o estado atual para a nuvem (debounce; só se logado)
+  function pushCloud() {
+    const client = sbRef.current;
+    if (!client || !session) return;
+    clearTimeout(cloudTimer.current);
+    cloudTimer.current = setTimeout(() => {
+      try {
+        client.from("farm_state").upsert({ user_id: session.user.id, data: buildDataPayload(), atualizado_em: new Date().toISOString() }).then(() => {}, () => {});
+      } catch (e) {}
+    }, 1500);
+  }
+
+  // Persiste no navegador e, se logado, sincroniza com a nuvem
   useEffect(() => {
     savePersisted({
       apiKey: rememberKey ? apiKey : "",
       googleVisionKey: rememberKey ? googleVisionKey : "",
       azureOcrKey: rememberKey ? azureOcrKey : "",
       azureOcrEndpoint: rememberKey ? azureOcrEndpoint : "",
-      history, soilData, soilSamples, foliarCatalog, photoResult, defensivos,
-      cidade, climaData, conv, espac, spray,
-      meta, areaHa, prnt, tipoCalcario, nFoliar, precos, theme, propriedade,
+      sbUrl, sbKey,
+      ...buildDataPayload(),
     });
-  }, [apiKey, googleVisionKey, azureOcrKey, azureOcrEndpoint, rememberKey, history, soilData, soilSamples, foliarCatalog, photoResult, defensivos, cidade, climaData, conv, espac, spray, meta, areaHa, prnt, tipoCalcario, nFoliar, precos, theme, propriedade]);
+    if (session) pushCloud();
+  }, [apiKey, googleVisionKey, azureOcrKey, azureOcrEndpoint, rememberKey, sbUrl, sbKey, session, history, soilData, soilSamples, foliarCatalog, photoResult, defensivos, cidade, climaData, conv, espac, spray, meta, areaHa, prnt, tipoCalcario, nFoliar, precos, theme, propriedade]);
+
+  // Cria o cliente Supabase quando há URL + chave, e escuta a sessão
+  useEffect(() => {
+    if (!sbUrl || !sbKey) { sbRef.current = null; setSession(null); setProfile(null); return; }
+    let sub = null, alive = true;
+    loadSupabaseLib().then(({ createClient }) => {
+      if (!alive) return;
+      const client = createClient(sbUrl.trim(), sbKey.trim(), { auth: { persistSession: true, autoRefreshToken: true } });
+      sbRef.current = client;
+      client.auth.getSession().then(({ data }) => { if (alive) setSession(data.session || null); });
+      const r = client.auth.onAuthStateChange((_e, s) => { if (alive) setSession(s); });
+      sub = r.data.subscription;
+    }).catch((e) => console.warn("Supabase indisponível:", e));
+    return () => { alive = false; if (sub) { try { sub.unsubscribe(); } catch (x) {} } };
+  }, [sbUrl, sbKey]);
+
+  // Ao logar: carrega perfil e o estado salvo na nuvem (ou semeia com o local)
+  useEffect(() => {
+    const client = sbRef.current;
+    if (!client || !session) { setProfile(null); return; }
+    const uid = session.user.id;
+    client.from("profiles").select("nome,tipo").eq("id", uid).maybeSingle().then(({ data }) => setProfile(data || null), () => {});
+    client.from("farm_state").select("data").eq("user_id", uid).maybeSingle().then(({ data }) => {
+      if (data && data.data && Object.keys(data.data).length) applyImported(data.data);
+      else pushCloud();
+    }, () => {});
+  }, [session]);
 
   function setApiKey(k) {
     setApiKeyState(k);
@@ -1922,23 +2153,7 @@ function CafeRealIA() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const obj = JSON.parse(reader.result);
-        if (obj.history) setHistory(obj.history);
-        if (obj.soilData) setSoilData(obj.soilData);
-        if (obj.foliarCatalog) setFoliarCatalog(obj.foliarCatalog);
-        if (obj.defensivos) setDefensivos(obj.defensivos);
-        if (obj.climaData) setClimaData(obj.climaData);
-        if (obj.conv) setConv(obj.conv);
-        if (obj.espac) setEspac(obj.espac);
-        if (obj.spray) setSpray(obj.spray);
-        if (obj.meta) setMeta(obj.meta);
-        if (obj.areaHa) setAreaHa(obj.areaHa);
-        if (obj.prnt) setPrnt(obj.prnt);
-        if (obj.tipoCalcario) setTipoCalcario(obj.tipoCalcario);
-        if (obj.nFoliar != null) setNFoliar(obj.nFoliar);
-        if (obj.precos) setPrecos(obj.precos);
-        if (obj.propriedade) setPropriedade(obj.propriedade);
-        if (obj.theme) setTheme(obj.theme);
+        applyImported(JSON.parse(reader.result));
       } catch {
         alert("Arquivo inválido. Selecione um backup .json exportado por este app.");
       }
@@ -2411,6 +2626,10 @@ Regras invioláveis:
               <h1 className="text-lg font-semibold">Café Real IA — Consultoria Agronômica</h1>
             </div>
             <div className="flex items-center gap-1 print:hidden">
+              <button onClick=${() => setShowAuth(true)} className="relative text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title=${session ? "Conta conectada" : "Entrar / criar conta"}>
+                <${User} size=${18}/>
+                ${session && html`<span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-300 border border-emerald-900"></span>`}
+              </button>
               <button onClick=${() => setTheme(theme === "dark" ? "light" : "dark")} className="text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title=${theme === "dark" ? "Tema claro" : "Tema escuro"}>
                 ${theme === "dark" ? html`<${Sun} size=${18}/>` : html`<${Moon} size=${18}/>`}
               </button>
@@ -3416,6 +3635,7 @@ Regras invioláveis:
         `}
       </main>
 
+      ${showAuth && html`<${AuthModal} sbUrl=${sbUrl} setSbUrl=${setSbUrl} sbKey=${sbKey} setSbKey=${setSbKey} client=${sbRef.current} session=${session} profile=${profile} onClose=${() => setShowAuth(false)} />`}
       ${showConsulta && html`<${ConsultaModal} onClose=${() => setShowConsulta(false)} propriedade=${propriedade} />`}
       ${showConfig && html`<${ConfigModal}
         apiKey=${apiKey}
