@@ -1796,6 +1796,9 @@ function CafeRealIA() {
   const [chat, setChat] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [chatImage, setChatImage] = useState(null); // { file, preview }
+  const chatGalRef = useRef(null);
+  const chatCamRef = useRef(null);
   const chatEndRef = useRef(null);
   useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" }); }, [chat, chatLoading]);
 
@@ -2220,14 +2223,85 @@ ${lista}`;
     "Tenho risco de geada?",
   ];
 
+  async function handleChatImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    let wf = file;
+    if (isHeicFile(file)) {
+      try { wf = await convertHeicToJpeg(file); }
+      catch (err) { setChat((c) => [...c, { role: "assistant", text: "Não consegui converter a imagem HEIC do iPhone: " + err.message }]); e.target.value = ""; return; }
+    }
+    try { const dataUrl = await fileToDataUrl(wf); setChatImage({ file: wf, preview: dataUrl }); } catch (x) {}
+    e.target.value = "";
+  }
+
+  // Diagnóstico por foto DENTRO do chat: classificação restrita à base + recomendação
+  // local (mesma regra de ouro da aba antiga), devolvida como texto para o balão.
+  async function diagnoseFotoChat(file, perguntaExtra) {
+    const base64 = await fileToBase64(file);
+    const mediaType = file.type && file.type.startsWith("image/") ? file.type : "image/jpeg";
+    const cultura = "Café";
+    const alvos = alvosDaCultura(cultura);
+    const lista = alvos.map((a) => `${a.id} | ${a.tipo} | ${a.nome} (${a.cientifico}) — sintomas: ${a.sintomas}`).join("\n");
+    const prompt = `Você é o Café IA, fitossanitarista analisando uma foto de ${cultura}. Identifique o problema e escolha da LISTA o item que melhor corresponde. Responda APENAS JSON válido:
+{"id":"","tipo":"praga|doenca|indeterminado","nome":"","confianca":"alta|media|baixa","sinais_observados":["",""],"justificativa":"","precisa_mais_info":false,"pedido":""}
+Regras: escolha "id" e "nome" SOMENTE da lista; se inconclusivo use id:"", tipo:"indeterminado", confianca:"baixa", precisa_mais_info:true e "pedido" (o que fotografar). Não invente alvos fora da lista.${perguntaExtra ? " Considere também a pergunta do produtor: " + perguntaExtra : ""}
+LISTA (cultura ${cultura}):
+${lista}`;
+    const text = await callClaude(apiKey, [
+      { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+      { type: "text", text: prompt },
+    ], 700);
+    const json = extractJson(text) || {};
+    const alvo = alvos.find((a) => a.id && json.id && normTxt(a.id) === normTxt(json.id))
+      || alvos.find((a) => json.nome && normTxt(a.nome) === normTxt(json.nome)) || null;
+    const rec = alvo ? recomendarParaAlvo(alvo, cultura) : { quimicos: [], biologicos: [], grupos: [] };
+    const conf = { alta: "confiança alta", media: "confiança média", baixa: "confiança baixa" }[json.confianca] || "confiança —";
+    const L = [];
+    if (!alvo || json.precisa_mais_info === true) {
+      L.push("🔍 Não consegui identificar com segurança pela foto.");
+      L.push(json.pedido || "Envie uma nova foto aproximada do sintoma, com boa luz, mostrando a folha (face superior e inferior), o fruto ou o ramo afetado.");
+      return L.join("\n");
+    }
+    L.push(`🔬 ${FOTO_CATEGORIAS[alvo.tipo] || alvo.tipo}: ${alvo.nome} (${alvo.cientifico}) — ${conf}.`);
+    if (json.sinais_observados && json.sinais_observados.length) L.push(`Sinais: ${json.sinais_observados.join("; ")}.`);
+    if (json.justificativa) L.push(json.justificativa);
+    if (rec.quimicos.length) {
+      L.push("\nControle registrado para café (confirme dose e registro no AGROFIT):");
+      rec.quimicos.forEach((qm) => L.push(`• ${qm.produto}${qm.grupo ? " (" + qm.grupoTipo + " " + qm.grupo + ")" : ""} — ${qm.ingrediente} · dose ${qm.doseMin}${qm.doseMax && qm.doseMax !== qm.doseMin ? "–" + qm.doseMax : ""} ${qm.unidade}`));
+      if (rec.grupos.length > 1) L.push(`Manejo de resistência: alterne os grupos (${rec.grupos.join(", ")}) entre aplicações.`);
+    }
+    if (rec.biologicos.length) {
+      L.push("\nAlternativas biológicas:");
+      rec.biologicos.forEach((b) => L.push(`• ${b.nome_comercial} (${b.especie || b.organismo})`));
+    }
+    if (!rec.quimicos.length && !rec.biologicos.length) L.push("\nNão há produto correspondente na base do app para este alvo em café — consulte o AGROFIT e o agrônomo responsável.");
+    L.push("\n⚠️ Recomendação de apoio — não substitui o receituário agronômico (CREA/CFTA).");
+    return L.join("\n");
+  }
+
   async function askAssistant(pergunta) {
     const q = (pergunta || chatInput).trim();
-    if (!q || chatLoading) return;
+    const img = chatImage;
+    if ((!q && !img) || chatLoading) return;
     if (!apiKey) { setShowConfig(true); return; }
     setChatInput("");
-    const historico = chat.concat({ role: "user", text: q });
+    setChatImage(null);
+    const userMsg = { role: "user", text: q || "Analise esta foto da minha lavoura.", img: img ? img.preview : null };
+    const historico = chat.concat(userMsg);
     setChat(historico);
     setChatLoading(true);
+    if (img) {
+      try {
+        const resposta = await diagnoseFotoChat(img.file, q);
+        setChat((c) => [...c, { role: "assistant", text: resposta }]);
+        addToHistory("Diagnóstico por foto (Café IA)", resposta.split("\n")[0].slice(0, 60));
+      } catch (err) {
+        setChat((c) => [...c, { role: "assistant", text: "Não consegui analisar a foto agora: " + err.message }]);
+      }
+      setChatLoading(false);
+      return;
+    }
     const sistema = `Você é o "Café IA", assistente agronômico especialista em cafeicultura de montanha do Sul de Minas, dentro do app Café Real IA. Fale português técnico e direto, como consultor de campo experiente.
 Regras invioláveis:
 - Baseie-se no CONTEXTO DA PROPRIEDADE abaixo (dados reais do produtor). Se um dado necessário não existir (ex.: sem análise de solo), diga claramente o que falta e oriente onde obter no app.
@@ -2584,7 +2658,7 @@ Regras invioláveis:
               <div className="p-4 sm:p-5 text-white">
                 <p className="text-xs text-emerald-200 flex items-center gap-1.5"><${MessageCircle} size=${13}/> Assistente agronômico</p>
                 <h2 className="text-xl sm:text-2xl font-extrabold mt-0.5">Pergunte qualquer coisa sobre sua lavoura</h2>
-                <p className="text-emerald-100 text-xs mt-1">Respondo com base nos seus dados (solo, índices, adubação, clima) e nas regras técnicas do app. ${soilData ? "Sua análise de solo já está no contexto." : "Envie uma análise de solo para respostas ainda mais precisas."}</p>
+                <p className="text-emerald-100 text-xs mt-1">Pergunte por texto ou <b>envie uma foto</b> da folha/fruto para eu diagnosticar praga e doença. Respondo usando os seus dados (solo, índices, adubação, clima). ${soilData ? "Sua análise de solo já está no contexto." : "Envie uma análise de solo para respostas ainda mais precisas."}</p>
               </div>
             </div>
 
@@ -2605,13 +2679,14 @@ Regras invioláveis:
                   <div className="h-full flex flex-col items-center justify-center text-center px-4">
                     <div className="text-4xl mb-2">🌱</div>
                     <p className="text-sm font-medium text-stone-600">Olá! Sou o Café IA.</p>
-                    <p className="text-xs text-stone-400 mt-1 max-w-xs">Posso interpretar sua análise, sugerir adubação pelo Boletim 100, avaliar risco de doença/geada e orientar o manejo. Toque numa pergunta abaixo para começar.</p>
+                    <p className="text-xs text-stone-400 mt-1 max-w-xs">Posso interpretar sua análise, sugerir adubação pelo Boletim 100, avaliar risco de doença/geada e orientar o manejo. Toque numa pergunta abaixo — ou <b>anexe uma foto</b> da folha/fruto que eu diagnostico a praga ou doença.</p>
                   </div>
                 `}
                 ${chat.map((m, i) => html`
                   <div key=${i} className=${"flex " + (m.role === "user" ? "justify-end" : "justify-start")}>
                     <div className=${"max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap " + (m.role === "user" ? "bg-emerald-800 text-white rounded-br-sm" : "bg-stone-100 text-stone-800 rounded-bl-sm")}>
                       ${m.role === "assistant" ? html`<span className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1 mb-0.5"><${Sprout} size=${11}/> Café IA</span>` : null}
+                      ${m.img ? html`<img src=${m.img} alt="foto enviada" className="rounded-lg mb-1.5 max-h-44 w-auto" />` : null}
                       ${m.text}
                     </div>
                   </div>
@@ -2634,11 +2709,24 @@ Regras invioláveis:
                 </div>
               `}
 
-              <div className="border-t border-stone-200 p-2.5 flex gap-2">
-                <input value=${chatInput} onChange=${(e) => setChatInput(e.target.value)} onKeyDown=${(e) => { if (e.key === "Enter") askAssistant(); }}
-                  placeholder=${apiKey ? "Escreva sua pergunta…" : "Configure a chave para conversar"}
-                  className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm" />
-                <button onClick=${() => askAssistant()} disabled=${chatLoading || (!chatInput.trim())} className="bg-emerald-800 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40">Enviar</button>
+              <div className="border-t border-stone-200 p-2.5">
+                <input ref=${chatGalRef} type="file" accept=".jpg,.jpeg,.png,.heic,.heif,image/*" onChange=${handleChatImage} className="hidden" />
+                <input ref=${chatCamRef} type="file" accept="image/*" capture="environment" onChange=${handleChatImage} className="hidden" />
+                ${chatImage && html`
+                  <div className="mb-2 flex items-center gap-2 bg-stone-50 rounded-lg p-1.5 w-max">
+                    <img src=${chatImage.preview} alt="anexo" className="h-12 w-12 object-cover rounded" />
+                    <span className="text-xs text-stone-500">Foto anexada — envie para diagnosticar</span>
+                    <button onClick=${() => setChatImage(null)} className="text-stone-400 hover:text-red-600"><${X} size=${15}/></button>
+                  </div>
+                `}
+                <div className="flex gap-2">
+                  <button onClick=${() => chatGalRef.current.click()} title="Anexar foto da galeria" className="border border-stone-300 rounded-lg px-2.5 py-2 text-stone-500 hover:text-emerald-700 hover:border-emerald-400"><${Upload} size=${16}/></button>
+                  <button onClick=${() => chatCamRef.current.click()} title="Tirar foto agora" className="border border-stone-300 rounded-lg px-2.5 py-2 text-stone-500 hover:text-emerald-700 hover:border-emerald-400"><${Camera} size=${16}/></button>
+                  <input value=${chatInput} onChange=${(e) => setChatInput(e.target.value)} onKeyDown=${(e) => { if (e.key === "Enter") askAssistant(); }}
+                    placeholder=${apiKey ? (chatImage ? "Descreva o sintoma (opcional) e envie…" : "Escreva sua pergunta ou anexe uma foto…") : "Configure a chave para conversar"}
+                    className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm" />
+                  <button onClick=${() => askAssistant()} disabled=${chatLoading || (!chatInput.trim() && !chatImage)} className="bg-emerald-800 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40">Enviar</button>
+                </div>
               </div>
             </div>
             <p className="text-xs text-stone-400 flex items-start gap-1.5"><${AlertTriangle} size=${12} className="mt-0.5 flex-shrink-0"/> Respostas de apoio geradas por IA, sujeitas a erro. Produto, dose e registro devem ser confirmados no AGROFIT; a recomendação final é ato do agrônomo responsável (CREA/CFTA).</p>
