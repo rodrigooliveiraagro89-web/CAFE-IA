@@ -1969,7 +1969,8 @@ REGRAS:
 3. Sempre termine cada horizonte com uma frase prática, no nível de "o que fazer na fazenda/na negociação", não jargão de mercado financeiro.
 4. Tom: direto, confiante, sem enrolação — como um agrônomo experiente conversando com o produtor, não um analista de banco.
 5. Quando o histórico de preços for curto ou faltar, seja honesto sobre a limitação e baseie a leitura em sazonalidade conhecida do calendário cafeeiro do Sul de Minas.
-6. Estrutura de saída em JSON, exatamente com estas chaves:
+6. IMPORTANTE para o JSON ficar válido: NUNCA use aspas duplas (") dentro dos textos (resumo, fatores, o_que_significa, alerta_relevante). Se precisar destacar uma expressão ou citar uma fala, use aspas simples (') ou travessão — nunca aspas duplas, pois isso quebra o JSON.
+7. Estrutura de saída em JSON, exatamente com estas chaves:
 
 {
   "data_referencia": "YYYY-MM-DD",
@@ -2047,6 +2048,35 @@ function limparJSON(txt) {
   let t = txt.replace(/```json/gi, "").replace(/```/g, "").trim();
   const i = t.indexOf("{"), j = t.lastIndexOf("}");
   return i >= 0 && j >= i ? t.slice(i, j + 1) : t;
+}
+// Conserta o erro mais comum de JSON gerado por IA: aspas duplas literais dentro
+// do texto (ex: uma fala citada) que fecham a string antes da hora. Percorre o
+// JSON e só trata uma aspa como "fim de string" se, ignorando espaços, o próximo
+// caractere for um delimitador válido (: , } ]) — senão escapa como conteúdo.
+function repararJSON(txt) {
+  let out = "", inString = false;
+  for (let i = 0; i < txt.length; i++) {
+    const ch = txt[i];
+    if (ch === '"' && txt[i - 1] !== "\\") {
+      if (!inString) {
+        inString = true;
+        out += ch;
+      } else {
+        let j = i + 1;
+        while (j < txt.length && /\s/.test(txt[j])) j++;
+        const prox = txt[j];
+        if (prox === ":" || prox === "," || prox === "}" || prox === "]" || j >= txt.length) {
+          inString = false;
+          out += ch;
+        } else {
+          out += '\\"';
+        }
+      }
+    } else {
+      out += ch;
+    }
+  }
+  return JSON.parse(out);
 }
 
 // Cartão de cotação com direção (alta = verde, baixa = vermelho — é DIREÇÃO, não bom/ruim)
@@ -2177,12 +2207,18 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
         noticias_coladas: noticiaTxt ? [noticiaTxt.slice(0, 800)] : [],
       };
       const content = [{ type: "text", text: MERCADO_SYS_PROMPT + "\n\nDADOS DE ENTRADA (JSON):\n" + JSON.stringify(input, null, 2) }];
-      const txt = await callClaude(apiKey, content, 1600);
-      const parsed = JSON.parse(limparJSON(txt));
+      const txt = await callClaude(apiKey, content, 2000);
+      const limpo = limparJSON(txt);
+      let parsed;
+      try {
+        parsed = JSON.parse(limpo);
+      } catch {
+        parsed = repararJSON(limpo); // conserta aspas internas não escapadas antes de desistir
+      }
       setAnalise({ ...parsed, geradoEm: Date.now() });
       setOpenBloco("curto");
     } catch (e) {
-      setAnaliseErr(e.message || "Não foi possível gerar a análise agora.");
+      setAnaliseErr(/JSON/i.test(e.message || "") ? "A IA formatou a resposta em um jeito inesperado. Clique em \"Gerar análise\" novamente." : (e.message || "Não foi possível gerar a análise agora."));
     } finally {
       setLoadingAnalise(false);
     }
