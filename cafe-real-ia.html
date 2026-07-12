@@ -2450,7 +2450,7 @@ function CafeRealIA() {
   const [googleVisionKey, setGoogleVisionKey] = useState(persisted.googleVisionKey || "");
   const [azureOcrKey, setAzureOcrKey] = useState(persisted.azureOcrKey || "");
   const [azureOcrEndpoint, setAzureOcrEndpoint] = useState(persisted.azureOcrEndpoint || "");
-  const [rememberKey, setRememberKey] = useState(!!persisted.apiKey);
+  const [rememberKey, setRememberKey] = useState(persisted.rememberKey !== false);
 
   const [history, setHistory] = useState(persisted.history || []);
 
@@ -2561,6 +2561,7 @@ function CafeRealIA() {
       googleVisionKey: rememberKey ? googleVisionKey : "",
       azureOcrKey: rememberKey ? azureOcrKey : "",
       azureOcrEndpoint: rememberKey ? azureOcrEndpoint : "",
+      rememberKey,
       sbUrl, sbKey,
       ...buildDataPayload(),
     });
