@@ -2049,10 +2049,12 @@ function limparJSON(txt) {
   const i = t.indexOf("{"), j = t.lastIndexOf("}");
   return i >= 0 && j >= i ? t.slice(i, j + 1) : t;
 }
-// Conserta o erro mais comum de JSON gerado por IA: aspas duplas literais dentro
-// do texto (ex: uma fala citada) que fecham a string antes da hora. Percorre o
-// JSON e só trata uma aspa como "fim de string" se, ignorando espaços, o próximo
-// caractere for um delimitador válido (: , } ]) — senão escapa como conteúdo.
+// Conserta os erros mais comuns de JSON gerado por IA: (1) aspas duplas literais
+// dentro do texto (ex: uma fala citada) que fecham a string antes da hora — só
+// tratamos uma aspa como "fim de string" se, ignorando espaços, o próximo
+// caractere for um delimitador válido (: , } ]), senão ela é conteúdo; e (2)
+// quebras de linha/tabs literais dentro de uma string, que também são inválidas
+// em JSON e precisam virar \n / \t escapados.
 function repararJSON(txt) {
   let out = "", inString = false;
   for (let i = 0; i < txt.length; i++) {
@@ -2072,10 +2074,17 @@ function repararJSON(txt) {
           out += '\\"';
         }
       }
+    } else if (inString && ch === "\n") {
+      out += "\\n";
+    } else if (inString && ch === "\r") {
+      out += "\\r";
+    } else if (inString && ch === "\t") {
+      out += "\\t";
     } else {
       out += ch;
     }
   }
+  out = out.replace(/,(\s*[}\]])/g, "$1"); // vírgula sobrando antes de } ou ]
   return JSON.parse(out);
 }
 
