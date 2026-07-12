@@ -284,7 +284,8 @@ import {
   AlertTriangle, CheckCircle, Plus, Trash2, Loader2, Sun, Moon, MapPin, ClipboardList,
   Bug, Settings, KeyRound, Download, UploadCloud, X, Info, Eye, Edit3, ScrollText,
   Coffee, Mountain, TrendingUp, Activity, Layers, Ruler, ShieldCheck, FlaskConical, Gauge as GaugeIcon,
-  MessageCircle, Box, User, Cloud, LogOut
+  MessageCircle, Box, User, Cloud, LogOut,
+  TrendingDown, DollarSign, Bell, Newspaper, Minus, RefreshCw, Wallet, ExternalLink, LineChart as LineChartIcon
 } from "https://esm.sh/lucide-react@0.383.0?external=react&deps=react@18.3.1";
 
 const html = htm.bind(React.createElement);
@@ -320,6 +321,7 @@ function loadPdfjsLib() {
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: Sprout },
+  { id: "mercado", label: "Mercado", icon: DollarSign },
   { id: "ia", label: "Café IA", icon: MessageCircle },
   { id: "solo", label: "Análise de Solo", icon: Droplet },
   { id: "adubacao", label: "Calagem e Adubação", icon: Leaf },
@@ -1938,6 +1940,454 @@ function ConfigModal({ apiKey, setApiKey, googleVisionKey, setGoogleVisionKey, a
 /* Componente principal                                                   */
 /* ---------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------- */
+/* Aba MERCADO — cotações (entrada manual + câmbio automático), análise    */
+/* de mercado por IA (curto/médio/longo), notícias do setor, simulador     */
+/* "quanto vale minha safra", alerta de preço, semáforo e sazonalidade.    */
+/* Sem backend: a cotação do café é lançada manualmente (fallback do       */
+/* spec) e o câmbio USD/BRL vem de API pública gratuita com CORS.          */
+/* ---------------------------------------------------------------------- */
+
+const CAMBIO_API = "https://economia.awesomeapi.com.br/last/USD-BRL";
+
+const MERCADO_FONTES = [
+  { cat: "Cotação", nome: "CEPEA/ESALQ — Indicador do café arábica", url: "https://www.cepea.esalq.usp.br/br/indicador/cafe.aspx" },
+  { cat: "Cotação", nome: "Notícias Agrícolas — cotações e mercado de café", url: "https://www.noticiasagricolas.com.br/cotacoes/cafe" },
+  { cat: "Exportação", nome: "Cecafé — relatórios de exportação", url: "https://www.cecafe.com.br/publicacoes/relatorio-de-exportacoes/" },
+  { cat: "Safra", nome: "CONAB — acompanhamento da safra de café", url: "https://www.conab.gov.br/info-agro/safras/cafe" },
+  { cat: "Notícias", nome: "Canal Rural — editoria de café", url: "https://www.canalrural.com.br/tag/cafe/" },
+  { cat: "Global", nome: "USDA/FAS — Coffee (PSD & relatórios)", url: "https://www.fas.usda.gov/commodities/coffee" },
+];
+
+const MERCADO_SYS_PROMPT = `Você é Igor Souza, engenheiro agrônomo e consultor de mercado para produtores de café arábica do Sul de Minas Gerais, atuando em nome da Adubos Real.
+
+TAREFA: Gerar análise de mercado do café em três horizontes, a partir dos dados fornecidos.
+
+REGRAS:
+1. Nunca invente números. Use apenas os dados fornecidos no input. Se um dado não vier (null ou vazio), diga que não está disponível — não estime.
+2. Nunca dê recomendação de investimento ou trading. Isso é análise agronômico-comercial para quem produz e vende café físico, não especulação financeira.
+3. Sempre termine cada horizonte com uma frase prática, no nível de "o que fazer na fazenda/na negociação", não jargão de mercado financeiro.
+4. Tom: direto, confiante, sem enrolação — como um agrônomo experiente conversando com o produtor, não um analista de banco.
+5. Quando o histórico de preços for curto ou faltar, seja honesto sobre a limitação e baseie a leitura em sazonalidade conhecida do calendário cafeeiro do Sul de Minas.
+6. Estrutura de saída em JSON, exatamente com estas chaves:
+
+{
+  "data_referencia": "YYYY-MM-DD",
+  "curto_prazo":  { "resumo": "...", "fatores": ["...", "..."], "o_que_significa": "..." },
+  "medio_prazo":  { "resumo": "...", "fatores": ["...", "..."], "o_que_significa": "..." },
+  "longo_prazo":  { "resumo": "...", "fatores": ["...", "..."], "o_que_significa": "..." },
+  "alerta_relevante": "string ou null — só preencher se houver algo que exija atenção imediata do produtor"
+}
+
+Responda APENAS com o JSON, sem texto adicional, sem cercas de código.`;
+
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function fmtDataBR(iso) {
+  if (!iso) return "—";
+  const p = iso.split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+}
+// Quantos dias úteis (seg–sex) se passaram entre uma data e hoje
+function diasUteisDesde(iso) {
+  if (!iso) return 999;
+  const start = new Date(iso + "T00:00:00");
+  const end = new Date(hojeISO() + "T00:00:00");
+  if (isNaN(start) || end <= start) return 0;
+  let n = 0;
+  const c = new Date(start);
+  while (c < end) {
+    c.setDate(c.getDate() + 1);
+    const wd = c.getDay();
+    if (wd !== 0 && wd !== 6) n++;
+  }
+  return n;
+}
+function cotacoesAsc(cots) {
+  return [...(cots || [])].sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+}
+function ultimaCotacao(cots) {
+  const a = cotacoesAsc(cots);
+  return a.length ? a[a.length - 1] : null;
+}
+// Média de um campo nos últimos `dias` dias corridos
+function mediaCampo(cots, campo, dias) {
+  const lim = new Date(hojeISO() + "T00:00:00");
+  lim.setDate(lim.getDate() - dias);
+  const vals = (cots || [])
+    .filter((c) => c[campo] != null && new Date(c.data + "T00:00:00") >= lim)
+    .map((c) => Number(c[campo]))
+    .filter((v) => !isNaN(v));
+  if (!vals.length) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+// Variação do último ponto vs. o ponto anterior (mesmo campo)
+function variacaoCampo(cots, campo) {
+  const arr = cotacoesAsc(cots).filter((c) => c[campo] != null).map((c) => Number(c[campo]));
+  if (arr.length < 2) return null;
+  const atual = arr[arr.length - 1], ant = arr[arr.length - 2];
+  if (!ant) return null;
+  const pct = ((atual - ant) / ant) * 100;
+  return { abs: atual - ant, pct, dir: pct > 0.05 ? 1 : pct < -0.05 ? -1 : 0 };
+}
+// Série de valores (para o gráfico) de um campo nos últimos `dias` dias
+function serieCampo(cots, campo, dias) {
+  const lim = new Date(hojeISO() + "T00:00:00");
+  lim.setDate(lim.getDate() - dias);
+  const arr = cotacoesAsc(cots).filter((c) => c[campo] != null && new Date(c.data + "T00:00:00") >= lim);
+  return {
+    points: arr.map((c) => Number(c[campo])),
+    labels: arr.map((c) => c.data.slice(5).replace("-", "/")),
+  };
+}
+function limparJSON(txt) {
+  if (!txt) return "";
+  let t = txt.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const i = t.indexOf("{"), j = t.lastIndexOf("}");
+  return i >= 0 && j >= i ? t.slice(i, j + 1) : t;
+}
+
+// Cartão de cotação com direção (alta = verde, baixa = vermelho — é DIREÇÃO, não bom/ruim)
+function CotacaoCard({ titulo, valor, unidade, variacao, destaque, icon }) {
+  const dir = variacao ? variacao.dir : 0;
+  const cor = dir > 0 ? "#059669" : dir < 0 ? "#e11d48" : "#78716c";
+  const Seta = dir > 0 ? TrendingUp : dir < 0 ? TrendingDown : Minus;
+  return html`
+    <div className=${"bg-white rounded-xl border border-stone-200 p-3.5 anim-in " + (destaque ? "ring-1 ring-emerald-200" : "opacity-95")}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-stone-500">${titulo}</p>
+        ${icon && html`<div className="text-stone-400">${icon}</div>`}
+      </div>
+      <p className=${"font-bold mt-1 " + (destaque ? "text-2xl" : "text-lg")}>${valor}</p>
+      <div className="flex items-center justify-between mt-0.5">
+        <p className="text-[11px] text-stone-400">${unidade}</p>
+        ${variacao ? html`
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style=${{ color: cor }}>
+            <${Seta} size=${12}/> ${variacao.pct > 0 ? "+" : ""}${nf(variacao.pct, 2)}%
+          </span>` : html`<span className="text-[11px] text-stone-300">s/ variação</span>`}
+      </div>
+    </div>
+  `;
+}
+
+// Semáforo de momento — leitura de sazonalidade/fundamentos, NÃO recomendação
+function calcSemaforo(cepeaHoje, media90) {
+  if (cepeaHoje == null || media90 == null)
+    return { cor: "amber", rot: "Sem leitura", txt: "Histórico de cotações ainda é curto. Cadastre os preços dos próximos dias para o indicador ganhar base." };
+  const r = cepeaHoje / media90;
+  if (r >= 1.03) return { cor: "green", rot: "Favorável", txt: "Preço acima da média dos últimos 90 dias. Momento historicamente mais interessante para comercializar parte da safra." };
+  if (r <= 0.97) return { cor: "red", rot: "Cautela", txt: "Preço abaixo da média dos últimos 90 dias. Momento de cautela — avalie segurar, se o caixa permitir." };
+  return { cor: "amber", rot: "Neutro", txt: "Preço em torno da média dos últimos 90 dias. Sem sinal claro de alta ou baixa no curto prazo." };
+}
+
+function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta, propriedade, analise, setAnalise, alerta, setAlerta, sacas, setSacas }) {
+  const [range, setRange] = useState(30);
+  const [showForm, setShowForm] = useState(false);
+  const hoje = hojeISO();
+  const ultima = ultimaCotacao(cotacoes);
+  const [draft, setDraft] = useState({ data: hoje, cepea: "", ice: "", conilon: "", cambio: "", fonte: "CEPEA/ESALQ" });
+  const [cambioAuto, setCambioAuto] = useState(null); // { valor, ts }
+  const [loadingCambio, setLoadingCambio] = useState(false);
+  const [loadingAnalise, setLoadingAnalise] = useState(false);
+  const [analiseErr, setAnaliseErr] = useState(null);
+  const [openBloco, setOpenBloco] = useState("curto");
+  const [noticiaTxt, setNoticiaTxt] = useState("");
+  const [noticiaResumo, setNoticiaResumo] = useState(null);
+  const [loadingNoticia, setLoadingNoticia] = useState(false);
+
+  // Câmbio USD/BRL automático (API pública com CORS)
+  useEffect(() => {
+    let alive = true;
+    setLoadingCambio(true);
+    fetch(CAMBIO_API)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive) return;
+        const bid = j && j.USDBRL && parseFloat(j.USDBRL.bid);
+        if (bid) {
+          setCambioAuto({ valor: bid, ts: Date.now() });
+          setDraft((d) => ({ ...d, cambio: d.cambio || bid.toFixed(4) }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) setLoadingCambio(false); });
+    return () => { alive = false; };
+  }, []);
+
+  const cepeaHoje = ultima ? ultima.cepea : null;
+  const cambioHoje = (ultima && ultima.cambio != null) ? ultima.cambio : (cambioAuto ? cambioAuto.valor : null);
+  const media30 = mediaCampo(cotacoes, "cepea", 30);
+  const media90 = mediaCampo(cotacoes, "cepea", 90);
+  const varCepea = variacaoCampo(cotacoes, "cepea");
+  const varIce = variacaoCampo(cotacoes, "ice");
+  const varCambio = variacaoCampo(cotacoes, "cambio");
+  const varConilon = variacaoCampo(cotacoes, "conilon");
+  const desatualizada = ultima ? diasUteisDesde(ultima.data) > 2 : false;
+  const semaforo = calcSemaforo(cepeaHoje, media90);
+  const serie = serieCampo(cotacoes, "cepea", range);
+
+  // Sazonalidade: média histórica do mesmo mês (anos anteriores) vs. preço atual
+  const mesAtual = new Date().getMonth();
+  const mesmoMes = (cotacoes || []).filter((c) => c.cepea != null && new Date(c.data + "T00:00:00").getMonth() === mesAtual);
+  const anosMes = new Set(mesmoMes.map((c) => c.data.slice(0, 4)));
+  const mediaSazonal = mesmoMes.length ? mesmoMes.reduce((s, c) => s + Number(c.cepea), 0) / mesmoMes.length : null;
+  const nomeMes = new Date().toLocaleDateString("pt-BR", { month: "long" });
+
+  // Simulador
+  const nSacas = Number(sacas) || 0;
+  const valorSafra = cepeaHoje ? nSacas * cepeaHoje : 0;
+  const margemSaca = (cepeaHoje && custoSaca > 0) ? cepeaHoje - custoSaca : null;
+  const valorVs30 = (cepeaHoje && media30) ? nSacas * (cepeaHoje - media30) : null;
+  const valorVs90 = (cepeaHoje && media90) ? nSacas * (cepeaHoje - media90) : null;
+
+  function salvarCotacao() {
+    const rec = {
+      data: draft.data || hoje,
+      cepea: draft.cepea !== "" ? parseNumberBR(draft.cepea) : null,
+      ice: draft.ice !== "" ? parseNumberBR(draft.ice) : null,
+      conilon: draft.conilon !== "" ? parseNumberBR(draft.conilon) : null,
+      cambio: draft.cambio !== "" ? parseNumberBR(draft.cambio) : (cambioAuto ? cambioAuto.valor : null),
+      fonte: draft.fonte || "manual",
+    };
+    setCotacoes((prev) => {
+      const outros = (prev || []).filter((c) => c.data !== rec.data);
+      return cotacoesAsc([...outros, rec]);
+    });
+    setShowForm(false);
+  }
+
+  async function gerarAnalise() {
+    if (!apiKey) { onNeedKey(); return; }
+    setLoadingAnalise(true);
+    setAnaliseErr(null);
+    try {
+      const input = {
+        data_referencia: hoje,
+        mes: nomeMes,
+        regiao: "Sul de Minas (Ouro Fino, Inconfidentes, Machado, Bueno Brandão)",
+        cepea_arabica_hoje_rs_saca: cepeaHoje,
+        cepea_media_30d: media30,
+        cepea_media_90d: media90,
+        cepea_media_365d: mediaCampo(cotacoes, "cepea", 365),
+        ice_ny_centavos_lb: ultima ? ultima.ice : null,
+        cambio_usd_brl: cambioHoje,
+        historico_cepea_30d: cotacoesAsc(cotacoes).slice(-30).map((c) => ({ data: c.data, preco: c.cepea })),
+        noticias_coladas: noticiaTxt ? [noticiaTxt.slice(0, 800)] : [],
+      };
+      const content = [{ type: "text", text: MERCADO_SYS_PROMPT + "\n\nDADOS DE ENTRADA (JSON):\n" + JSON.stringify(input, null, 2) }];
+      const txt = await callClaude(apiKey, content, 1600);
+      const parsed = JSON.parse(limparJSON(txt));
+      setAnalise({ ...parsed, geradoEm: Date.now() });
+      setOpenBloco("curto");
+    } catch (e) {
+      setAnaliseErr(e.message || "Não foi possível gerar a análise agora.");
+    } finally {
+      setLoadingAnalise(false);
+    }
+  }
+
+  async function resumirNoticia() {
+    if (!apiKey) { onNeedKey(); return; }
+    if (!noticiaTxt.trim()) return;
+    setLoadingNoticia(true);
+    setNoticiaResumo(null);
+    try {
+      const prompt = `Você é Igor Souza, consultor de café da Adubos Real. Resuma para o produtor de café arábica do Sul de Minas, em 2 a 3 frases, a manchete/notícia abaixo. NÃO copie o texto original — resuma com suas palavras. Traga só o que importa para quem produz e vende café físico. Se houver um link, mantenha-o ao final. Termine com uma frase de "o que isso muda pra você".\n\nNOTÍCIA:\n${noticiaTxt.slice(0, 1500)}`;
+      const txt = await callClaude(apiKey, [{ type: "text", text: prompt }], 400);
+      setNoticiaResumo(txt);
+    } catch (e) {
+      setNoticiaResumo("Erro: " + (e.message || "não foi possível resumir agora."));
+    } finally {
+      setLoadingNoticia(false);
+    }
+  }
+
+  const analiseHoras = analise && analise.geradoEm ? Math.floor((Date.now() - analise.geradoEm) / 3600000) : null;
+  const semCor = { green: "#059669", amber: "#d97706", red: "#e11d48" }[semaforo.cor];
+  const semBg = { green: "bg-emerald-50 border-emerald-200", amber: "bg-amber-50 border-amber-200", red: "bg-rose-50 border-rose-200" }[semaforo.cor];
+
+  const blocos = [
+    { id: "curto", nome: "Curto prazo", sub: "próximos 7–15 dias", dados: analise && analise.curto_prazo },
+    { id: "medio", nome: "Médio prazo", sub: "1–6 meses", dados: analise && analise.medio_prazo },
+    { id: "longo", nome: "Longo prazo", sub: "6 meses a 2 safras", dados: analise && analise.longo_prazo },
+  ];
+
+  return html`
+    <div className="space-y-4">
+      <!-- Cabeçalho -->
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2"><${DollarSign} size=${18} className="text-emerald-700"/> Mercado do café</h2>
+          <p className="text-xs text-stone-500">Cotações, análise e o que elas significam para a sua safra${ultima ? ` · atualizado em ${fmtDataBR(ultima.data)}` : ""}.</p>
+        </div>
+        <button onClick=${() => { setDraft((d) => ({ ...d, data: hoje })); setShowForm((v) => !v); }} className="text-xs bg-emerald-800 text-white rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-emerald-900 transition">
+          <${Edit3} size=${13}/> Lançar cotação do dia
+        </button>
+      </div>
+
+      ${desatualizada && html`
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800 flex items-center gap-2">
+          <${AlertTriangle} size=${14}/> Cotação desatualizada — o último lançamento é de ${fmtDataBR(ultima.data)}. Lance o valor de hoje para os cálculos ficarem confiáveis.
+        </div>`}
+
+      <!-- Formulário de lançamento manual -->
+      ${showForm && html`
+        <div className="bg-white rounded-xl border border-stone-200 p-3.5 space-y-3">
+          <p className="text-sm font-medium">Lançar cotação</p>
+          <p className="text-xs text-stone-500">O CEPEA/ESALQ não tem API pública gratuita, então a cotação do café é lançada por você (fonte: painel do Cepea ou Notícias Agrícolas). O câmbio já vem preenchido automático.</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <label className="block">Data<input type="date" value=${draft.data} onChange=${(e) => setDraft({ ...draft, data: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+            <label className="block">Fonte<input type="text" value=${draft.fonte} onChange=${(e) => setDraft({ ...draft, fonte: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+            <label className="block">CEPEA arábica (R$/saca 60kg)<input type="text" inputMode="decimal" placeholder="ex: 2450" value=${draft.cepea} onChange=${(e) => setDraft({ ...draft, cepea: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+            <label className="block">ICE NY (¢US$/lb)<input type="text" inputMode="decimal" placeholder="ex: 320" value=${draft.ice} onChange=${(e) => setDraft({ ...draft, ice: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+            <label className="block">Conilon (R$/saca)<input type="text" inputMode="decimal" placeholder="opcional" value=${draft.conilon} onChange=${(e) => setDraft({ ...draft, conilon: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+            <label className="block">Câmbio USD/BRL${loadingCambio ? " (buscando…)" : cambioAuto ? " (auto)" : ""}<input type="text" inputMode="decimal" value=${draft.cambio} onChange=${(e) => setDraft({ ...draft, cambio: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+          </div>
+          <div className="flex gap-2">
+            <button onClick=${salvarCotacao} className="text-xs bg-emerald-800 text-white rounded-lg px-3 py-2 flex items-center gap-1.5"><${CheckCircle} size=${13}/> Salvar cotação</button>
+            <button onClick=${() => setShowForm(false)} className="text-xs bg-stone-100 text-stone-600 rounded-lg px-3 py-2">Cancelar</button>
+          </div>
+        </div>`}
+
+      <!-- Cards de cotação -->
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <${CotacaoCard} titulo="Café arábica · CEPEA/ESALQ" valor=${cepeaHoje != null ? "R$ " + nf(cepeaHoje, 0) : "—"} unidade="por saca de 60 kg" variacao=${varCepea} destaque=${true} icon=${html`<${Coffee} size=${15}/>`}/>
+        <${CotacaoCard} titulo="Arábica · ICE Futures (NY)" valor=${ultima && ultima.ice != null ? nf(ultima.ice, 2) + " ¢" : "—"} unidade="centavos de US$/libra" variacao=${varIce} icon=${html`<${TrendingUp} size=${15}/>`}/>
+        <${CotacaoCard} titulo="Câmbio USD/BRL" valor=${cambioHoje != null ? "R$ " + nf(cambioHoje, 4) : "—"} unidade=${cambioAuto ? "cotação automática do dia" : "informe no lançamento"} variacao=${varCambio} icon=${html`<${DollarSign} size=${15}/>`}/>
+        <${CotacaoCard} titulo="Conilon/Robusta · CEPEA" valor=${ultima && ultima.conilon != null ? "R$ " + nf(ultima.conilon, 0) : "—"} unidade="por saca de 60 kg" variacao=${varConilon} icon=${html`<${Coffee} size=${15}/>`}/>
+      </div>
+
+      <!-- Gráfico histórico -->
+      <div className="bg-white rounded-xl border border-stone-200 p-3.5">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-medium flex items-center gap-1.5"><${LineChartIcon} size=${15} className="text-emerald-700"/> Evolução do CEPEA arábica</p>
+          <div className="flex gap-1">
+            ${[[7, "7d"], [30, "30d"], [90, "90d"], [365, "12m"]].map(([v, l]) => html`
+              <button key=${l} onClick=${() => setRange(v)} className=${"text-[11px] px-2 py-1 rounded " + (range === v ? "bg-emerald-800 text-white" : "bg-stone-100 text-stone-500")}>${l}</button>`)}
+          </div>
+        </div>
+        <${LineChart} points=${serie.points} labels=${serie.points.length <= 12 ? serie.labels : null} size=${640} height=${150} color="#059669"/>
+        <p className="text-xs text-stone-400 mt-1">${serie.points.length < 2 ? "Cadastre pelo menos 2 dias de cotação para o gráfico aparecer." : `${serie.points.length} lançamentos no período · média R$ ${nf(serie.points.reduce((a, b) => a + b, 0) / serie.points.length, 0)}/saca.`}</p>
+      </div>
+
+      <!-- Semáforo + Sazonalidade -->
+      <div className="grid md:grid-cols-2 gap-3">
+        <div className=${"rounded-xl border p-3.5 " + semBg}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-3 h-3 rounded-full" style=${{ background: semCor }}></span>
+            <p className="text-sm font-semibold" style=${{ color: semCor }}>Momento de mercado: ${semaforo.rot}</p>
+          </div>
+          <p className="text-xs text-stone-600">${semaforo.txt}</p>
+          <p className="text-[11px] text-stone-400 mt-2 italic">Este indicador é informativo, baseado em dados históricos e de mercado. A decisão de venda é sua — considere também sua necessidade de caixa e custo de produção.</p>
+        </div>
+        <div className="bg-white rounded-xl border border-stone-200 p-3.5">
+          <p className="text-sm font-medium flex items-center gap-1.5 mb-1"><${Activity} size=${15} className="text-emerald-700"/> Comparativo sazonal — ${nomeMes}</p>
+          ${mediaSazonal != null && cepeaHoje != null ? html`
+            <p className="text-xs text-stone-600">Preço atual <b>R$ ${nf(cepeaHoje, 0)}</b> vs. média histórica de ${nomeMes} <b>R$ ${nf(mediaSazonal, 0)}</b> (${anosMes.size} ${anosMes.size === 1 ? "ano" : "anos"} na base).</p>
+            <p className=${"text-xs font-semibold mt-1 " + (cepeaHoje >= mediaSazonal ? "text-emerald-700" : "text-rose-600")}>${cepeaHoje >= mediaSazonal ? "Acima" : "Abaixo"} da média do mês em ${nf(Math.abs((cepeaHoje / mediaSazonal - 1) * 100), 1)}%.</p>
+          ` : html`<p className="text-xs text-stone-400">A base sazonal cresce a cada cotação lançada. Com o histórico de alguns meses, aqui aparece se o preço de hoje está bom para a época do ano.</p>`}
+        </div>
+      </div>
+
+      <!-- Simulador "quanto vale minha safra" -->
+      <div className="bg-white rounded-xl border border-stone-200 p-3.5">
+        <p className="text-sm font-medium flex items-center gap-1.5 mb-2"><${Wallet} size=${15} className="text-emerald-700"/> Quanto vale minha safra</p>
+        <div className="grid sm:grid-cols-3 gap-3 items-end">
+          <label className="block text-xs sm:col-span-1">Sacas estimadas / colhidas
+            <input type="text" inputMode="decimal" value=${sacas} onChange=${(e) => setSacas(e.target.value)} placeholder=${propriedade.prodEstimada || "ex: 500"} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/>
+          </label>
+          <div className="sm:col-span-2 grid grid-cols-2 gap-2">
+            <div className="bg-emerald-50 rounded-lg p-2.5"><p className="text-[11px] text-stone-500">Valor pela cotação de hoje</p><p className="text-lg font-bold text-emerald-800">${cepeaHoje ? "R$ " + nf(valorSafra, 0) : "—"}</p></div>
+            <div className="bg-stone-50 rounded-lg p-2.5"><p className="text-[11px] text-stone-500">Margem estimada / saca</p><p className=${"text-lg font-bold " + (margemSaca != null ? (margemSaca >= 0 ? "text-emerald-800" : "text-rose-600") : "text-stone-400")}>${margemSaca != null ? "R$ " + nf(margemSaca, 0) : "—"}</p></div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+          <div className="bg-stone-50 rounded p-2"><p className="text-stone-400">vs. média 30 dias</p><p className=${"font-medium " + (valorVs30 != null ? (valorVs30 >= 0 ? "text-emerald-700" : "text-rose-600") : "")}>${valorVs30 != null ? (valorVs30 >= 0 ? "+" : "") + "R$ " + nf(valorVs30, 0) : "—"}</p></div>
+          <div className="bg-stone-50 rounded p-2"><p className="text-stone-400">vs. média 90 dias</p><p className=${"font-medium " + (valorVs90 != null ? (valorVs90 >= 0 ? "text-emerald-700" : "text-rose-600") : "")}>${valorVs90 != null ? (valorVs90 >= 0 ? "+" : "") + "R$ " + nf(valorVs90, 0) : "—"}</p></div>
+        </div>
+        <p className="text-xs text-stone-400 mt-2">${custoSaca > 0 ? `Margem usa seu custo por saca de R$ ${nf(custoSaca, 0)} (aba Calagem e Adubação).` : "Informe os preços dos adubos na aba Calagem e Adubação para calcular a margem por saca."}</p>
+      </div>
+
+      <!-- Alerta de preço -->
+      <div className="bg-white rounded-xl border border-stone-200 p-3.5">
+        <p className="text-sm font-medium flex items-center gap-1.5 mb-2"><${Bell} size=${15} className="text-emerald-700"/> Alerta de preço</p>
+        <div className="flex items-end gap-2 flex-wrap">
+          <label className="block text-xs">Preço-alvo por saca (R$)
+            <input type="text" inputMode="decimal" value=${alerta.alvo ?? ""} onChange=${(e) => setAlerta({ ...alerta, alvo: e.target.value })} placeholder="ex: 2600" className="border border-stone-300 rounded px-2 py-1.5 mt-1 w-32"/>
+          </label>
+          <button onClick=${() => setAlerta({ ...alerta, ativo: !alerta.ativo })} className=${"text-xs rounded-lg px-3 py-2 " + (alerta.ativo ? "bg-emerald-800 text-white" : "bg-stone-100 text-stone-600")}>${alerta.ativo ? "Alerta ativo" : "Ativar alerta"}</button>
+        </div>
+        ${alerta.ativo && alerta.alvo && cepeaHoje != null && html`
+          <p className=${"text-xs mt-2 font-medium " + (cepeaHoje >= parseNumberBR(alerta.alvo) ? "text-emerald-700" : "text-stone-500")}>
+            ${cepeaHoje >= parseNumberBR(alerta.alvo)
+              ? `Alvo atingido! CEPEA hoje (R$ ${nf(cepeaHoje, 0)}) já está no seu preço-alvo ou acima.`
+              : `Faltam R$ ${nf(parseNumberBR(alerta.alvo) - cepeaHoje, 0)}/saca para o CEPEA chegar ao seu alvo.`}
+          </p>`}
+        <p className="text-[11px] text-stone-400 mt-2">O alerta é verificado toda vez que você abre o app e lança a cotação. Notificação por push/e-mail exige o backend (Supabase) — está no roadmap.</p>
+      </div>
+
+      <!-- Análise de mercado por IA -->
+      <div className="bg-white rounded-xl border border-stone-200 p-3.5">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <p className="text-sm font-medium flex items-center gap-1.5"><${TrendingUp} size=${15} className="text-emerald-700"/> Análise de mercado (curto / médio / longo prazo)</p>
+          <button onClick=${gerarAnalise} disabled=${loadingAnalise} className="text-xs bg-emerald-800 text-white rounded-lg px-3 py-2 flex items-center gap-1.5 disabled:opacity-60">
+            ${loadingAnalise ? html`<${Loader2} size=${13} className="animate-spin"/> Gerando…` : html`<${RefreshCw} size=${13}/> ${analise ? "Atualizar análise" : "Gerar análise"}`}
+          </button>
+        </div>
+        ${analiseErr && html`<p className="text-xs text-rose-600 mb-2">${analiseErr}</p>`}
+        ${!analise && !loadingAnalise && html`<p className="text-xs text-stone-400">A IA lê as cotações que você lançou, o câmbio e o mês do ano e escreve a leitura de mercado em três horizontes — sempre terminando com "o que isso significa pra você". Precisa da chave da Anthropic (mesma dos outros recursos de IA).</p>`}
+        ${analise && html`
+          <div className="space-y-2">
+            <p className="text-[11px] text-stone-400">Gerado ${analiseHoras === 0 ? "há menos de 1 h" : `há ${analiseHoras} h`} · referência ${fmtDataBR(analise.data_referencia)}.</p>
+            ${analise.alerta_relevante && html`<div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-900 flex items-start gap-2"><${AlertTriangle} size=${14} className="mt-0.5 shrink-0"/> <span>${analise.alerta_relevante}</span></div>`}
+            ${blocos.map((b) => html`
+              <div key=${b.id} className="border border-stone-200 rounded-lg overflow-hidden">
+                <button onClick=${() => setOpenBloco(openBloco === b.id ? null : b.id)} className="w-full flex items-center justify-between px-3 py-2 text-left bg-stone-50">
+                  <span className="text-sm font-medium">${b.nome} <span className="text-xs text-stone-400 font-normal">· ${b.sub}</span></span>
+                  <span className="text-stone-400 text-xs">${openBloco === b.id ? "▲" : "▼"}</span>
+                </button>
+                ${openBloco === b.id && b.dados && html`
+                  <div className="px-3 py-2.5 space-y-2 text-xs">
+                    <p className="text-stone-700">${b.dados.resumo}</p>
+                    ${b.dados.fatores && b.dados.fatores.length > 0 && html`<ul className="space-y-0.5 text-stone-600">${b.dados.fatores.map((f, i) => html`<li key=${i}>• ${f}</li>`)}</ul>`}
+                    ${b.dados.o_que_significa && html`<div className="bg-emerald-50 border-l-2 border-emerald-500 rounded-r px-2.5 py-1.5"><p className="text-[11px] font-semibold text-emerald-800 mb-0.5">O que isso significa pra você</p><p className="text-emerald-900">${b.dados.o_que_significa}</p></div>`}
+                  </div>`}
+                ${openBloco === b.id && !b.dados && html`<div className="px-3 py-2.5 text-xs text-stone-400">Sem dados para este horizonte nesta análise.</div>`}
+              </div>`)}
+          </div>`}
+      </div>
+
+      <!-- Notícias do setor -->
+      <div className="bg-white rounded-xl border border-stone-200 p-3.5">
+        <p className="text-sm font-medium flex items-center gap-1.5 mb-2"><${Newspaper} size=${15} className="text-emerald-700"/> Notícias e fontes do setor</p>
+        <div className="grid sm:grid-cols-2 gap-1.5 mb-3">
+          ${MERCADO_FONTES.map((f) => html`
+            <a key=${f.url} href=${f.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-2 bg-stone-50 hover:bg-emerald-50 rounded-lg px-2.5 py-2 transition group">
+              <span className="text-xs"><span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5 mr-1.5">${f.cat}</span>${f.nome}</span>
+              <${ExternalLink} size=${13} className="text-stone-400 group-hover:text-emerald-700 shrink-0"/>
+            </a>`)}
+        </div>
+        <div className="border-t border-stone-100 pt-2.5">
+          <p className="text-xs font-medium mb-1">Resumir uma manchete com a IA</p>
+          <p className="text-[11px] text-stone-400 mb-1.5">Cole o título (e o link) de uma matéria que você viu numa das fontes acima — a IA resume em 2–3 frases o que muda para a sua safra, sem copiar o texto original.</p>
+          <textarea value=${noticiaTxt} onChange=${(e) => setNoticiaTxt(e.target.value)} rows=${2} placeholder="Ex: 'Geada no Sul de Minas derruba parte da safra 2027 — link…'" className="w-full border border-stone-300 rounded px-2 py-1.5 text-xs"></textarea>
+          <button onClick=${resumirNoticia} disabled=${loadingNoticia || !noticiaTxt.trim()} className="text-xs bg-emerald-800 text-white rounded-lg px-3 py-1.5 mt-1.5 flex items-center gap-1.5 disabled:opacity-50">
+            ${loadingNoticia ? html`<${Loader2} size=${12} className="animate-spin"/> Resumindo…` : html`<${MessageCircle} size=${12}/> Resumir`}
+          </button>
+          ${noticiaResumo && html`<div className="bg-stone-50 rounded-lg p-2.5 mt-2 text-xs text-stone-700 whitespace-pre-wrap">${noticiaResumo}</div>`}
+        </div>
+      </div>
+
+      <!-- Disclaimers -->
+      <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-[11px] text-stone-500 leading-relaxed">
+        As informações desta aba têm caráter informativo e educacional, com base em dados públicos de mercado. Não constituem recomendação de investimento, aconselhamento financeiro ou garantia de resultado. Decisões de comercialização devem considerar a realidade individual de cada produtor. Cotação do café lançada manualmente; câmbio USD/BRL via AwesomeAPI (economia.awesomeapi.com.br).
+      </div>
+    </div>
+  `;
+}
+
 function CafeRealIA() {
   const persisted = loadPersisted();
 
@@ -2025,6 +2475,12 @@ function CafeRealIA() {
   const [nFoliar, setNFoliar] = useState(persisted.nFoliar ?? "");
   const [precos, setPrecos] = useState(persisted.precos || {});
 
+  // Aba Mercado — cotações lançadas manualmente, análise IA, alerta e simulador
+  const [cotacoes, setCotacoes] = useState(persisted.cotacoes || []);
+  const [mercadoAnalise, setMercadoAnalise] = useState(persisted.mercadoAnalise || null);
+  const [alertaPreco, setAlertaPreco] = useState(persisted.alertaPreco || { alvo: "", ativo: false });
+  const [mercadoSacas, setMercadoSacas] = useState(persisted.mercadoSacas || "");
+
   const [foliarCatalog, setFoliarCatalog] = useState(persisted.foliarCatalog || []);
   const [foliarForm, setFoliarForm] = useState({ nome: "", composicao: "", finalidade: "", epoca: "", doseMin: "", doseMax: "", obs: "" });
 
@@ -2054,6 +2510,7 @@ function CafeRealIA() {
       history, soilData, soilSamples, foliarCatalog, photoResult, defensivos,
       cidade, climaData, conv, espac, spray,
       meta, areaHa, prnt, tipoCalcario, nFoliar, precos, theme, propriedade,
+      cotacoes, mercadoAnalise, alertaPreco, mercadoSacas,
     };
   }
 
@@ -2079,6 +2536,10 @@ function CafeRealIA() {
     if (obj.precos) setPrecos(obj.precos);
     if (obj.propriedade) setPropriedade(obj.propriedade);
     if (obj.theme) setTheme(obj.theme);
+    if (obj.cotacoes) setCotacoes(obj.cotacoes);
+    if (obj.mercadoAnalise) setMercadoAnalise(obj.mercadoAnalise);
+    if (obj.alertaPreco) setAlertaPreco(obj.alertaPreco);
+    if (obj.mercadoSacas != null) setMercadoSacas(obj.mercadoSacas);
   }
 
   // Sobe o estado atual para a nuvem (debounce; só se logado)
@@ -2104,7 +2565,7 @@ function CafeRealIA() {
       ...buildDataPayload(),
     });
     if (session) pushCloud();
-  }, [apiKey, googleVisionKey, azureOcrKey, azureOcrEndpoint, rememberKey, sbUrl, sbKey, session, history, soilData, soilSamples, foliarCatalog, photoResult, defensivos, cidade, climaData, conv, espac, spray, meta, areaHa, prnt, tipoCalcario, nFoliar, precos, theme, propriedade]);
+  }, [apiKey, googleVisionKey, azureOcrKey, azureOcrEndpoint, rememberKey, sbUrl, sbKey, session, history, soilData, soilSamples, foliarCatalog, photoResult, defensivos, cidade, climaData, conv, espac, spray, meta, areaHa, prnt, tipoCalcario, nFoliar, precos, theme, propriedade, cotacoes, mercadoAnalise, alertaPreco, mercadoSacas]);
 
   // Cria o cliente Supabase quando há URL + chave, e escuta a sessão
   useEffect(() => {
@@ -2688,6 +3149,7 @@ Regras invioláveis:
                   : "Leia sua análise de solo e o painel se preenche sozinho — calagem, adubação e custo por saca."}</p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   <button onClick=${() => setTab("solo")} className="bg-white text-emerald-900 font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-emerald-50 transition"><${Droplet} size=${13}/> Ler análise de solo</button>
+                  <button onClick=${() => setTab("mercado")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${DollarSign} size=${13}/> Mercado</button>
                   <button onClick=${() => setTab("ia")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${MessageCircle} size=${13}/> Café IA</button>
                   <button onClick=${() => setTab("clima")} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${CloudRain} size=${13}/> Clima</button>
                   <button onClick=${() => setShowConsulta(true)} className="bg-white/15 border border-white/25 text-white font-semibold text-xs rounded-lg px-3 py-2 flex items-center gap-1.5 hover:bg-white/25 transition"><${MessageCircle} size=${13}/> Consultoria</button>
@@ -2875,6 +3337,22 @@ Regras invioláveis:
             </div>
           </div>
         `}
+
+        ${tab === "mercado" && html`<${MercadoView}
+          cotacoes=${cotacoes}
+          setCotacoes=${setCotacoes}
+          apiKey=${apiKey}
+          onNeedKey=${() => setShowConfig(true)}
+          custoSaca=${custoSaca}
+          meta=${meta}
+          propriedade=${propriedade}
+          analise=${mercadoAnalise}
+          setAnalise=${setMercadoAnalise}
+          alerta=${alertaPreco}
+          setAlerta=${setAlertaPreco}
+          sacas=${mercadoSacas}
+          setSacas=${setMercadoSacas}
+        />`}
 
         ${tab === "ia" && html`
           <div className="space-y-3">
