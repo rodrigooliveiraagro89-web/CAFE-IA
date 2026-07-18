@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppView } from "../../app/navigation";
+import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import {
   closePolygon,
   hasSufficientCoverage,
@@ -56,6 +57,7 @@ import type {
 
 type NdviModuleProps = {
   onNavigate: (view: AppView) => void;
+  agriculture: AgriculturalController;
 };
 
 type SearchState =
@@ -67,14 +69,16 @@ type SearchState =
 const HISTORY_KEY = "agryn.ndvi.history.v1";
 const minimumValidCoveragePercentage = 70;
 
-export function NdviModule({ onNavigate }: NdviModuleProps) {
+export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
   const today = useMemo(() => formatInputDate(new Date()), []);
   const ninetyDaysAgo = useMemo(() => {
     const date = new Date();
     date.setDate(date.getDate() - 90);
     return formatInputDate(date);
   }, []);
-  const [points, setPoints] = useState<Position[]>([]);
+  const [points, setPoints] = useState<Position[]>(() =>
+    pointsFromGeometry(agriculture.selectedPlot?.geometry?.coordinates[0]),
+  );
   const [drawing, setDrawing] = useState(false);
   const [dateStart, setDateStart] = useState(ninetyDaysAgo);
   const [dateEnd, setDateEnd] = useState(today);
@@ -182,7 +186,7 @@ export function NdviModule({ onNavigate }: NdviModuleProps) {
           sceneId: selectedScene.id,
           collection: selectedScene.collection,
           polygon,
-          plotId: "area-avulsa",
+          plotId: agriculture.selectedPlot?.id ?? "area-avulsa",
           minimumValidCoveragePercentage,
         },
         updateJobState,
@@ -254,7 +258,7 @@ export function NdviModule({ onNavigate }: NdviModuleProps) {
             <span className="eyebrow">Sensoriamento remoto</span>
             <h1>Análise NDVI por Satélite</h1>
             <p>
-              Monitore o vigor espectral do café com imagens Sentinel‑2 L2A gratuitas,
+              Monitore o vigor espectral da cultura com imagens Sentinel‑2 L2A gratuitas,
               histórico comparável e zonas para conferência em campo.
             </p>
           </div>
@@ -274,15 +278,47 @@ export function NdviModule({ onNavigate }: NdviModuleProps) {
 
           <label>
             Propriedade
-            <select defaultValue="area-avulsa" aria-label="Propriedade">
+            <select
+              value={agriculture.selectedProperty?.id ?? "area-avulsa"}
+              aria-label="Propriedade"
+              onChange={(event) => {
+                if (event.target.value !== "area-avulsa") {
+                  agriculture.selectProperty(event.target.value);
+                }
+              }}
+            >
               <option value="area-avulsa">Área avulsa — sem cadastro</option>
+              {agriculture.state.properties.map((property) => (
+                <option value={property.id} key={property.id}>{property.name}</option>
+              ))}
             </select>
           </label>
 
           <label>
             Talhão
-            <select defaultValue="mapa" aria-label="Talhão">
+            <select
+              value={agriculture.selectedPlot?.id ?? "mapa"}
+              aria-label="Talhão"
+              onChange={(event) => {
+                if (event.target.value !== "mapa") {
+                  const plot = agriculture.state.plots.find(
+                    (candidate) => candidate.id === event.target.value,
+                  );
+                  agriculture.selectPlot(event.target.value);
+                  setPoints(pointsFromGeometry(plot?.geometry?.coordinates[0]));
+                  setScenes([]);
+                  setSelectedSceneId("");
+                  setSearchState({ status: "idle" });
+                  setJobState({ status: "idle" });
+                }
+              }}
+            >
               <option value="mapa">Polígono desenhado no mapa</option>
+              {agriculture.state.plots
+                .filter((plot) => plot.propertyId === agriculture.selectedProperty?.id)
+                .map((plot) => (
+                  <option value={plot.id} key={plot.id}>{plot.name} · {plot.crop}</option>
+                ))}
             </select>
           </label>
 
@@ -828,6 +864,14 @@ function loadHistory(): NdviResult[] {
 
 function saveHistory(history: NdviResult[]) {
   window.localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function pointsFromGeometry(ring: Position[] | undefined): Position[] {
+  if (!ring || ring.length < 4) return [];
+  const last = ring.length - 1;
+  return ring[0][0] === ring[last][0] && ring[0][1] === ring[last][1]
+    ? ring.slice(0, -1)
+    : [...ring];
 }
 
 function formatInputDate(date: Date): string {
