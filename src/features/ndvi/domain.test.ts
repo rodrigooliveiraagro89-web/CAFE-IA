@@ -8,6 +8,7 @@ import {
   closePolygon,
   hasSufficientCoverage,
   polygonAreaHectares,
+  polygonValidationIssue,
   responsibleInterpretation,
   summarizeNdvi,
   validCoveragePercentage,
@@ -63,6 +64,25 @@ describe("motor NDVI", () => {
     expect(agrynArea).toBeGreaterThan(0.98);
     expect(agrynArea).toBeLessThan(1.03);
     expect(agrynArea).toBeCloseTo(referenceArea, 5);
+  });
+
+  it("rejeita croqui auto-intersectado e aceita um limite simples", () => {
+    expect(
+      polygonValidationIssue([
+        [-47, -19],
+        [-46.99, -18.99],
+        [-47, -18.99],
+        [-46.99, -19],
+      ]),
+    ).toMatch(/cruza/i);
+    expect(
+      polygonValidationIssue([
+        [-47, -19],
+        [-46.99, -19],
+        [-46.99, -18.99],
+        [-47, -18.99],
+      ]),
+    ).toBeNull();
   });
 
   it("produz uma busca STAC rastreável e uma leitura não diagnóstica", () => {

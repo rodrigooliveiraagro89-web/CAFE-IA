@@ -28,14 +28,18 @@ import {
   Trash2,
   TriangleAlert,
   Undo2,
+  Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppView } from "../../app/navigation";
+import { parsePlotBoundary } from "../../domain/agriculturalContext";
+import type { FieldRecordInput } from "../../domain/fieldRecords";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import {
   closePolygon,
   hasSufficientCoverage,
   polygonAreaHectares,
+  polygonValidationIssue,
   responsibleInterpretation,
 } from "./domain";
 import { NdviMap } from "./NdviMap";
@@ -61,6 +65,7 @@ import type {
 type NdviModuleProps = {
   onNavigate: (view: AppView) => void;
   agriculture: AgriculturalController;
+  onCreateInspection: (input: FieldRecordInput) => void;
 };
 
 type SearchState =
@@ -83,7 +88,11 @@ type SketchState =
 const HISTORY_KEY = "agryn.ndvi.history.v1";
 const minimumValidCoveragePercentage = 70;
 
-export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
+export function NdviModule({
+  onNavigate,
+  agriculture,
+  onCreateInspection,
+}: NdviModuleProps) {
   const today = useMemo(() => formatInputDate(new Date()), []);
   const ninetyDaysAgo = useMemo(() => {
     const date = new Date();
@@ -103,6 +112,9 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
   const [jobState, setJobState] = useState<NdviJobState>({ status: "idle" });
   const [history, setHistory] = useState<NdviResult[]>(loadHistory);
   const [activeLayer, setActiveLayer] = useState<"true-color" | "ndvi">("ndvi");
+  const [classificationMode, setClassificationMode] = useState<"relative" | "general">(
+    "relative",
+  );
   const [opacity, setOpacity] = useState(0.78);
   const [currentLocation, setCurrentLocation] = useState<Position | null>(null);
   const [locationState, setLocationState] = useState<LocationState>({
@@ -121,14 +133,20 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
   const processingAbortController = useRef<AbortController | null>(null);
   const searchAbortController = useRef<AbortController | null>(null);
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
+  const boundaryFileRef = useRef<HTMLInputElement | null>(null);
 
+  const geometryIssue = useMemo(
+    () => (points.length ? polygonValidationIssue(points) : null),
+    [points],
+  );
   const polygon = useMemo(() => {
+    if (geometryIssue) return null;
     try {
       return closePolygon(points);
     } catch {
       return null;
     }
-  }, [points]);
+  }, [geometryIssue, points]);
   const areaHectares = useMemo(
     () => (polygon ? polygonAreaHectares(polygon) : 0),
     [polygon],
@@ -143,6 +161,10 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
   );
   const compareLeftResult = history.find((result) => result.id === compareLeft) ?? null;
   const compareRightResult = history.find((result) => result.id === compareRight) ?? null;
+  const displayedClasses =
+    classificationMode === "relative"
+      ? currentResult?.relativeClasses ?? currentResult?.classes ?? []
+      : currentResult?.generalClasses ?? currentResult?.classes ?? [];
 
   useEffect(() => {
     if (!timelinePlaying || history.length < 2) return;
@@ -292,7 +314,8 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
     if (!polygon) {
       setSketchState({
         status: "error",
-        message: "Marque pelo menos três pontos antes de concluir o croqui.",
+        message:
+          geometryIssue ?? "Marque pelo menos três pontos antes de concluir o croqui.",
       });
       return;
     }
@@ -367,6 +390,60 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
     link.download = `${slugify(name)}.geojson`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function importBoundary(file: File) {
+    try {
+      const contents = await file.text();
+      const imported = parsePlotBoundary(file.name, contents);
+      const importedPoints = pointsFromGeometry(imported.geometry.coordinates[0]);
+      const issue = polygonValidationIssue(importedPoints);
+      if (issue) throw new Error(issue);
+      setPoints(importedPoints);
+      setDrawing(false);
+      setScenes([]);
+      setSelectedSceneId("");
+      setSearchState({ status: "idle" });
+      setJobState({ status: "idle" });
+      setSketchState({
+        status: "success",
+        message: `Croqui importado: ${formatNumber(imported.areaHectares, 2)} ha. Revise o limite e aplique o NDVI.`,
+      });
+    } catch (error) {
+      setSketchState({
+        status: "error",
+        message: error instanceof Error ? error.message : "Não foi possível importar o croqui.",
+      });
+    } finally {
+      if (boundaryFileRef.current) boundaryFileRef.current.value = "";
+    }
+  }
+
+  function createInspection(zone: NdviResult["attentionZones"][number]) {
+    if (!currentResult || !agriculture.selectedPlot) {
+      setSketchState({
+        status: "error",
+        message: "Selecione e salve um talhão antes de criar a vistoria.",
+      });
+      return;
+    }
+    onCreateInspection({
+      type: "Inspeção",
+      title: `Vistoria NDVI — ${zone.label}`,
+      date: today,
+      notes: [
+        `Zona: ${formatNumber(zone.hectares, 2)} ha.`,
+        `Coordenadas: ${formatCoordinate(zone.centroid)}.`,
+        `Imagem: ${formatDate(currentResult.acquiredAt)} (${currentResult.sensor}).`,
+        zone.reason,
+        "Confirmar em campo e cruzar com solo, folha, clima, manejo e fotografias.",
+      ].join(" "),
+      status: "planejada",
+      cost: 0,
+      quantity: "",
+      unit: "",
+    });
+    onNavigate("caderno");
   }
 
   function handleCurrentLocation() {
@@ -583,6 +660,25 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
             </button>
           </div>
 
+          <input
+            ref={boundaryFileRef}
+            className="ndvi-boundary-input"
+            type="file"
+            accept=".geojson,.json,.kml,application/geo+json,application/vnd.google-earth.kml+xml"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void importBoundary(file);
+            }}
+          />
+          <button
+            className="ndvi-import-button"
+            type="button"
+            onClick={() => boundaryFileRef.current?.click()}
+          >
+            <Upload size={17} aria-hidden="true" />
+            Importar KML ou GeoJSON
+          </button>
+
           <div className="ndvi-area-summary" data-ready={Boolean(polygon)}>
             <Focus size={18} aria-hidden="true" />
             <span>
@@ -591,6 +687,23 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
             </span>
             <span><small>Vértices</small><strong>{points.length}</strong></span>
           </div>
+
+          {geometryIssue && points.length >= 3 && (
+            <div className="ndvi-geometry-warning" role="alert">
+              <TriangleAlert size={16} aria-hidden="true" />
+              <span>{geometryIssue}</span>
+            </div>
+          )}
+
+          {polygon && areaHectares < 6.25 && (
+            <div className="ndvi-resolution-warning">
+              <TriangleAlert size={16} aria-hidden="true" />
+              <span>
+                <strong>Talhão pequeno para o NDVI regional de 250 m.</strong>
+                Use o Sentinel‑2 detalhado de 10 m antes de interpretar diferenças internas.
+              </span>
+            </div>
+          )}
 
           {polygon && (
             <div className="ndvi-sketch-actions">
@@ -886,7 +999,43 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
               <NdviMetric label="Cobertura válida" value={`${formatNumber(currentResult.validCoveragePercentage, 1)}%`} detail={`${formatNumber(currentResult.validAreaHectares, 2)} ha válidos`} warning={!hasSufficientCoverage(currentResult.validCoveragePercentage, currentResult.minimumValidCoveragePercentage)} />
               <NdviMetric label="Área descartada" value={`${formatNumber(currentResult.discardedAreaHectares, 2)} ha`} detail="Nuvem, sombra, cirrus ou NoData" />
               <NdviMetric label="Imagem" value={formatDate(currentResult.acquiredAt)} detail={`${daysSince(currentResult.acquiredAt)} dias desde a aquisição`} />
+              {currentResult.statistics.uniformityIndex !== undefined && (
+                <NdviMetric
+                  label="Uniformidade espacial"
+                  value={`${formatNumber(currentResult.statistics.uniformityIndex, 0)}/100`}
+                  detail="Homogeneidade do NDVI, não produtividade"
+                  warning={currentResult.statistics.uniformityIndex < 60}
+                />
+              )}
+              {currentResult.statistics.coefficientOfVariation !== undefined && (
+                <NdviMetric
+                  label="Coeficiente de variação"
+                  value={`${formatNumber(currentResult.statistics.coefficientOfVariation, 1)}%`}
+                  detail={`P10 ${formatNumber(currentResult.statistics.percentile10 ?? 0, 2)} · P90 ${formatNumber(currentResult.statistics.percentile90 ?? 0, 2)}`}
+                />
+              )}
+              {currentResult.quality && (
+                <NdviMetric
+                  label="Confiança"
+                  value={capitalize(currentResult.quality.confidence)}
+                  detail={`${currentResult.quality.validPixelCount.toLocaleString("pt-BR")} pixels válidos`}
+                  warning={currentResult.quality.confidence === "insuficiente"}
+                />
+              )}
             </div>
+
+            {currentResult.quality && (
+              <div className="ndvi-quality-panel">
+                <div>
+                  <strong>Qualidade dentro do talhão</strong>
+                  <small>Avaliação por pixel com a camada SCL, não pela nuvem geral da cena.</small>
+                </div>
+                <span><strong>{formatNumber(currentResult.quality.cloudPercentage, 1)}%</strong><small>Nuvens/cirrus</small></span>
+                <span><strong>{formatNumber(currentResult.quality.shadowPercentage, 1)}%</strong><small>Sombras</small></span>
+                <span><strong>{formatNumber(currentResult.quality.noDataPercentage, 1)}%</strong><small>Inválido/NoData</small></span>
+                <span><strong>{formatNumber(currentResult.quality.waterPercentage, 1)}%</strong><small>Água removida</small></span>
+              </div>
+            )}
 
             <div className="ndvi-result-grid">
               <article className="ndvi-distribution-card">
@@ -894,8 +1043,29 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
                   <span><Layers3 size={18} /></span>
                   <div><strong>Distribuição por classe</strong><small>Percentual e hectares válidos</small></div>
                 </div>
+                <div className="ndvi-classification-toggle" aria-label="Método de classificação">
+                  <button
+                    type="button"
+                    data-active={classificationMode === "relative"}
+                    onClick={() => setClassificationMode("relative")}
+                  >
+                    Relativa ao talhão
+                  </button>
+                  <button
+                    type="button"
+                    data-active={classificationMode === "general"}
+                    onClick={() => setClassificationMode("general")}
+                  >
+                    Faixas gerais
+                  </button>
+                </div>
+                <p className="ndvi-classification-note">
+                  {classificationMode === "relative"
+                    ? "Modo recomendado: compara cada pixel com a distribuição do próprio talhão."
+                    : "Faixas apenas referenciais; não representam diagnóstico agronômico."}
+                </p>
                 <div className="ndvi-class-chart">
-                  {currentResult.classes.map((item) => (
+                  {displayedClasses.map((item) => (
                     <div key={item.id}>
                       <span className="ndvi-class-color" style={{ backgroundColor: item.color }} />
                       <span><strong>{item.label}</strong><small>{formatNumber(item.hectares, 2)} ha</small></span>
@@ -916,6 +1086,12 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
                   <li>Vistoriar primeiro as zonas persistentes de menor índice.</li>
                   <li>Cruzar com clima, solo, análise foliar e fotografias de campo.</li>
                   <li>Registrar a observação antes de definir qualquer intervenção.</li>
+                  {agriculture.selectedPlot?.crop === "Café" && (
+                    <li>
+                      Em café jovem ou espaçado, considere solo e vegetação das entrelinhas;
+                      o NDVI não mede produtividade diretamente.
+                    </li>
+                  )}
                 </ul>
               </article>
             </div>
@@ -1007,8 +1183,17 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
               <article key={zone.id}>
                 <span><TriangleAlert size={18} /></span>
                 <div><strong>{zone.label}</strong><p>{zone.reason}</p><small>{formatNumber(zone.hectares, 2)} ha · {formatCoordinate(zone.centroid)}</small></div>
-                <button type="button" disabled title="Integração com tarefas de campo pendente">
-                  Vistoria pendente <ChevronRight size={15} />
+                <button
+                  type="button"
+                  disabled={!agriculture.selectedPlot}
+                  onClick={() => createInspection(zone)}
+                  title={
+                    agriculture.selectedPlot
+                      ? "Criar vistoria no caderno de campo"
+                      : "Selecione um talhão para criar a vistoria"
+                  }
+                >
+                  Criar vistoria <ChevronRight size={15} />
                 </button>
               </article>
             ))}
@@ -1030,8 +1215,8 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
             A busca consulta o STAC público do Copernicus. O processamento raster, a máscara SCL,
             as métricas e os mapas dependem de um serviço geoespacial configurado pelo operador.
             Landsat 8/9 está previsto como contingência arquitetural e ainda não está habilitado
-            nesta interface. Comparação visual em divisor, rotas de vistoria e vínculo com
-            alertas também dependem do próximo serviço operacional.
+            nesta interface. As zonas processadas podem gerar vistorias no caderno de campo;
+            rotas e anexos fotográficos ainda dependem da próxima integração operacional.
           </p>
         </div>
         <a href="./ndvi-integration.html" target="_blank">
@@ -1065,15 +1250,29 @@ function NdviMetric({
 function ComparisonSummary({ left, right }: { left: NdviResult; right: NdviResult }) {
   const difference = right.statistics.mean - left.statistics.mean;
   const rising = difference >= 0;
+  const change =
+    difference <= -0.1
+      ? "Queda muito significativa"
+      : difference <= -0.04
+        ? "Queda moderada"
+        : difference < 0.04
+          ? "Estável"
+          : difference < 0.1
+            ? "Aumento moderado"
+            : "Aumento significativo";
+  const comparableSensor = left.sensor === right.sensor;
 
   return (
     <div className="ndvi-comparison-summary" data-rising={rising}>
       {rising ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
       <span>
         <strong>{difference >= 0 ? "+" : ""}{formatNumber(difference, 3)} NDVI médio</strong>
+        <small>{change}. A causa de qualquer mudança deve ser confirmada em campo.</small>
         <small>
           {left.sensor} {left.resolutionMeters} m → {right.sensor} {right.resolutionMeters} m.
-          Diferenças de qualidade e cobertura devem ser consideradas.
+          {comparableSensor
+            ? " Diferenças de qualidade, sazonalidade e manejo devem ser consideradas."
+            : " Sensores diferentes reduzem a comparabilidade direta."}
         </small>
       </span>
     </div>
@@ -1152,4 +1351,8 @@ function slugify(value: string): string {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "") || "croqui-lavoura"
   );
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toLocaleUpperCase("pt-BR") + value.slice(1);
 }

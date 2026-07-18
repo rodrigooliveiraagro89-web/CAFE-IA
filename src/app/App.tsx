@@ -67,7 +67,20 @@ export function App() {
       )}
       {activeView === "propriedades" && <PropertyManager agriculture={agriculture} />}
       {activeView === "modulos" && <ModuleHub />}
-      {activeView === "ndvi" && <NdviModule onNavigate={navigate} agriculture={agriculture} />}
+      {activeView === "ndvi" && (
+        <NdviModule
+          onNavigate={navigate}
+          agriculture={agriculture}
+          onCreateInspection={(input) => {
+            if (!agriculture.selectedProperty || !agriculture.selectedPlot) return;
+            fieldBook.addRecord(
+              agriculture.selectedProperty.id,
+              agriculture.selectedPlot.id,
+              input,
+            );
+          }}
+        />
+      )}
       {activeView === "caderno" && (
         <FieldNotebook
           agriculture={agriculture}

@@ -16,11 +16,17 @@
 - Pré-filtro por interseção, intervalo de datas e `eo:cloud_cover`.
 - Contrato assíncrono para processamento, progresso, cancelamento, retry e histórico.
 - Motor testado para a fórmula, NoData, divisão por zero, máscara e estatísticas.
+- Serviço FastAPI implementado em `services/ndvi-api`, usando o Sentinel Hub Process API
+  para obter B04, B08, SCL e `dataMask` sem expor credenciais.
+- Importação de KML/GeoJSON no módulo, validação de auto-interseção e aviso de
+  compatibilidade espacial para talhões pequenos.
+- Estatísticas profissionais, percentis, CV, uniformidade, classificação relativa, qualidade
+  dentro do talhão e zonas espaciais do quartil inferior.
 
 O mapa regional NASA é uma visualização real, mas não substitui o recorte de precisão do
 Sentinel‑2. O catálogo retorna metadados reais sem que a AGRYN invente raster, métricas ou
-zonas. Estatísticas e recorte Sentinel‑2 continuam bloqueados quando `VITE_NDVI_API_URL`
-não está configurado.
+zonas. Estatísticas e recorte Sentinel‑2 continuam bloqueados no site público enquanto
+`VITE_NDVI_API_URL` e as credenciais do serviço não estiverem configurados.
 
 ## Fórmula e qualidade
 
@@ -68,15 +74,26 @@ zonas de atenção, proveniência e URLs temporárias das camadas NDVI/cor natur
 
 `DELETE /v1/ndvi/jobs/{id}` cancela um trabalho pendente.
 
-Arquitetura recomendada:
+Arquitetura implementada nesta entrega:
 
-- FastAPI para validação e API.
-- Rasterio/GDAL para COG, reprojeção, máscara e estatísticas.
-- fila assíncrona para cenas grandes;
-- PostGIS para talhões, zonas e histórico;
-- armazenamento compatível com S3 para rasters derivados e relatórios;
-- cache por hash de `scene_id + geometry + algoritmo`;
-- tiles temporários ou COG renderizado por titiler.
+- FastAPI para validação, fila local e API.
+- Sentinel Hub Process API para reflectância de superfície e alinhamento das bandas.
+- Rasterio, NumPy, Shapely, PyProj e Pillow para máscara, estatísticas, zonas e imagens.
+- Cache por hash de `scene_id + geometry + algoritmo`.
+- Artefatos locais: PNG NDVI, PNG cor natural e GeoTIFF auditável.
+
+Para produção com múltiplas instâncias ainda é necessário substituir a fila em memória por
+Redis/PostgreSQL, usar armazenamento de objetos e aplicar expiração automática dos artefatos.
+
+## Estatísticas e classificação
+
+Além de média, mínimo, máximo, mediana e desvio-padrão, o processador calcula P10, P25,
+P75, P90, coeficiente de variação, quantidade de pixels e uniformidade:
+
+`uniformidade = 100 × (1 − min(1, σ / max(|μ|, 0,15)))`
+
+Esse índice mede somente homogeneidade espacial. A classificação profissional usa P10, P25,
+P75 e P90 do próprio talhão; as faixas gerais permanecem disponíveis apenas como referência.
 
 ## Limites e custos
 

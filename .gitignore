@@ -4,3 +4,8 @@ coverage/
 .vite/
 *.local
 *.log
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+services/ndvi-api/data/

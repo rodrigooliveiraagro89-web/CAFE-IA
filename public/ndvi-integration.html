@@ -18,15 +18,16 @@
     <p>Transparência técnica da integração por satélite.</p>
     <section>
       <h2>Disponível agora</h2>
-      <p>Busca real de cenas Sentinel‑2 L2A no catálogo STAC público do Copernicus Data Space, desenho de talhão, área, seleção de datas e estados de qualidade.</p>
+      <p>Busca real de cenas Sentinel‑2 L2A no catálogo STAC público, NDVI regional NASA, desenho ou importação KML/GeoJSON, validação do croqui, área e seleção de datas.</p>
     </section>
     <section>
-      <h2 class="status">Processamento a configurar</h2>
-      <p>O raster NDVI, as métricas e as zonas exigem um serviço privado configurado em <code>VITE_NDVI_API_URL</code>. A AGRYN não gera resultados fictícios quando esse serviço está ausente.</p>
+      <h2 class="status">Processador Sentinel‑2 implementado</h2>
+      <p>O serviço FastAPI calcula raster NDVI em 10 m, qualidade dentro do talhão, estatísticas, percentis, uniformidade, classificação relativa e zonas de atenção. Para ativá-lo no site público, o operador deve hospedá-lo, configurar as credenciais oficiais e informar <code>VITE_NDVI_API_URL</code>.</p>
     </section>
     <section>
       <h2>Fórmula e máscara</h2>
       <p><code>NDVI = (B08 − B04) / (B08 + B04)</code>. A máscara SCL exclui NoData, saturação, sombra, nuvens, cirrus e neve/gelo, e a cobertura válida é calculada dentro do talhão.</p>
+      <p>A classificação relativa usa P10, P25, P75 e P90 do próprio talhão. O índice de uniformidade representa somente homogeneidade espacial, nunca produtividade.</p>
     </section>
     <section>
       <h2>Segredos e custos</h2>
