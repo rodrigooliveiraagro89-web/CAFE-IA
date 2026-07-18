@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { House, LayoutGrid, ShieldCheck } from "lucide-react";
+import { House, LayoutGrid, Satellite, ShieldCheck } from "lucide-react";
 
-export type AppView = "inicio" | "modulos" | "seguranca";
+export type AppView = "inicio" | "modulos" | "ndvi" | "seguranca";
 
 export type NavigationItem = {
   id: AppView;
@@ -13,6 +13,7 @@ export type NavigationItem = {
 export const navigationItems: NavigationItem[] = [
   { id: "inicio", label: "Início", description: "Visão geral da operação", icon: House },
   { id: "modulos", label: "Módulos", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
+  { id: "ndvi", label: "NDVI", description: "Monitoramento por satélite", icon: Satellite },
   {
     id: "seguranca",
     label: "Governança",
