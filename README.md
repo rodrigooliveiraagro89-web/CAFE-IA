@@ -10,6 +10,8 @@ Plataforma multicultura de inteligência agrícola que integra propriedades, tal
 - Cadastro de propriedades e talhões sem dados de demonstração.
 - Importação de limites em GeoJSON e KML, com cálculo da área em hectares.
 - NDVI Sentinel-2 conectado ao talhão e ao polígono cadastrado.
+- Processador FastAPI Sentinel‑2 L2A em `services/ndvi-api`, com B04/B08/SCL,
+  estatísticas profissionais, qualidade por pixel e zonas de atenção.
 - Caderno de campo com atividades planejadas/concluídas, quantidades, unidades e custos.
 - Centro de custos consolidado por talhão e categoria.
 - Hub pesquisável com 22 acessos agrícolas organizados por finalidade.

@@ -115,6 +115,55 @@ export function closePolygon(points: readonly Position[]): GeoPolygon {
   return { type: "Polygon", coordinates: [ring] };
 }
 
+export function polygonValidationIssue(points: readonly Position[]): string | null {
+  if (points.length < 3) return "O croqui precisa de pelo menos três vértices.";
+  if (
+    points.some(
+      ([longitude, latitude]) =>
+        !Number.isFinite(longitude) ||
+        !Number.isFinite(latitude) ||
+        longitude < -180 ||
+        longitude > 180 ||
+        latitude < -90 ||
+        latitude > 90,
+    )
+  ) {
+    return "O croqui contém coordenadas fora dos limites geográficos.";
+  }
+
+  const unique = new Set(points.map(([longitude, latitude]) => `${longitude},${latitude}`));
+  if (unique.size < 3) return "O croqui precisa de três vértices diferentes.";
+
+  const closed = [...points, points[0]];
+  for (let left = 0; left < closed.length - 1; left += 1) {
+    for (let right = left + 1; right < closed.length - 1; right += 1) {
+      const adjacent =
+        Math.abs(left - right) <= 1 ||
+        (left === 0 && right === closed.length - 2);
+      if (adjacent) continue;
+      if (
+        segmentsIntersect(
+          closed[left],
+          closed[left + 1],
+          closed[right],
+          closed[right + 1],
+        )
+      ) {
+        return "O limite se cruza. Ajuste os vértices para formar um único contorno.";
+      }
+    }
+  }
+
+  try {
+    if (polygonAreaHectares(closePolygon(points)) <= 0.0001) {
+      return "O croqui não possui área mensurável.";
+    }
+  } catch {
+    return "O croqui não pôde ser validado.";
+  }
+  return null;
+}
+
 export function polygonAreaHectares(polygon: GeoPolygon): number {
   const ring = polygon.coordinates[0];
   if (!ring || ring.length < 4) return 0;
@@ -206,4 +255,20 @@ export function responsibleInterpretation(
 
 function toRadians(value: number): number {
   return (value * Math.PI) / 180;
+}
+
+function segmentsIntersect(
+  firstStart: Position,
+  firstEnd: Position,
+  secondStart: Position,
+  secondEnd: Position,
+): boolean {
+  const orientation = (start: Position, middle: Position, end: Position) =>
+    (middle[1] - start[1]) * (end[0] - middle[0]) -
+    (middle[0] - start[0]) * (end[1] - middle[1]);
+  const first = orientation(firstStart, firstEnd, secondStart);
+  const second = orientation(firstStart, firstEnd, secondEnd);
+  const third = orientation(secondStart, secondEnd, firstStart);
+  const fourth = orientation(secondStart, secondEnd, firstEnd);
+  return (first > 0) !== (second > 0) && (third > 0) !== (fourth > 0);
 }

@@ -23,5 +23,7 @@ limite de API, erro de processamento, dados insuficientes e fora da cobertura.
 
 ## Consequências
 
-O módulo entrega busca real imediatamente, mas mantém processamento e indicadores bloqueados
-até que um operador configure `VITE_NDVI_API_URL` e o backend correspondente.
+O módulo entrega busca real imediatamente. O processador correspondente está implementado em
+`services/ndvi-api`, mas os indicadores Sentinel‑2 permanecem bloqueados no site público até
+que um operador publique o serviço, configure as credenciais CDSE e defina
+`VITE_NDVI_API_URL`.

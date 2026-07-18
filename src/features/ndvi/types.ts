@@ -50,7 +50,7 @@ export type NdviScene = {
 };
 
 export type NdviClass = {
-  id: "muito-baixo" | "baixo" | "moderado" | "alto" | "muito-alto";
+  id: string;
   label: string;
   color: string;
   min: number;
@@ -66,6 +66,23 @@ export type NdviStatistics = {
   maximum: number;
   median: number;
   standardDeviation: number;
+  coefficientOfVariation?: number;
+  percentile10?: number;
+  percentile25?: number;
+  percentile75?: number;
+  percentile90?: number;
+  uniformityIndex?: number;
+  validPixelCount?: number;
+};
+
+export type NdviQuality = {
+  confidence: "alta" | "moderada" | "insuficiente";
+  cloudPercentage: number;
+  shadowPercentage: number;
+  noDataPercentage: number;
+  waterPercentage: number;
+  validPixelCount: number;
+  totalPixelCount: number;
 };
 
 export type AttentionZone = {
@@ -99,6 +116,9 @@ export type NdviResult = {
   minimumValidCoveragePercentage: number;
   statistics: NdviStatistics;
   classes: NdviClass[];
+  generalClasses?: NdviClass[];
+  relativeClasses?: NdviClass[];
+  quality?: NdviQuality;
   attentionZones: AttentionZone[];
   ndviLayer?: NdviLayer;
   trueColorLayer?: NdviLayer;
@@ -108,6 +128,8 @@ export type NdviResult = {
     itemUrl?: string;
     processorVersion: string;
     maskMethod: string;
+    formula?: string;
+    algorithmVersion?: string;
   };
 };
 
