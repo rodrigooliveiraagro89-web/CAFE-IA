@@ -1,60 +1,62 @@
-# Resumo técnico — experiência AGRYN
+# Resumo técnico — plataforma AGRYN
 
 Data: 18 de julho de 2026
 
 ## Resultado
 
-A Etapa 1 reposiciona o produto como AGRYN, uma plataforma SaaS/AgTech premium, clara e orientada à decisão. A nova página principal foi redesenhada sem remover os módulos operacionais existentes.
+A AGRYN evoluiu de um hub visual para uma plataforma multicultura com contexto operacional persistente. A entrega preserva os módulos existentes, o clima e o NDVI e adiciona os fluxos fundamentais de propriedade, talhão, caderno de campo e custos.
 
 ## Identidade aplicada
 
-- Símbolo AGRYN em SVG local e reutilizável.
-- Paleta principal: `#10B981`, `#059669`, `#22C55E`, `#0F172A`, `#FFFFFF` e `#FBBF24`.
+- Paleta `#10B981`, `#059669`, `#22C55E`, `#0F172A`, `#FFFFFF` e `#FBBF24`.
 - Orbitron para títulos e Inter para textos.
-- Temas claro e escuro com contraste, foco visível e preferência persistida.
-- Estética de precisão: cartões contidos, brilho verde sutil, ícones lineares e hierarquia objetiva.
+- Temas claro e escuro, foco visível e preferência persistida.
+- Interface escura premium com cartões contidos, brilho sutil e ícones lineares.
+- Símbolo AGRYN centralizado em um único ativo substituível.
+- Capa social própria em `public/brand/agryn-social.png`.
 
 ## Experiência entregue
 
-- Sidebar recolhível com marca, perfil e atalhos operacionais.
-- Topbar com propriedade, data, clima, notificações e tema.
-- Dashboard com saudação, ações rápidas, comando da AGRYN IA e indicadores honestos.
-- Hub com busca e filtros para 16 módulos agrícolas.
-- Barra móvel com Início, Diagnóstico, Análises, AGRYN IA e Mais.
-- Cartões totalmente clicáveis e com ícones específicos por função.
-- Integração por rota com diagnóstico de solo e folhas, imagem, defensivos, clima, mapa, adubação, produtos, relatórios, mercado e configurações.
+- Dashboard com contexto real, indicadores vazios honestos e Índice AGRYN protegido.
+- Cadastro de propriedades com produtor, responsável técnico e localização.
+- Cadastro de talhões com cultura, variedade, safra, plantio, fenologia, espaçamento, população e área.
+- Importação de limites GeoJSON/KML e cálculo geodésico em hectares.
+- Seleção ativa de propriedade/talhão refletida no cabeçalho e nas telas.
+- NDVI por satélite conectado ao limite geográfico do talhão.
+- Caderno de campo com tipos de atividade, data, status, quantidade, unidade, notas e custo.
+- Centro de custos derivado somente dos lançamentos do usuário.
+- Hub com 22 acessos em Monitoramento, Análises, Manejo, Gestão, Inteligência Artificial e Relatórios.
+- Navegação móvel com Início, Áreas, Análises, Mapas e Mais.
 
 ## Segurança e integridade
 
-- Nenhum número agrícola é inventado para preencher o dashboard.
-- Recomendações permanecem bloqueadas sem dados mínimos e plausíveis.
-- Chaves privadas de IA não são solicitadas nem persistidas pelo novo frontend.
-- A AGRYN IA apresenta sugestões de entrada, mas não simula uma análise conectada.
+- Nenhum índice, custo, produtividade ou número agrícola é inventado.
+- O Índice AGRYN permanece “Não calculado” até os requisitos serem atendidos.
+- Recomendações continuam bloqueadas sem dados mínimos e plausíveis.
+- O catálogo Sentinel-2 consulta uma fonte pública real.
+- Sem uma API de processamento configurada, o NDVI não fabrica raster ou estatística.
+- Nesta etapa, os dados operacionais ficam somente no navegador do usuário.
 
 ## Arquitetura
 
-- React, TypeScript, Vite e CSS baseado em tokens.
-- Componentes de marca, shell, cartões de módulos e indicadores reutilizáveis.
-- Catálogo central de módulos para evitar rotas e rótulos duplicados.
-- Páginas legadas preservadas no pacote final durante a migração.
+- React 19, TypeScript, Vite e CSS baseado em tokens.
+- Domínios separados para contexto agrícola, registros de campo, segurança e NDVI.
+- Hooks persistentes para propriedades/talhões e caderno de campo.
+- Catálogo central de módulos e shell responsivo.
+- Páginas legadas preservadas durante a migração gradual.
 
 ## Validação executada
 
 - ESLint aprovado sem avisos.
 - TypeScript aprovado em modo estrito.
-- Vitest: 3 arquivos e 8 testes aprovados.
+- Vitest: 6 arquivos e 17 testes aprovados.
 - Build de produção aprovado.
-- JavaScript principal: aproximadamente 223 kB, 70 kB compactado.
-- CSS e fontes locais: aproximadamente 65 kB de CSS, 13 kB compactado.
-- QA visual em 1440 × 1000 e 390 × 844.
-- Um `h1`, um `main`, nenhum link ou botão sem nome e nenhum estouro horizontal.
-- Navegação, busca, filtros, tema, menu móvel e rota direta de Análise Foliar verificados.
-- Nenhum erro ou aviso no console da nova experiência React.
+- Parser GeoJSON/KML e consolidação de custos cobertos por testes.
+- Fluxos responsivos sujeitos à verificação final no navegador antes da publicação.
 
-## Transição controlada
+## Limites conhecidos
 
-As páginas operacionais preservadas ainda carregam algumas bibliotecas de terceiros diretamente no navegador, como já ocorria no produto anterior. Isso mantém OCR, mapas, gráficos e demais funções em operação nesta etapa. A retirada dessas dependências deve acompanhar a migração de cada módulo para a nova arquitetura, com testes de equivalência funcional.
-
-## Próxima etapa recomendada
-
-Implementar autenticação multiempresa, cadastro de propriedades/talhões/safras, camada de serviços segura e conexão dos indicadores a dados reais. Em seguida, migrar os módulos operacionais para componentes React mantendo as mesmas rotas e regras agronômicas.
+- Shapefile precisa ser convertido para GeoJSON nesta versão.
+- Sincronização multiusuário, autenticação e banco de dados ainda não fazem parte desta etapa local.
+- O símbolo atual deve ser substituído pelo arquivo vetorial oficial assim que o ativo original estiver disponível.
+- O processamento espectral completo exige o serviço descrito em `docs/ndvi-integration.md`.

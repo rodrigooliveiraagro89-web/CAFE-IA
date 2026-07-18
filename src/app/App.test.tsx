@@ -10,7 +10,7 @@ describe("App AGRYN", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: /Rodrigo/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Módulos da operação" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Análise de solo:/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Solo:/i })).toHaveAttribute(
       "href",
       "./agryn.html?tab=solo",
     );
@@ -26,7 +26,7 @@ describe("App AGRYN", () => {
 
     await user.type(screen.getByRole("searchbox", { name: "Buscar módulo" }), "clima");
     expect(screen.getByRole("link", { name: /Clima:/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Análise de solo:/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Solo:/i })).not.toBeInTheDocument();
   });
 
   it("abre os critérios de governança pela navegação", async () => {

@@ -1,7 +1,22 @@
 import type { LucideIcon } from "lucide-react";
-import { House, LayoutGrid, Satellite, ShieldCheck } from "lucide-react";
+import {
+  BookOpenCheck,
+  CircleDollarSign,
+  House,
+  LandPlot,
+  LayoutGrid,
+  Satellite,
+  ShieldCheck,
+} from "lucide-react";
 
-export type AppView = "inicio" | "modulos" | "ndvi" | "seguranca";
+export type AppView =
+  | "inicio"
+  | "propriedades"
+  | "modulos"
+  | "ndvi"
+  | "caderno"
+  | "custos"
+  | "seguranca";
 
 export type NavigationItem = {
   id: AppView;
@@ -12,8 +27,16 @@ export type NavigationItem = {
 
 export const navigationItems: NavigationItem[] = [
   { id: "inicio", label: "Início", description: "Visão geral da operação", icon: House },
+  {
+    id: "propriedades",
+    label: "Propriedades e talhões",
+    description: "Culturas, safras e áreas",
+    icon: LandPlot,
+  },
   { id: "modulos", label: "Módulos", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
-  { id: "ndvi", label: "NDVI", description: "Monitoramento por satélite", icon: Satellite },
+  { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },
+  { id: "caderno", label: "Caderno de campo", description: "Atividades e histórico", icon: BookOpenCheck },
+  { id: "custos", label: "Custos", description: "Gestão financeira por área", icon: CircleDollarSign },
   {
     id: "seguranca",
     label: "Governança",

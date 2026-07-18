@@ -1,14 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { evaluateRecommendationReadiness } from "../domain/safety";
+import { CostCenter } from "../features/costs/CostCenter";
 import { Dashboard } from "../features/dashboard/Dashboard";
+import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
 import { ModuleHub } from "../features/modules/ModuleHub";
 import { NdviModule } from "../features/ndvi/NdviModule";
+import { PropertyManager } from "../features/properties/PropertyManager";
 import { SafetyCenter } from "../features/safety/SafetyCenter";
+import { useAgriculturalContext } from "../lib/useAgriculturalContext";
+import { useFieldRecords } from "../lib/useFieldRecords";
 import { loadPreferences, savePreferences, type ThemePreference } from "../lib/preferences";
 import type { AppView } from "./navigation";
 
-const validViews: AppView[] = ["inicio", "modulos", "ndvi", "seguranca"];
+const validViews: AppView[] = [
+  "inicio",
+  "propriedades",
+  "modulos",
+  "ndvi",
+  "caderno",
+  "custos",
+  "seguranca",
+];
 
 export function App() {
   const initialPreferences = useMemo(() => loadPreferences(), []);
@@ -16,6 +29,8 @@ export function App() {
     getInitialView(initialPreferences.lastView),
   );
   const [theme, setTheme] = useState<ThemePreference>(initialPreferences.theme);
+  const agriculture = useAgriculturalContext();
+  const fieldBook = useFieldRecords();
   const safety = useMemo(() => evaluateRecommendationReadiness(), []);
 
   useEffect(() => {
@@ -27,9 +42,10 @@ export function App() {
   function navigate(view: AppView) {
     setActiveView(view);
     const url = new URL(window.location.href);
-    if (view === "ndvi") url.searchParams.set("view", "ndvi");
-    else url.searchParams.delete("view");
+    if (view === "inicio") url.searchParams.delete("view");
+    else url.searchParams.set("view", view);
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return (
@@ -38,10 +54,37 @@ export function App() {
       onNavigate={navigate}
       theme={theme}
       onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+      selectedProperty={agriculture.selectedProperty}
+      selectedPlot={agriculture.selectedPlot}
     >
-      {activeView === "inicio" && <Dashboard safety={safety} onNavigate={navigate} />}
+      {activeView === "inicio" && (
+        <Dashboard
+          safety={safety}
+          onNavigate={navigate}
+          agriculture={agriculture}
+          records={fieldBook.records}
+        />
+      )}
+      {activeView === "propriedades" && <PropertyManager agriculture={agriculture} />}
       {activeView === "modulos" && <ModuleHub />}
-      {activeView === "ndvi" && <NdviModule onNavigate={navigate} />}
+      {activeView === "ndvi" && <NdviModule onNavigate={navigate} agriculture={agriculture} />}
+      {activeView === "caderno" && (
+        <FieldNotebook
+          agriculture={agriculture}
+          records={fieldBook.records}
+          onAdd={fieldBook.addRecord}
+          onToggle={fieldBook.toggleRecord}
+          onRemove={fieldBook.removeRecord}
+          onNavigate={navigate}
+        />
+      )}
+      {activeView === "custos" && (
+        <CostCenter
+          agriculture={agriculture}
+          records={fieldBook.records}
+          onNavigate={navigate}
+        />
+      )}
       {activeView === "seguranca" && <SafetyCenter safety={safety} />}
     </AppShell>
   );
