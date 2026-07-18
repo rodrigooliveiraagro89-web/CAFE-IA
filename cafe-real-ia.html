@@ -321,14 +321,27 @@ function loadPdfjsLib() {
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: Sprout },
-  { id: "mercado", label: "Mercado", icon: DollarSign },
+  { id: "mercado", label: "Mercado", icon: TrendingUp },
   { id: "ia", label: "Café IA", icon: MessageCircle },
-  { id: "solo", label: "Análise de Solo", icon: Droplet },
+  { id: "solo", label: "Análise de Solo", icon: FlaskConical },
   { id: "adubacao", label: "Calagem e Adubação", icon: Leaf },
   { id: "clima", label: "Clima", icon: CloudRain },
   { id: "calc", label: "Calculadoras", icon: Calculator },
   { id: "relatorio", label: "Relatório", icon: FileText },
 ];
+
+// Cor de destaque por módulo — dá identidade visual própria a cada aba
+// (mesma paleta verde-terra do app, sem trocar a marca, só diferenciando o módulo ativo)
+const TAB_COLORS = {
+  dashboard: "border-emerald-700 text-emerald-800",
+  mercado: "border-amber-500 text-amber-700",
+  ia: "border-teal-600 text-teal-700",
+  solo: "border-amber-800 text-amber-900",
+  adubacao: "border-lime-600 text-lime-700",
+  clima: "border-sky-600 text-sky-700",
+  calc: "border-stone-600 text-stone-700",
+  relatorio: "border-stone-700 text-stone-800",
+};
 
 const RANGES = {
   pH: { baixo: 5.0, alto: 6.0 },
@@ -1969,8 +1982,9 @@ REGRAS:
 3. Sempre termine cada horizonte com uma frase prática, no nível de "o que fazer na fazenda/na negociação", não jargão de mercado financeiro.
 4. Tom: direto, confiante, sem enrolação — como um agrônomo experiente conversando com o produtor, não um analista de banco.
 5. Quando o histórico de preços for curto ou faltar, seja honesto sobre a limitação e baseie a leitura em sazonalidade conhecida do calendário cafeeiro do Sul de Minas.
-6. IMPORTANTE para o JSON ficar válido: NUNCA use aspas duplas (") dentro dos textos (resumo, fatores, o_que_significa, alerta_relevante). Se precisar destacar uma expressão ou citar uma fala, use aspas simples (') ou travessão — nunca aspas duplas, pois isso quebra o JSON.
-7. Estrutura de saída em JSON, exatamente com estas chaves:
+6. Você recebe três referências de preço: CEPEA/ESALQ (físico, R$/saca), B3/ICF (futuro doméstico, US$/saca, referência de hedge do produtor nacional) e ICE Futures NY (futuro internacional, centavos US$/libra). Quando B3 e ICE convergem (mesma direção/intensidade), isso reforça a leitura. Quando divergem — B3 com prêmio ou desconto forte sobre o que o ICE plus câmbio sugeririam — trate isso como um dado relevante de análise (ex: mercado doméstico precificando algo que o internacional ainda não capturou) e diga isso com todas as letras num dos horizontes.
+7. IMPORTANTE para o JSON ficar válido: NUNCA use aspas duplas (") dentro dos textos (resumo, fatores, o_que_significa, alerta_relevante). Se precisar destacar uma expressão ou citar uma fala, use aspas simples (') ou travessão — nunca aspas duplas, pois isso quebra o JSON.
+8. Estrutura de saída em JSON, exatamente com estas chaves:
 
 {
   "data_referencia": "YYYY-MM-DD",
@@ -2089,7 +2103,7 @@ function repararJSON(txt) {
 }
 
 // Cartão de cotação com direção (alta = verde, baixa = vermelho — é DIREÇÃO, não bom/ruim)
-function CotacaoCard({ titulo, valor, unidade, variacao, destaque, icon }) {
+function CotacaoCard({ titulo, valor, unidade, variacao, destaque, icon, legenda }) {
   const dir = variacao ? variacao.dir : 0;
   const cor = dir > 0 ? "#059669" : dir < 0 ? "#e11d48" : "#78716c";
   const Seta = dir > 0 ? TrendingUp : dir < 0 ? TrendingDown : Minus;
@@ -2107,6 +2121,7 @@ function CotacaoCard({ titulo, valor, unidade, variacao, destaque, icon }) {
             <${Seta} size=${12}/> ${variacao.pct > 0 ? "+" : ""}${nf(variacao.pct, 2)}%
           </span>` : html`<span className="text-[11px] text-stone-300">s/ variação</span>`}
       </div>
+      ${legenda && html`<p className="text-[10px] text-stone-400 mt-1.5 pt-1.5 border-t border-stone-100 leading-snug">${legenda}</p>`}
     </div>
   `;
 }
@@ -2126,7 +2141,7 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
   const [showForm, setShowForm] = useState(false);
   const hoje = hojeISO();
   const ultima = ultimaCotacao(cotacoes);
-  const [draft, setDraft] = useState({ data: hoje, cepea: "", ice: "", conilon: "", cambio: "", fonte: "CEPEA/ESALQ" });
+  const [draft, setDraft] = useState({ data: hoje, cepea: "", b3: "", b3Vencimento: "", ice: "", conilon: "", cambio: "", fonte: "CEPEA/ESALQ" });
   const [cambioAuto, setCambioAuto] = useState(null); // { valor, ts }
   const [loadingCambio, setLoadingCambio] = useState(false);
   const [loadingAnalise, setLoadingAnalise] = useState(false);
@@ -2160,6 +2175,7 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
   const media30 = mediaCampo(cotacoes, "cepea", 30);
   const media90 = mediaCampo(cotacoes, "cepea", 90);
   const varCepea = variacaoCampo(cotacoes, "cepea");
+  const varB3 = variacaoCampo(cotacoes, "b3");
   const varIce = variacaoCampo(cotacoes, "ice");
   const varCambio = variacaoCampo(cotacoes, "cambio");
   const varConilon = variacaoCampo(cotacoes, "conilon");
@@ -2185,6 +2201,8 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
     const rec = {
       data: draft.data || hoje,
       cepea: draft.cepea !== "" ? parseNumberBR(draft.cepea) : null,
+      b3: draft.b3 !== "" ? parseNumberBR(draft.b3) : null,
+      b3Vencimento: draft.b3Vencimento || null,
       ice: draft.ice !== "" ? parseNumberBR(draft.ice) : null,
       conilon: draft.conilon !== "" ? parseNumberBR(draft.conilon) : null,
       cambio: draft.cambio !== "" ? parseNumberBR(draft.cambio) : (cambioAuto ? cambioAuto.valor : null),
@@ -2210,6 +2228,8 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
         cepea_media_30d: media30,
         cepea_media_90d: media90,
         cepea_media_365d: mediaCampo(cotacoes, "cepea", 365),
+        b3_icf_usd_saca: ultima ? ultima.b3 : null,
+        b3_icf_vencimento: ultima ? ultima.b3Vencimento : null,
         ice_ny_centavos_lb: ultima ? ultima.ice : null,
         cambio_usd_brl: cambioHoje,
         historico_cepea_30d: cotacoesAsc(cotacoes).slice(-30).map((c) => ({ data: c.data, preco: c.cepea })),
@@ -2286,6 +2306,8 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
             <label className="block">Data<input type="date" value=${draft.data} onChange=${(e) => setDraft({ ...draft, data: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
             <label className="block">Fonte<input type="text" value=${draft.fonte} onChange=${(e) => setDraft({ ...draft, fonte: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
             <label className="block">CEPEA arábica (R$/saca 60kg)<input type="text" inputMode="decimal" placeholder="ex: 2450" value=${draft.cepea} onChange=${(e) => setDraft({ ...draft, cepea: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+            <label className="block">B3/ICF (US$/saca 60kg)<input type="text" inputMode="decimal" placeholder="ex: 235" value=${draft.b3} onChange=${(e) => setDraft({ ...draft, b3: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
+            <label className="block">Vencimento B3 (ex: ICFZ26)<input type="text" placeholder="opcional" value=${draft.b3Vencimento} onChange=${(e) => setDraft({ ...draft, b3Vencimento: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
             <label className="block">ICE NY (¢US$/lb)<input type="text" inputMode="decimal" placeholder="ex: 320" value=${draft.ice} onChange=${(e) => setDraft({ ...draft, ice: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
             <label className="block">Conilon (R$/saca)<input type="text" inputMode="decimal" placeholder="opcional" value=${draft.conilon} onChange=${(e) => setDraft({ ...draft, conilon: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
             <label className="block">Câmbio USD/BRL${loadingCambio ? " (buscando…)" : cambioAuto ? " (auto)" : ""}<input type="text" inputMode="decimal" value=${draft.cambio} onChange=${(e) => setDraft({ ...draft, cambio: e.target.value })} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1"/></label>
@@ -2296,11 +2318,45 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
           </div>
         </div>`}
 
-      <!-- Cards de cotação -->
+      <!-- Cards de cotação — os três preços respondem perguntas diferentes; a legenda de cada um deixa isso explícito -->
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        <${CotacaoCard} titulo="Café arábica · CEPEA/ESALQ" valor=${cepeaHoje != null ? "R$ " + nf(cepeaHoje, 0) : "—"} unidade="por saca de 60 kg" variacao=${varCepea} destaque=${true} icon=${html`<${Coffee} size=${15}/>`}/>
-        <${CotacaoCard} titulo="Arábica · ICE Futures (NY)" valor=${ultima && ultima.ice != null ? nf(ultima.ice, 2) + " ¢" : "—"} unidade="centavos de US$/libra" variacao=${varIce} icon=${html`<${TrendingUp} size=${15}/>`}/>
-        <${CotacaoCard} titulo="Câmbio USD/BRL" valor=${cambioHoje != null ? "R$ " + nf(cambioHoje, 4) : "—"} unidade=${cambioAuto ? "cotação automática do dia" : "informe no lançamento"} variacao=${varCambio} icon=${html`<${DollarSign} size=${15}/>`}/>
+        <${CotacaoCard}
+          titulo="Café arábica · CEPEA/ESALQ"
+          valor=${cepeaHoje != null ? "R$ " + nf(cepeaHoje, 0) : "—"}
+          unidade="por saca de 60 kg"
+          variacao=${varCepea}
+          destaque=${true}
+          icon=${html`<${Coffee} size=${15}/>`}
+          legenda="Quanto vale a sua saca pra vender agora, físico, no mercado brasileiro."
+        />
+        <${CotacaoCard}
+          titulo="B3 · Futuro (ICF)"
+          valor=${ultima && ultima.b3 != null ? "US$ " + nf(ultima.b3, 2) : "—"}
+          unidade=${ultima && ultima.b3Vencimento ? `por saca · venc. ${ultima.b3Vencimento}` : "por saca de 60 kg"}
+          variacao=${varB3}
+          icon=${html`<${TrendingUp} size=${15}/>`}
+          legenda="O que o mercado brasileiro precifica pra entrega futura — referência de hedge pro produtor nacional."
+        />
+        <${CotacaoCard}
+          titulo="Arábica · ICE Futures (NY)"
+          valor=${ultima && ultima.ice != null ? nf(ultima.ice, 2) + " ¢" : "—"}
+          unidade="centavos de US$/libra"
+          variacao=${varIce}
+          icon=${html`<${TrendingUp} size=${15}/>`}
+          legenda="O que o mercado internacional precifica — é o que puxa a tendência geral do café."
+        />
+        <${CotacaoCard}
+          titulo="Câmbio USD/BRL"
+          valor=${cambioHoje != null ? "R$ " + nf(cambioHoje, 4) : "—"}
+          unidade=${cambioAuto ? "cotação automática do dia" : "informe no lançamento"}
+          variacao=${varCambio}
+          icon=${html`<${DollarSign} size=${15}/>`}
+          legenda="Afeta direto o CEPEA em reais e a leitura do ICE (cotado em dólar)."
+        />
+      </div>
+
+      <!-- Conilon/Robusta — secundário, a base de produtores do app é arábica -->
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         <${CotacaoCard} titulo="Conilon/Robusta · CEPEA" valor=${ultima && ultima.conilon != null ? "R$ " + nf(ultima.conilon, 0) : "—"} unidade="por saca de 60 kg" variacao=${varConilon} icon=${html`<${Coffee} size=${15}/>`}/>
       </div>
 
@@ -3158,7 +3214,7 @@ Regras invioláveis:
             <button
               key=${t.id}
               onClick=${() => setTab(t.id)}
-              className=${"flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition " + (tab === t.id ? "border-emerald-700 text-emerald-800" : "border-transparent text-stone-500 hover:text-stone-700")}
+              className=${"flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-all duration-200 " + (tab === t.id ? (TAB_COLORS[t.id] || "border-emerald-700 text-emerald-800") : "border-transparent text-stone-500 hover:text-stone-700 hover:bg-stone-50")}
             >
               <${t.icon} size=${14}/>
               ${t.label}
