@@ -285,7 +285,7 @@ import {
   AlertTriangle, CheckCircle, Plus, Trash2, Loader2, Sun, Moon, MapPin, ClipboardList,
   Bug, Settings, KeyRound, Download, UploadCloud, X, Info, Eye, Edit3, ScrollText,
   Coffee, Mountain, TrendingUp, Activity, Layers, Ruler, ShieldCheck, FlaskConical, Gauge as GaugeIcon,
-  MessageCircle, Box, User, Cloud, LogOut,
+  MessageCircle, Box, User, Cloud, LogOut, Bot, Menu,
   TrendingDown, DollarSign, Bell, Newspaper, Minus, RefreshCw, Wallet, ExternalLink, LineChart as LineChartIcon
 } from "https://esm.sh/lucide-react@0.383.0?external=react&deps=react@18.3.1";
 
@@ -1398,6 +1398,115 @@ function AgrynMark({ size = 22 }) {
       <circle cx="101" cy="40" r="3.2" fill="#fbbf24"/>
       <path d="M88 72 L96 56 L101 40" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" fill="none"/>
     </svg>
+  `;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Navegação "app-like": sidebar recolhível no desktop, barra inferior     */
+/* fixa + menu "Mais" no mobile, botão flutuante do assistente.            */
+/* ---------------------------------------------------------------------- */
+
+// Módulos de acesso mais frequente — vão na barra inferior do mobile.
+// O resto entra no menu "Mais" (evita lotar a barra em telas pequenas).
+const MOBILE_PRIMARY_IDS = ["dashboard", "mercado", "ia", "clima"];
+
+function SidebarNav({ tab, setTab }) {
+  return html`
+    <aside className="hidden md:flex md:flex-col md:w-56 lg:w-64 shrink-0 bg-emerald-900 text-white print:hidden">
+      <div className="flex items-center gap-2 px-4 py-4 border-b border-emerald-800">
+        <${AgrynMark} size=${26}/>
+        <span className="text-lg font-semibold tracking-wide" style=${{ fontFamily: "'Orbitron', sans-serif" }}>AGRYN</span>
+      </div>
+      <nav className="flex-1 overflow-y-auto py-2" aria-label="Navegação principal">
+        ${TABS.map((t) => html`
+          <button
+            key=${t.id}
+            onClick=${() => setTab(t.id)}
+            aria-current=${tab === t.id ? "page" : undefined}
+            className=${"w-full flex items-center gap-3 pl-3 pr-4 py-2.5 text-sm font-medium text-left border-l-4 transition-colors " + (tab === t.id ? "bg-emerald-800 text-white border-amber-400" : "text-emerald-100/80 border-transparent hover:bg-emerald-800/60 hover:text-white")}
+          >
+            <${t.icon} size=${17}/>
+            ${t.label}
+          </button>
+        `)}
+      </nav>
+    </aside>
+  `;
+}
+
+function BottomTabBar({ tab, setTab, onMais }) {
+  const primarios = TABS.filter((t) => MOBILE_PRIMARY_IDS.includes(t.id));
+  const maisAtivo = !MOBILE_PRIMARY_IDS.includes(tab);
+  return html`
+    <nav
+      className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-stone-200 flex print:hidden"
+      style=${{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      aria-label="Navegação principal"
+    >
+      ${primarios.map((t) => html`
+        <button
+          key=${t.id}
+          onClick=${() => setTab(t.id)}
+          aria-current=${tab === t.id ? "page" : undefined}
+          className=${"flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium " + (tab === t.id ? "text-emerald-700" : "text-stone-400")}
+        >
+          <${t.icon} size=${20}/>
+          ${t.label.split(" ")[0]}
+        </button>
+      `)}
+      <button
+        onClick=${onMais}
+        aria-current=${maisAtivo ? "page" : undefined}
+        aria-label="Mais opções de navegação"
+        className=${"flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium " + (maisAtivo ? "text-emerald-700" : "text-stone-400")}
+      >
+        <${Menu} size=${20}/>
+        Mais
+      </button>
+    </nav>
+  `;
+}
+
+function MaisSheet({ tab, setTab, onClose }) {
+  const outros = TABS.filter((t) => !MOBILE_PRIMARY_IDS.includes(t.id));
+  return html`
+    <div className="md:hidden fixed inset-0 z-30 bg-black/40 flex items-end" onClick=${onClose}>
+      <div
+        className="bg-white w-full rounded-t-2xl p-4 space-y-1 anim-in"
+        style=${{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+        onClick=${(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold">Mais opções</p>
+          <button onClick=${onClose} aria-label="Fechar" className="text-stone-400 hover:text-stone-700"><${X} size=${18}/></button>
+        </div>
+        ${outros.map((t) => html`
+          <button
+            key=${t.id}
+            onClick=${() => { setTab(t.id); onClose(); }}
+            className=${"w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium " + (tab === t.id ? "bg-emerald-50 text-emerald-800" : "text-stone-600 hover:bg-stone-50")}
+          >
+            <${t.icon} size=${18}/>
+            ${t.label}
+          </button>
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+// Acesso rápido ao assistente Café IA de qualquer aba (sem precisar navegar até ela).
+function AssistantFab({ tab, setTab }) {
+  if (tab === "ia") return null;
+  return html`
+    <button
+      onClick=${() => setTab("ia")}
+      aria-label="Abrir assistente Café IA"
+      title="Assistente Café IA"
+      className="fixed z-20 right-4 bottom-20 md:bottom-6 w-14 h-14 rounded-full bg-emerald-700 text-white shadow-lg flex items-center justify-center hover:bg-emerald-800 transition-transform hover:scale-105 print:hidden"
+    >
+      <${Bot} size=${24}/>
+    </button>
   `;
 }
 
@@ -2607,6 +2716,7 @@ function CafeRealIA() {
   const [tab, setTab] = useState("dashboard");
   const [showConfig, setShowConfig] = useState(false);
   const [showConsulta, setShowConsulta] = useState(false);
+  const [showMais, setShowMais] = useState(false);
   const [theme, setTheme] = useState(persisted.theme || "light");
 
   // Assistente "Café IA" (chat) — histórico só da sessão
@@ -3334,45 +3444,36 @@ Regras invioláveis:
   });
 
   return html`
-    <div className="w-full min-h-screen bg-stone-50 text-stone-900">
+    <div className="w-full min-h-screen bg-stone-50 text-stone-900 md:flex">
+      <${SidebarNav} tab=${tab} setTab=${setTab} />
+
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
       <div className="sticky top-0 z-10">
         <header className="bg-emerald-900 text-white px-4 py-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 md:hidden">
               <${AgrynMark} size=${26}/>
               <h1 className="text-lg font-semibold tracking-wide" style=${{ fontFamily: "'Orbitron', sans-serif" }}>AGRYN</h1>
             </div>
+            <p className="hidden md:block text-sm text-emerald-100">Inteligência que cultiva resultados</p>
             <div className="flex items-center gap-1 print:hidden">
-              <button onClick=${() => setShowAuth(true)} className="relative text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title=${session ? "Conta conectada" : "Entrar / criar conta"}>
+              <button onClick=${() => setShowAuth(true)} aria-label=${session ? "Conta conectada" : "Entrar ou criar conta"} className="relative text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title=${session ? "Conta conectada" : "Entrar / criar conta"}>
                 <${User} size=${18}/>
                 ${session && html`<span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-300 border border-emerald-900"></span>`}
               </button>
-              <button onClick=${() => setTheme(theme === "dark" ? "light" : "dark")} className="text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title=${theme === "dark" ? "Tema claro" : "Tema escuro"}>
+              <button onClick=${() => setTheme(theme === "dark" ? "light" : "dark")} aria-label=${theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"} className="text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title=${theme === "dark" ? "Tema claro" : "Tema escuro"}>
                 ${theme === "dark" ? html`<${Sun} size=${18}/>` : html`<${Moon} size=${18}/>`}
               </button>
-              <button onClick=${() => setShowConfig(true)} className="text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title="Configurações">
+              <button onClick=${() => setShowConfig(true)} aria-label="Abrir configurações" className="text-emerald-100 hover:text-white p-1.5 rounded hover:bg-emerald-800" title="Configurações">
                 <${Settings} size=${18}/>
               </button>
             </div>
           </div>
-          <p className="text-emerald-200 text-xs mt-0.5">Inteligência que cultiva resultados — diagnóstico, calagem, adubação, foliar, defensivos, clima e calculadoras para cafeicultura</p>
+          <p className="text-emerald-200 text-xs mt-0.5 md:hidden">Inteligência que cultiva resultados — diagnóstico, calagem, adubação, foliar, defensivos, clima e calculadoras para cafeicultura</p>
         </header>
-
-        <nav className="flex overflow-x-auto bg-white border-b border-stone-200 px-2 gap-1 print:hidden">
-          ${TABS.map((t) => html`
-            <button
-              key=${t.id}
-              onClick=${() => setTab(t.id)}
-              className=${"flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-all duration-200 " + (tab === t.id ? (TAB_COLORS[t.id] || "border-emerald-700 text-emerald-800") : "border-transparent text-stone-500 hover:text-stone-700 hover:bg-stone-50")}
-            >
-              <${t.icon} size=${14}/>
-              ${t.label}
-            </button>
-          `)}
-        </nav>
       </div>
 
-      <main className="p-4 max-w-3xl mx-auto">
+      <main className="p-4 pb-20 md:pb-4 max-w-3xl mx-auto w-full">
         ${tab === "dashboard" && html`
           <div className="space-y-4">
             <!-- Capa -->
@@ -4376,6 +4477,11 @@ Regras invioláveis:
           </div>
         `}
       </main>
+      </div>
+
+      <${BottomTabBar} tab=${tab} setTab=${setTab} onMais=${() => setShowMais(true)} />
+      ${showMais && html`<${MaisSheet} tab=${tab} setTab=${setTab} onClose=${() => setShowMais(false)} />`}
+      <${AssistantFab} tab=${tab} setTab=${setTab} />
 
       ${showAuth && html`<${AuthModal} sbUrl=${sbUrl} setSbUrl=${setSbUrl} sbKey=${sbKey} setSbKey=${setSbKey} client=${sbRef.current} session=${session} profile=${profile} onClose=${() => setShowAuth(false)} />`}
       ${showConsulta && html`<${ConsultaModal} onClose=${() => setShowConsulta(false)} propriedade=${propriedade} />`}
