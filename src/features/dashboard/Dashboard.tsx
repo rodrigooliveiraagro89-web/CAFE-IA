@@ -21,7 +21,7 @@ type DashboardProps = {
   onNavigate: (view: AppView) => void;
 };
 
-const featuredModuleIds = ["solo", "foto", "adubacao", "clima", "defensivos", "mapa", "calc", "relatorios"];
+const featuredModuleIds = ["solo", "foto", "ndvi", "adubacao", "clima", "defensivos", "mapa", "relatorios"];
 const featuredModules = featuredModuleIds
   .map((id) => moduleCatalog.find((module) => module.id === id))
   .filter((module): module is NonNullable<typeof module> => Boolean(module));

@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   Moon,
   ScanLine,
+  Satellite,
   Sprout,
   Sun,
   UserRound,
@@ -28,6 +29,7 @@ type AppShellProps = PropsWithChildren<{
 
 const operationLinks = [
   { label: "Diagnóstico", href: "./agryn.html?tab=foto", icon: ScanLine },
+  { label: "Análise NDVI", href: "./?view=ndvi", icon: Satellite },
   { label: "Clima", href: "./clima.html", icon: CloudSun },
   { label: "Relatórios", href: "./agryn.html?tab=relatorio", icon: FileText },
 ];

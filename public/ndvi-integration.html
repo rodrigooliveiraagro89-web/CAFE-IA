@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Integração NDVI — AGRYN</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #071014; color: #e8f3ed; }
+      body { max-width: 850px; margin: auto; padding: 2rem 1rem 5rem; line-height: 1.65; }
+      a { color: #53d988; } h1, h2 { color: #fff; } h1 { font-size: clamp(2rem, 7vw, 3.5rem); }
+      section { margin-top: 1rem; border: 1px solid #1d3238; border-radius: 1rem; padding: 1rem 1.2rem; background: #0c181d; }
+      code { color: #a3e635; } .status { color: #fbbf24; }
+    </style>
+  </head>
+  <body>
+    <p><a href="./?view=ndvi">← Voltar ao módulo</a></p>
+    <h1>Análise NDVI AGRYN</h1>
+    <p>Transparência técnica da integração por satélite.</p>
+    <section>
+      <h2>Disponível agora</h2>
+      <p>Busca real de cenas Sentinel‑2 L2A no catálogo STAC público do Copernicus Data Space, desenho de talhão, área, seleção de datas e estados de qualidade.</p>
+    </section>
+    <section>
+      <h2 class="status">Processamento a configurar</h2>
+      <p>O raster NDVI, as métricas e as zonas exigem um serviço privado configurado em <code>VITE_NDVI_API_URL</code>. A AGRYN não gera resultados fictícios quando esse serviço está ausente.</p>
+    </section>
+    <section>
+      <h2>Fórmula e máscara</h2>
+      <p><code>NDVI = (B08 − B04) / (B08 + B04)</code>. A máscara SCL exclui NoData, saturação, sombra, nuvens, cirrus e neve/gelo, e a cobertura válida é calculada dentro do talhão.</p>
+    </section>
+    <section>
+      <h2>Segredos e custos</h2>
+      <p>Credenciais Copernicus devem existir somente no backend. As imagens são abertas, mas cadastro, cotas e custo da infraestrutura de processamento ainda podem se aplicar. Nenhuma API paga é acionada silenciosamente.</p>
+    </section>
+    <section>
+      <h2>Fontes</h2>
+      <p><a href="https://documentation.dataspace.copernicus.eu/APIs/STAC.html">Catálogo STAC Copernicus</a><br /><a href="https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/S2L2A.html">Sentinel‑2 L2A e SCL</a><br /><a href="https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-reflectance">Landsat Surface Reflectance</a></p>
+    </section>
+  </body>
+</html>
