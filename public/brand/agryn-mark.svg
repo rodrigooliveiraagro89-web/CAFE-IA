@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Símbolo AGRYN</title>
+  <desc id="desc">Letra A formada por uma folha e conexões digitais.</desc>
+  <defs>
+    <linearGradient id="agryn-gradient" x1="18" y1="14" x2="76" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A3E635"/>
+      <stop offset=".46" stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="leaf-gradient" x1="16" y1="83" x2="62" y2="55" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#059669"/>
+      <stop offset="1" stop-color="#A3E635"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#agryn-gradient)" d="M12 78 38 18c2.4-5.7 5.3-8 10.1-8h7.1c4.5 0 7.4 2.1 9.7 7.2L80 50.5 67.7 61 52 27.8 39.6 55h15.7l7.2 14.5H33L27.2 82Z"/>
+  <path fill="url(#leaf-gradient)" d="M11 82.5c12.7-18.9 28.1-29 49.2-31.2-5 18.4-16.4 29-34.7 31.6-5.6.8-10.5.7-14.5-.4Z"/>
+  <path d="M17 79.5c11.3-8.8 22.8-14.5 36.2-20.1" fill="none" stroke="#D9F99D" stroke-width="2.2" stroke-linecap="round" opacity=".85"/>
+  <g fill="none" stroke="#22C55E" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M58 48h10l7-7h8"/>
+    <path d="M61 56h14l7 7h5"/>
+    <path d="M58 64h8l8 12h7"/>
+  </g>
+  <g fill="#A3E635" stroke="#0F172A" stroke-width="1.6">
+    <circle cx="85" cy="41" r="4"/>
+    <circle cx="89" cy="63" r="4"/>
+    <circle cx="83" cy="79" r="4"/>
+  </g>
+</svg>
