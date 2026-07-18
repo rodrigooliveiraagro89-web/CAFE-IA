@@ -392,6 +392,73 @@ function b100Idx(prodKg) {
   return i === -1 ? B100_FAIXAS_PROD.length - 1 : i;
 }
 
+/* ---------------------------------------------------------------------- */
+/* CFSEMG — 5ª Aproximação ("Recomendações para o uso de corretivos e      */
+/* fertilizantes em Minas Gerais") — referência regional para MG.         */
+/* Tabelas transcritas de "Manual do Café: Manejo de Cafezais em Produção" */
+/* (EMATER-MG, 2016), que reproduz as tabelas da 5ª Aproximação com fonte  */
+/* citada. Produtividade em sc/ha (direto, sem conversão para kg).        */
+/* ---------------------------------------------------------------------- */
+
+const CFSEMG_FAIXAS_PROD_SC = [20, 30, 40, 50, 60, Infinity];
+const CFSEMG_FAIXAS_LABEL = ["< 20", "20–30", "30–40", "40–50", "50–60", "> 60"];
+
+// N (kg/ha/ano) — por teor foliar: baixo (<2,5 dag/kg) | adequado (2,6–3,0) | alto (3,1–3,5)
+// A própria CFSEMG define a coluna "sem análise foliar" = igual à coluna "baixo" (Tabela 15).
+const CFSEMG_N_TAB = {
+  baixa: [200, 250, 300, 350, 400, 450],
+  media: [140, 175, 220, 260, 300, 340],
+  alta: [80, 110, 140, 170, 200, 230],
+};
+
+// P₂O₅ (kg/ha/ano) — por classe de P no solo: muito baixo | baixo | médio | bom | muito bom
+// (Tabela 14). As faixas mg/dm³ de cada classe variam por teor de argila (Tabela 03);
+// assumimos aqui a faixa de 15–35% de argila (Latossolos/Cambissolos típicos do Sul de
+// Minas), sinalizado sempre no parecer.
+const CFSEMG_P_TAB = [
+  [30, 20, 10, 0, 0],
+  [40, 30, 20, 0, 0],
+  [50, 40, 25, 0, 0],
+  [60, 50, 30, 15, 0],
+  [70, 55, 35, 18, 0],
+  [80, 60, 40, 20, 0],
+];
+// Faixas de P (mg/dm³) para 15–35% de argila (Tabela 03, CFSEMG): muito baixo <5 | baixo 5,1–9,0 | médio 9,1–15,0 | bom 15,1–22,5 | muito bom >22,5
+
+// K₂O (kg/ha/ano) — por classe de K no solo (Tabela 15): baixo | médio | bom | muito bom
+const CFSEMG_K_TAB = [
+  [200, 150, 100, 0],
+  [250, 190, 125, 0],
+  [300, 225, 150, 0],
+  [350, 260, 175, 50],
+  [400, 300, 200, 75],
+  [450, 340, 225, 100],
+];
+
+function cfsemgIdx(sc) {
+  const i = CFSEMG_FAIXAS_PROD_SC.findIndex((lim) => sc <= lim);
+  return i === -1 ? CFSEMG_FAIXAS_PROD_SC.length - 1 : i;
+}
+
+// Mescla um nutriente entre as duas fontes: convergem → usa a média e diz que convergem;
+// divergem → prevalece a CFSEMG (calibrada para MG), mas SEMPRE mostrando os dois valores
+// e o motivo — nunca omitir a divergência.
+function mesclarDose(label, valB100, valCFSEMG) {
+  if (valCFSEMG == null) {
+    return { valor: valB100, fonte: "boletim100", valB100, valCFSEMG: null, convergiu: null,
+      nota: `${label}: sem dado da CFSEMG para este ponto — usado o Boletim 100 (${valB100} kg/ha).` };
+  }
+  const dif = Math.abs(valB100 - valCFSEMG);
+  const tol = Math.max(10, valB100 * 0.10);
+  if (dif <= tol) {
+    const media = Math.round((valB100 + valCFSEMG) / 2);
+    return { valor: media, fonte: "convergencia", valB100, valCFSEMG, convergiu: true,
+      nota: `${label}: CFSEMG (${valCFSEMG}) e Boletim 100 (${valB100}) convergem — usada a média (${media} kg/ha).` };
+  }
+  return { valor: valCFSEMG, fonte: "cfsemg", valB100, valCFSEMG, convergiu: false,
+    nota: `${label}: CFSEMG (${valCFSEMG} kg/ha) e Boletim 100 (${valB100} kg/ha) divergem — adotada a faixa da CFSEMG, por ser calibrada para solos de Minas Gerais.` };
+}
+
 // Cenários padrão de produtividade (café em produção, Sul de Minas)
 const CENARIOS_META = [
   { nome: "Baixa", sc: 25, faixa: "20–30 sc/ha" },
@@ -1089,38 +1156,55 @@ function calcularCalagem(d, prnt, areaHa, tipoCalcario) {
   };
 }
 
-// Adubação de produção pelo Boletim 100 (IAC): produtividade esperada × N foliar (N),
-// × P resina (P₂O₅) e × K trocável (K₂O). Meta em sacas/ha convertida a kg/ha de
-// café beneficiado (1 saca = 60 kg). Classificação: café em PRODUÇÃO (≥ 3º ano agrícola).
+// Adubação de produção — mescla Boletim 100 (IAC) × CFSEMG-MG (5ª Aproximação):
+// produtividade esperada × N foliar (N), × P resina (P₂O₅) e × K trocável (K₂O).
+// Meta em sacas/ha (kg/ha para o Boletim 100, direto para a CFSEMG). Quando as duas
+// fontes convergem, usa a média; quando divergem, prevalece a CFSEMG (referência
+// regional para MG) — sempre mostrando os dois valores e o motivo da escolha.
+// Classificação: café em PRODUÇÃO (≥ 3º ano agrícola).
 function calcularAdubacao(soilData, meta, nFoliarRaw) {
   const prodKg = meta * 60;
   const i = b100Idx(prodKg);
+  const iCF = cfsemgIdx(meta);
 
-  // N — coluna pelo teor foliar de N (g/kg); sem análise foliar, assume 26–30 (adequado)
+  // N — coluna pelo teor foliar de N (g/kg). Boletim 100: <26 | 26–30 | >30.
+  // CFSEMG: <25 | 25–30 | 30–35 (dag/kg ×10) — limites levemente diferentes, preservados
+  // como estão em cada fonte. Sem análise foliar: Boletim 100 assume "adequado"; a CFSEMG
+  // tem coluna própria "sem análise foliar", que equivale à faixa "baixo" (mais conservadora).
   const nFoliar = parseNumberBR(nFoliarRaw);
-  let nCol = "media";
-  let nJustificativa = "N foliar não informado — assumida a faixa adequada (26–30 g/kg). Faça análise foliar para refinar.";
+  let nCol = "media", nColCF = "baixa";
+  let nJustificativa = "N foliar não informado — Boletim 100 assumiu a faixa adequada (26–30 g/kg); CFSEMG usa sua própria coluna \"sem análise foliar\" (mais conservadora). Faça análise foliar para refinar.";
   if (nFoliar != null) {
-    if (nFoliar < 26) { nCol = "baixa"; nJustificativa = `N foliar baixo (${nFoliar} g/kg < 26) — dose de N reforçada.`; }
-    else if (nFoliar > 30) { nCol = "alta"; nJustificativa = `N foliar alto (${nFoliar} g/kg > 30) — dose de N reduzida.`; }
-    else { nJustificativa = `N foliar adequado (${nFoliar} g/kg, faixa 26–30).`; }
+    if (nFoliar < 26) { nCol = "baixa"; } else if (nFoliar > 30) { nCol = "alta"; }
+    if (nFoliar < 25) { nColCF = "baixa"; } else if (nFoliar > 30) { nColCF = "alta"; } else { nColCF = "media"; }
+    nJustificativa = `N foliar ${nf(nFoliar, 1)} g/kg.`;
   }
-  const nTotal = B100_N_TAB[nCol][i];
+  const nB100 = B100_N_TAB[nCol][i];
+  const nCFSEMG = CFSEMG_N_TAB[nColCF][iCF];
+  const nMescla = mesclarDose("Nitrogênio", nB100, nCFSEMG);
+  const nTotal = nMescla.valor;
+  nJustificativa += " " + nMescla.nota;
 
-  // P₂O₅ — coluna pelo P do solo (mg/dm³, resina); sem análise, assume classe média 6–12
+  // P₂O₅ — coluna pelo P do solo (mg/dm³, resina). Boletim 100 usa 4 classes fixas;
+  // a CFSEMG usa 5 classes que variam por teor de argila (Tabela 03) — assumimos aqui
+  // solo com 15–35% de argila (Latossolos/Cambissolos típicos do Sul de Minas).
   const P = soilData ? soilData.P : null;
-  let pCol = 1;
-  let pJustificativa = "P do solo não informado — assumida a classe média (6–12 mg/dm³). Faça análise de solo para refinar.";
+  let pCol = 1, pColCF = 2;
+  let pJustificativa = "P do solo não informado — assumida a classe média em ambas as fontes. Faça análise de solo para refinar.";
   if (P != null) {
-    if (P <= 5) { pCol = 0; pJustificativa = `P do solo muito baixo (${P} mg/dm³, classe 0–5).`; }
-    else if (P <= 12) { pCol = 1; pJustificativa = `P do solo na classe 6–12 mg/dm³ (${P}).`; }
-    else if (P <= 30) { pCol = 2; pJustificativa = `P do solo na classe 13–30 mg/dm³ (${P}).`; }
-    else { pCol = 3; pJustificativa = `P do solo alto (${P} mg/dm³ > 30).`; }
+    if (P <= 5) pCol = 0; else if (P <= 12) pCol = 1; else if (P <= 30) pCol = 2; else pCol = 3;
+    if (P < 5) pColCF = 0; else if (P <= 9) pColCF = 1; else if (P <= 15) pColCF = 2; else if (P <= 22.5) pColCF = 3; else pColCF = 4;
+    pJustificativa = `P do solo: ${P} mg/dm³ (assumido 15–35% de argila para a classe CFSEMG).`;
   }
-  const pTotal = B100_P_TAB[pCol][i];
+  const pB100 = B100_P_TAB[pCol][i];
+  const pCFSEMG = CFSEMG_P_TAB[iCF][pColCF];
+  const pMescla = mesclarDose("Fósforo (P₂O₅)", pB100, pCFSEMG);
+  const pTotal = pMescla.valor;
+  pJustificativa += " " + pMescla.nota;
 
-  // K₂O — coluna pelo K trocável em mmolc/dm³; laudos variam de unidade, então
-  // interpretamos: ≤1 → cmolc/dm³ (×10); ≤10 → já em mmolc/dm³; >10 → mg/dm³ (÷39,1)
+  // K₂O — coluna pelo K trocável; laudos variam de unidade, então interpretamos:
+  // ≤1 → cmolc/dm³ (×10); ≤10 → já em mmolc/dm³; >10 → mg/dm³ (÷39,1).
+  // A CFSEMG (Tabela 15) classifica K em mg/dm³ direto — reconvertemos kMmolc×39,1 para comparar.
   const K = soilData ? soilData.K : null;
   let kMmolc = null;
   let kUnidadeNota = "";
@@ -1129,20 +1213,25 @@ function calcularAdubacao(soilData, meta, nFoliarRaw) {
     else if (K <= 10) { kMmolc = K; kUnidadeNota = " (lido como mmolc/dm³)"; }
     else { kMmolc = K / 39.1; kUnidadeNota = " (convertido de mg/dm³)"; }
   }
-  let kCol = 1;
-  let kJustificativa = "K do solo não informado — assumida a classe média (0,8–1,5 mmolc/dm³). Faça análise de solo para refinar.";
+  let kCol = 1, kColCF = 1;
+  let kJustificativa = "K do solo não informado — assumida a classe média em ambas as fontes. Faça análise de solo para refinar.";
   if (kMmolc != null) {
     const kFmt = nf(kMmolc, 1);
-    if (kMmolc <= 0.7) { kCol = 0; kJustificativa = `K trocável baixo (${kFmt} mmolc/dm³${kUnidadeNota}).`; }
-    else if (kMmolc <= 1.5) { kCol = 1; kJustificativa = `K trocável médio (${kFmt} mmolc/dm³${kUnidadeNota}).`; }
-    else if (kMmolc <= 3.0) { kCol = 2; kJustificativa = `K trocável alto (${kFmt} mmolc/dm³${kUnidadeNota}).`; }
-    else { kCol = 3; kJustificativa = `K trocável muito alto (${kFmt} mmolc/dm³${kUnidadeNota}).`; }
+    const kMgDm3 = kMmolc * 39.1;
+    if (kMmolc <= 0.7) kCol = 0; else if (kMmolc <= 1.5) kCol = 1; else if (kMmolc <= 3.0) kCol = 2; else kCol = 3;
+    if (kMgDm3 < 60) kColCF = 0; else if (kMgDm3 <= 120) kColCF = 1; else if (kMgDm3 <= 200) kColCF = 2; else kColCF = 3;
+    kJustificativa = `K trocável: ${kFmt} mmolc/dm³${kUnidadeNota} (≈ ${nf(kMgDm3, 0)} mg/dm³ para a classe CFSEMG).`;
   }
-  const kTotal = B100_K_TAB[kCol][i];
+  const kB100 = B100_K_TAB[kCol][i];
+  const kCFSEMG = CFSEMG_K_TAB[iCF][kColCF];
+  const kMescla = mesclarDose("Potássio (K₂O)", kB100, kCFSEMG);
+  const kTotal = kMescla.valor;
+  kJustificativa += " " + kMescla.nota;
 
-  // S ≈ 1/8 do N aplicado; dispensável se S do solo > 10 mg/dm³ (Boletim 100)
+  // S ≈ 1/8 do N aplicado; dispensável se S do solo > 10 mg/dm³.
+  // Regra idêntica no Boletim 100 e na CFSEMG (convergência entre as fontes).
   let sTotal = Math.round(nTotal / 8);
-  let sJustificativa = "S ≈ 1/8 do N aplicado.";
+  let sJustificativa = "S ≈ 1/8 do N aplicado (regra convergente entre Boletim 100 e CFSEMG).";
   if (soilData && soilData.S != null && soilData.S > 10) {
     sTotal = 0;
     sJustificativa = `S do solo > 10 mg/dm³ (${soilData.S}) — complementação de S dispensável.`;
@@ -1167,8 +1256,10 @@ function calcularAdubacao(soilData, meta, nFoliarRaw) {
   return {
     prodKg,
     faixaLabel: B100_FAIXAS_LABEL[i],
+    faixaLabelCFSEMG: CFSEMG_FAIXAS_LABEL[iCF],
     nTotal, kTotal, pTotal, sTotal,
     nJustificativa, kJustificativa, pJustificativa, sJustificativa,
+    nMescla, pMescla, kMescla,
     cronograma,
     produtos: alocarProdutosReal(nTotal, pTotal, kTotal),
   };
@@ -2985,7 +3076,7 @@ ${lista}`;
     }
     if (indices) L.push(`Índices (0–100): fertilidade ${indices.fertilidade ?? "—"}, nutricional ${indices.nutricional ?? "—"}, fitossanitário ${indices.fitossanitario ?? "—"}, sustentabilidade ${indices.sustentabilidade ?? "—"}.`);
     if (adub) {
-      L.push(`Adubação Boletim 100 (meta ${meta} sc/ha): N ${adub.nTotal}, P₂O₅ ${adub.pTotal}, K₂O ${adub.kTotal}, S ${adub.sTotal} kg/ha. Programa: ${adub.produtos.map((p) => p.nome + " " + nf(p.kgHa, 0) + " kg/ha").join(" + ")}.`);
+      L.push(`Adubação CFSEMG × Boletim 100 (meta ${meta} sc/ha): N ${adub.nTotal}, P₂O₅ ${adub.pTotal}, K₂O ${adub.kTotal}, S ${adub.sTotal} kg/ha. Programa: ${adub.produtos.map((p) => p.nome + " " + nf(p.kgHa, 0) + " kg/ha").join(" + ")}.`);
     }
     if (climaData) {
       L.push(`Clima (${climaData.local}): risco de ferrugem ${climaData.riscoFerrugem}/10 dias.` + (climaData.days && climaData.days[0] ? ` Próximo dia: máx ${Math.round(climaData.days[0].tmax)}°C, chuva ${climaData.days[0].chuva} mm.` : ""));
@@ -3088,7 +3179,7 @@ ${lista}`;
     const sistema = `Você é o "Café IA", assistente agronômico especialista em cafeicultura de montanha do Sul de Minas, dentro do app Café Real IA. Fale português técnico e direto, como consultor de campo experiente.
 Regras invioláveis:
 - Baseie-se no CONTEXTO DA PROPRIEDADE abaixo (dados reais do produtor). Se um dado necessário não existir (ex.: sem análise de solo), diga claramente o que falta e oriente onde obter no app.
-- Adubação e calagem seguem o Boletim 100 (IAC)/CFSEMG.
+- Adubação e calagem seguem a mescla técnica de CFSEMG-MG (5ª Aproximação, prevalece em caso de divergência) e Boletim 100 (IAC); os valores de N-P-K já calculados no app (CONTEXTO DA PROPRIEDADE) já vêm dessa mescla — não recalcule do zero.
 - Só cite defensivos que existam na base do app e sejam registrados para café; NUNCA invente produto, dose, carência ou registro — mande confirmar no AGROFIT.
 - Toda recomendação é apoio à decisão; a aplicação exige validação e receituário do engenheiro agrônomo responsável (CREA/CFTA), com EPI e intervalo de segurança.
 - Não dê conselho médico nem financeiro/investimento. Seja conciso (máx ~180 palavras); use listas curtas quando ajudar.`;
@@ -3715,7 +3806,7 @@ Regras invioláveis:
         ${tab === "adubacao" && html`
           <div className="space-y-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900">
-              <b>Classificação: café em produção</b> (a partir do 3º ano agrícola / 2º ano após o plantio). As doses de N, P₂O₅ e K₂O seguem as tabelas de adubação de produção do <b>Boletim 100 (IAC)</b>: produtividade esperada × N foliar, × P do solo e × K trocável. 1 saca = 60 kg de café beneficiado.
+              <b>Classificação: café em produção</b> (a partir do 3º ano agrícola / 2º ano após o plantio). As doses de N, P₂O₅ e K₂O vêm do cruzamento de <b>CFSEMG-MG (5ª Aproximação)</b> e <b>Boletim 100 (IAC)</b>: produtividade esperada × N foliar, × P do solo e × K trocável. 1 saca = 60 kg de café beneficiado.
             </div>
             <div className="bg-white rounded-lg border border-stone-200 p-4 space-y-3">
               <p className="text-sm font-medium">Calagem e gessagem</p>
@@ -3753,7 +3844,8 @@ Regras invioláveis:
             </div>
 
             <div className="bg-white rounded-lg border border-stone-200 p-4 space-y-3">
-              <p className="text-sm font-medium">Adubação por meta de produtividade — Boletim 100 (IAC)</p>
+              <p className="text-sm font-medium">Adubação por meta de produtividade</p>
+              <p className="text-xs text-stone-400">Metodologia técnica: cruzamento de CFSEMG-MG (5ª Aproximação) e Boletim 100 IAC — quando as duas convergem, usamos a média; quando divergem, prevalece a CFSEMG (referência regional para Minas Gerais), sempre mostrando os dois valores abaixo.</p>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <label className="block">Meta de produtividade (sacas/ha)
                   <select value=${meta} onChange=${(e) => setMeta(Number(e.target.value))} className="w-full border border-stone-300 rounded px-2 py-1.5 mt-1">
@@ -3770,7 +3862,13 @@ Regras invioláveis:
                 <div className="bg-stone-50 rounded p-2"><p className="text-stone-400">K₂O total (kg/ha)</p><p className="font-medium">${adub.kTotal}</p></div>
                 <div className="bg-stone-50 rounded p-2"><p className="text-stone-400">S (kg/ha)</p><p className="font-medium">${adub.sTotal}</p></div>
               </div>
-              <p className="text-xs text-stone-400">Faixa do Boletim 100: ${adub.faixaLabel} kg/ha beneficiado. · N: ${adub.nJustificativa} · P₂O₅: ${adub.pJustificativa} · K₂O: ${adub.kJustificativa} · S: ${adub.sJustificativa}</p>
+              ${[["Nitrogênio", adub.nMescla], ["Fósforo", adub.pMescla], ["Potássio", adub.kMescla]].some(([, m]) => m.convergiu === false) && html`
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-900 space-y-1">
+                  <p className="font-medium flex items-center gap-1.5"><${AlertTriangle} size=${13}/> CFSEMG e Boletim 100 divergem para este ponto</p>
+                  ${[["Nitrogênio", adub.nMescla], ["Fósforo", adub.pMescla], ["Potássio", adub.kMescla]].filter(([, m]) => m.convergiu === false).map(([nome, m]) => html`
+                    <p key=${nome}>${nome}: CFSEMG ${m.valCFSEMG} kg/ha × Boletim 100 ${m.valB100} kg/ha — adotada a CFSEMG (referência regional MG).</p>`)}
+                </div>`}
+              <p className="text-xs text-stone-400">Faixa Boletim 100: ${adub.faixaLabel} kg/ha beneficiado · Faixa CFSEMG: ${adub.faixaLabelCFSEMG} sc/ha. · N: ${adub.nJustificativa} · P₂O₅: ${adub.pJustificativa} · K₂O: ${adub.kJustificativa} · S: ${adub.sJustificativa}</p>
 
               <div className="mt-2">
                 <div className="flex items-center justify-between mb-1">
@@ -4164,7 +4262,7 @@ Regras invioláveis:
               `}
 
               <section className="mb-4">
-                <h3 className="text-sm font-medium border-b border-stone-200 pb-1 mb-2">4. Adubação — café em produção, meta ${meta} sacas/ha (Boletim 100 · IAC)</h3>
+                <h3 className="text-sm font-medium border-b border-stone-200 pb-1 mb-2">4. Adubação — café em produção, meta ${meta} sacas/ha (CFSEMG-MG · Boletim 100 IAC)</h3>
                 <p className="text-xs mb-1">Produtividade esperada: ${adub.prodKg} kg/ha beneficiado (faixa ${adub.faixaLabel}). Doses: N ${adub.nTotal} · P₂O₅ ${adub.pTotal} · K₂O ${adub.kTotal} · S ${adub.sTotal} kg/ha.</p>
                 <p className="text-xs mb-2 text-stone-500">${adub.nJustificativa} ${adub.pJustificativa} ${adub.kJustificativa} ${adub.sJustificativa}</p>
                 <table className="w-full text-xs mb-2">
@@ -4174,7 +4272,7 @@ Regras invioláveis:
                 <ul className="text-xs space-y-0.5 mb-2">
                   ${adub.produtos.map((p, i) => html`<li key=${i}>• ${p.nome}: ${nf(p.kgHa, 1)} kg/ha${plantasPorHa > 0 ? ` (${nf((p.kgHa * 1000) / plantasPorHa, 0)} g/planta)` : ""} — ${p.obs}</li>`)}
                 </ul>
-                <p className="text-xs mb-2">Cenários (Boletim 100): ${cenarios.map((c) => `${c.nome} ${c.sc} sc/ha → N ${c.adub.nTotal} · P₂O₅ ${c.adub.pTotal} · K₂O ${c.adub.kTotal} kg/ha${temPrecos ? ` (R$ ${nf(c.custoSaca, 0)}/sc)` : ""}`).join(" · ")}</p>
+                <p className="text-xs mb-2">Cenários (CFSEMG × Boletim 100): ${cenarios.map((c) => `${c.nome} ${c.sc} sc/ha → N ${c.adub.nTotal} · P₂O₅ ${c.adub.pTotal} · K₂O ${c.adub.kTotal} kg/ha${temPrecos ? ` (R$ ${nf(c.custoSaca, 0)}/sc)` : ""}`).join(" · ")}</p>
                 ${temPrecos && html`<p className="text-xs">Custo estimado (meta ${meta} sc/ha): adubação R$ ${nf(custoAdubHa, 0)}/ha${custoCalagemHa > 0 ? ` + calagem R$ ${nf(custoCalagemHa, 0)}/ha` : ""} → <b>R$ ${nf(custoSaca, 0)} por saca</b>.</p>`}
                 <p className="text-xs text-stone-500 mt-1">Linha Turbo Adubos Real: tecnologia de proteção dos nutrientes (menos perdas de N por volatilização/lixiviação; P protegido da fixação) — eficiência de uso superior frente a fórmulas convencionais.</p>
               </section>
