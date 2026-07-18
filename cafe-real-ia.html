@@ -2227,7 +2227,7 @@ function calcSemaforo(cepeaHoje, media90) {
   return { cor: "amber", rot: "Neutro", txt: "Preço em torno da média dos últimos 90 dias. Sem sinal claro de alta ou baixa no curto prazo." };
 }
 
-function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta, propriedade, analise, setAnalise, alerta, setAlerta, sacas, setSacas }) {
+function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta, propriedade, analise, setAnalise, alerta, setAlerta, sacas, setSacas, iceCloudDatas }) {
   const [range, setRange] = useState(30);
   const [showForm, setShowForm] = useState(false);
   const hoje = hojeISO();
@@ -2431,10 +2431,10 @@ function MercadoView({ cotacoes, setCotacoes, apiKey, onNeedKey, custoSaca, meta
         <${CotacaoCard}
           titulo="Arábica · ICE Futures (NY)"
           valor=${ultima && ultima.ice != null ? nf(ultima.ice, 2) + " ¢" : "—"}
-          unidade="centavos de US$/libra"
+          unidade=${ultima && iceCloudDatas && iceCloudDatas.has(ultima.data) ? "centavos de US$/libra · automático" : "centavos de US$/libra"}
           variacao=${varIce}
           icon=${html`<${TrendingUp} size=${15}/>`}
-          legenda="O que o mercado internacional precifica — é o que puxa a tendência geral do café."
+          legenda="O que o mercado internacional precifica — é o que puxa a tendência geral do café. Atualizado automaticamente todo dia útil."
         />
         <${CotacaoCard}
           titulo="Câmbio USD/BRL"
@@ -2672,6 +2672,43 @@ function CafeRealIA() {
   const [mercadoAnalise, setMercadoAnalise] = useState(persisted.mercadoAnalise || null);
   const [alertaPreco, setAlertaPreco] = useState(persisted.alertaPreco || { alvo: "", ativo: false });
   const [mercadoSacas, setMercadoSacas] = useState(persisted.mercadoSacas || "");
+  const [iceCloudDatas, setIceCloudDatas] = useState(() => new Set());
+
+  // Cotação automática do ICE Futures (Edge Function + cron do próprio projeto Supabase,
+  // roda 18h BRT em dias úteis) — lida da tabela pública cotacoes_cafe e mesclada no
+  // histórico local SEM sobrescrever nada que o usuário já lançou manualmente (CEPEA/B3
+  // continuam manuais: sem fonte grátis automatizável, ver histórico do projeto).
+  useEffect(() => {
+    let alive = true;
+    fetch(`${SB_DEFAULT_URL}/rest/v1/cotacoes_cafe?select=*&order=data.asc`, {
+      headers: { apikey: SB_DEFAULT_KEY, Authorization: `Bearer ${SB_DEFAULT_KEY}` },
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => {
+        if (!alive || !Array.isArray(rows) || !rows.length) return;
+        const iceDatas = new Set();
+        setCotacoes((prev) => {
+          const porData = new Map((prev || []).map((c) => [c.data, c]));
+          for (const row of rows) {
+            const atual = porData.get(row.data) || { data: row.data };
+            const iceVeioDaNuvem = atual.ice == null && row.preco_ice_centavos_lb != null;
+            if (iceVeioDaNuvem) iceDatas.add(row.data);
+            porData.set(row.data, {
+              ...atual,
+              ice: atual.ice != null ? atual.ice : (row.preco_ice_centavos_lb ?? null),
+              cepea: atual.cepea != null ? atual.cepea : (row.preco_cepea_arabica_saca ?? null),
+              conilon: atual.conilon != null ? atual.conilon : (row.preco_cepea_conilon_saca ?? null),
+              cambio: atual.cambio != null ? atual.cambio : (row.cambio_usd_brl ?? null),
+              fonte: atual.fonte || row.fonte || "automatico",
+            });
+          }
+          return cotacoesAsc([...porData.values()]);
+        });
+        if (alive) setIceCloudDatas(iceDatas);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const [foliarCatalog, setFoliarCatalog] = useState(persisted.foliarCatalog || []);
   const [foliarForm, setFoliarForm] = useState({ nome: "", composicao: "", finalidade: "", epoca: "", doseMin: "", doseMax: "", obs: "" });
@@ -3545,6 +3582,7 @@ Regras invioláveis:
           setAlerta=${setAlertaPreco}
           sacas=${mercadoSacas}
           setSacas=${setMercadoSacas}
+          iceCloudDatas=${iceCloudDatas}
         />`}
 
         ${tab === "ia" && html`
