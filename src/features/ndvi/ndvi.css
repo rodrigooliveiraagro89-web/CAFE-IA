@@ -75,6 +75,16 @@
   color: var(--success);
 }
 
+.ndvi-source-stack {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ndvi-source-badge[data-secondary="true"] {
+  background: var(--surface-soft);
+  color: var(--text-soft);
+}
+
 .ndvi-source-badge > span,
 .ndvi-panel-heading > div,
 .ndvi-card-title > div {
@@ -268,7 +278,8 @@
 }
 
 .ndvi-search-button,
-.ndvi-process-button {
+.ndvi-process-button,
+.ndvi-location-button {
   min-height: 2.9rem;
   display: flex;
   align-items: center;
@@ -282,6 +293,25 @@
   font-size: 0.68rem;
   font-weight: 800;
   cursor: pointer;
+}
+
+.ndvi-location-button {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+}
+
+.ndvi-location-status {
+  margin-top: -0.45rem;
+  color: var(--text-faint);
+  font-size: 0.56rem;
+  line-height: 1.45;
+}
+
+.ndvi-location-status[data-status="success"] {
+  color: var(--success);
+}
+
+.ndvi-location-status[data-status="error"] {
+  color: var(--danger);
 }
 
 .ndvi-search-button:disabled,
@@ -393,6 +423,33 @@
   width: 100%;
   height: 100%;
   cursor: move;
+}
+
+.ndvi-map-guide {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 500;
+  max-width: min(360px, calc(100% - 1.5rem));
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(7, 18, 13, 0.88);
+  color: #d9eee2;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+  pointer-events: none;
+}
+
+.ndvi-map-guide span {
+  font-size: 0.58rem;
+  line-height: 1.4;
+}
+
+.ndvi-map-guide strong {
+  color: #fff;
 }
 
 .ndvi-map-empty {
