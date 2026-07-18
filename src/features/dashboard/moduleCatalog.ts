@@ -1,0 +1,183 @@
+import {
+  Bot,
+  Bug,
+  Calculator,
+  CloudSun,
+  FileClock,
+  FileText,
+  FlaskConical,
+  Leaf,
+  MapPinned,
+  Mountain,
+  PackageSearch,
+  ScanLine,
+  Settings,
+  Sprout,
+  TrendingUp,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+
+export type ModuleAccent = "emerald" | "lime" | "amber" | "cyan" | "violet" | "rose";
+export type ModuleGroup = "Análises" | "Manejo" | "Inteligência" | "Gestão";
+
+export type AgrynModule = {
+  id: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  accent: ModuleAccent;
+  group: ModuleGroup;
+  href: string;
+  badge?: string;
+};
+
+export const moduleCatalog: AgrynModule[] = [
+  {
+    id: "solo",
+    label: "Análise de solo",
+    description: "Laudos, nutrientes e interpretação",
+    icon: FlaskConical,
+    accent: "emerald",
+    group: "Análises",
+    href: "./agryn.html?tab=solo",
+  },
+  {
+    id: "foliar",
+    label: "Análise foliar",
+    description: "Estado nutricional da cultura",
+    icon: Leaf,
+    accent: "lime",
+    group: "Análises",
+    href: "./agryn.html?tab=foliar",
+  },
+  {
+    id: "adubacao",
+    label: "Calagem e adubação",
+    description: "Correção e plano nutricional",
+    icon: Mountain,
+    accent: "amber",
+    group: "Manejo",
+    href: "./agryn.html?tab=adubacao",
+  },
+  {
+    id: "foto",
+    label: "Diagnóstico por imagem",
+    description: "Analise sintomas por fotografia",
+    icon: ScanLine,
+    accent: "violet",
+    group: "Inteligência",
+    href: "./agryn.html?tab=foto",
+    badge: "IA",
+  },
+  {
+    id: "defensivos",
+    label: "Pragas e doenças",
+    description: "Identificação e manejo integrado",
+    icon: Bug,
+    accent: "rose",
+    group: "Manejo",
+    href: "./agryn.html?tab=defensivos",
+  },
+  {
+    id: "clima",
+    label: "Clima",
+    description: "Previsão e janela operacional",
+    icon: CloudSun,
+    accent: "cyan",
+    group: "Inteligência",
+    href: "./clima.html",
+    badge: "Ao vivo",
+  },
+  {
+    id: "mapa",
+    label: "Mapa da propriedade",
+    description: "Localização e visão territorial",
+    icon: MapPinned,
+    accent: "emerald",
+    group: "Gestão",
+    href: "./clima.html",
+  },
+  {
+    id: "calc",
+    label: "Calculadoras",
+    description: "Área, aplicação e conversões",
+    icon: Calculator,
+    accent: "amber",
+    group: "Manejo",
+    href: "./agryn.html?tab=calc",
+  },
+  {
+    id: "produtos",
+    label: "Produtos agrícolas",
+    description: "Catálogo técnico e recomendações",
+    icon: PackageSearch,
+    accent: "lime",
+    group: "Manejo",
+    href: "./agryn.html?tab=defensivos",
+  },
+  {
+    id: "historico",
+    label: "Histórico de análises",
+    description: "Evolução e atividades registradas",
+    icon: FileClock,
+    accent: "cyan",
+    group: "Gestão",
+    href: "./agryn.html?tab=dashboard",
+  },
+  {
+    id: "relatorios",
+    label: "Relatórios",
+    description: "Documentos técnicos e exportação",
+    icon: FileText,
+    accent: "violet",
+    group: "Gestão",
+    href: "./agryn.html?tab=relatorio",
+  },
+  {
+    id: "mercado",
+    label: "Mercado agrícola",
+    description: "Cotações e leitura de cenário",
+    icon: TrendingUp,
+    accent: "amber",
+    group: "Inteligência",
+    href: "./agryn.html?tab=mercado",
+  },
+  {
+    id: "ia",
+    label: "AGRYN IA",
+    description: "Assistente agronômico contextual",
+    icon: Bot,
+    accent: "emerald",
+    group: "Inteligência",
+    href: "./agryn.html?tab=ia",
+    badge: "IA",
+  },
+  {
+    id: "propriedades",
+    label: "Propriedades e talhões",
+    description: "Organização da operação agrícola",
+    icon: Sprout,
+    accent: "lime",
+    group: "Gestão",
+    href: "./agryn.html?tab=dashboard",
+  },
+  {
+    id: "produtores",
+    label: "Produtores",
+    description: "Perfis e vínculos da consultoria",
+    icon: Users,
+    accent: "cyan",
+    group: "Gestão",
+    href: "./agryn.html?tab=dashboard",
+  },
+  {
+    id: "configuracoes",
+    label: "Configurações",
+    description: "Conta, preferências e backup",
+    icon: Settings,
+    accent: "violet",
+    group: "Gestão",
+    href: "./agryn.html?open=config",
+  },
+];

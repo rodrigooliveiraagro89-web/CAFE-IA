@@ -1,5 +1,5 @@
 -- =====================================================================
--- Café Real IA — schema de contas + nuvem (Supabase)
+-- AGRYN — schema de contas + nuvem (Supabase)
 -- Cole TODO este conteúdo no Supabase → SQL Editor → New query → Run.
 -- Seguro rodar mais de uma vez (usa IF NOT EXISTS / OR REPLACE).
 -- =====================================================================
