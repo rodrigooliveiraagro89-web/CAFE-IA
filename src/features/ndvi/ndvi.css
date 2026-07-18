@@ -279,7 +279,8 @@
 
 .ndvi-search-button,
 .ndvi-process-button,
-.ndvi-location-button {
+.ndvi-location-button,
+.ndvi-regional-button {
   min-height: 2.9rem;
   display: flex;
   align-items: center;
@@ -299,6 +300,11 @@
   background: linear-gradient(135deg, #0284c7, #0ea5e9);
 }
 
+.ndvi-regional-button {
+  width: 100%;
+  background: linear-gradient(135deg, #059669, #10b981);
+}
+
 .ndvi-location-status {
   margin-top: -0.45rem;
   color: var(--text-faint);
@@ -316,11 +322,56 @@
 
 .ndvi-search-button:disabled,
 .ndvi-process-button:disabled,
+.ndvi-regional-button:disabled,
 .ndvi-results-section .text-button:disabled,
 .ndvi-play-button:disabled {
   cursor: not-allowed;
   filter: grayscale(0.25);
   opacity: 0.45;
+}
+
+.ndvi-sketch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.ndvi-sketch-actions button {
+  min-height: 2.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--success) 30%, var(--line));
+  border-radius: var(--radius-sm);
+  padding: 0.55rem;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 0.6rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ndvi-sketch-actions button:first-child {
+  grid-column: 1 / -1;
+  border: 0;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+}
+
+.ndvi-sketch-status {
+  margin-top: -0.35rem;
+  color: var(--text-faint);
+  font-size: 0.56rem;
+  line-height: 1.45;
+}
+
+.ndvi-sketch-status[data-status="success"] {
+  color: var(--success);
+}
+
+.ndvi-sketch-status[data-status="error"] {
+  color: var(--danger);
 }
 
 .ndvi-map-panel {

@@ -1,4 +1,9 @@
-import { divIcon, type LeafletMouseEvent, type Marker as LeafletMarker } from "leaflet";
+import {
+  divIcon,
+  type LatLngExpression,
+  type LeafletMouseEvent,
+  type Marker as LeafletMarker,
+} from "leaflet";
 import { useEffect } from "react";
 import {
   CircleMarker,
@@ -55,6 +60,15 @@ export function NdviMap({
   const selectedLayer = activeLayer === "ndvi" ? ndviLayer : trueColorLayer;
   const publicLayer =
     activeLayer === "ndvi" ? NASA_NDVI_LAYER : NASA_TRUE_COLOR_LAYER;
+  const cropRing = points.map(
+    ([longitude, latitude]) => [latitude, longitude] as LatLngExpression,
+  );
+  const worldRing: LatLngExpression[] = [
+    [85, -180],
+    [85, 180],
+    [-85, 180],
+    [-85, -180],
+  ];
 
   return (
     <MapContainer
@@ -98,6 +112,19 @@ export function NdviMap({
       <ResizeMap fullscreen={fullscreen} />
       <FocusCurrentLocation position={currentLocation} />
 
+      {points.length >= 3 && activeLayer === "ndvi" && (
+        <Polygon
+          positions={[worldRing, cropRing]}
+          interactive={false}
+          pathOptions={{
+            fillColor: "#020806",
+            fillOpacity: 0.62,
+            fillRule: "evenodd",
+            stroke: false,
+          }}
+        />
+      )}
+
       {currentLocation && (
         <CircleMarker
           center={[currentLocation[1], currentLocation[0]]}
@@ -117,7 +144,7 @@ export function NdviMap({
           pathOptions={{
             color: "#10b981",
             fillColor: "#22c55e",
-            fillOpacity: selectedLayer ? 0.08 : 0.2,
+            fillOpacity: activeLayer === "ndvi" ? 0.04 : selectedLayer ? 0.08 : 0.2,
             weight: 3,
           }}
         />

@@ -8,6 +8,7 @@ import {
   type PlotInput,
   type PropertyInput,
 } from "../domain/agriculturalContext";
+import type { GeoPolygon } from "../features/ndvi/types";
 
 const STORAGE_KEY = "agryn.agricultural-context.v1";
 
@@ -17,6 +18,11 @@ export type AgriculturalController = {
   selectedPlot: FarmPlot | null;
   addProperty: (input: PropertyInput) => string;
   addPlot: (propertyId: string, input: PlotInput) => string;
+  updatePlotBoundary: (
+    plotId: string,
+    geometry: GeoPolygon,
+    areaHectares: number,
+  ) => void;
   selectProperty: (propertyId: string) => void;
   selectPlot: (plotId: string) => void;
   removeProperty: (propertyId: string) => void;
@@ -73,6 +79,20 @@ export function useAgriculturalContext(): AgriculturalController {
           selectedPlotId: id,
         }));
         return id;
+      },
+      updatePlotBoundary(plotId, geometry, areaHectares) {
+        setState((current) => ({
+          ...current,
+          plots: current.plots.map((plot) =>
+            plot.id === plotId
+              ? {
+                  ...plot,
+                  geometry,
+                  areaHectares,
+                }
+              : plot,
+          ),
+        }));
       },
       selectProperty(propertyId) {
         setState((current) => ({

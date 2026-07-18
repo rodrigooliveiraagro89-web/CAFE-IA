@@ -19,6 +19,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Save,
   Satellite,
   Search,
   ShieldCheck,
@@ -74,6 +75,11 @@ type LocationState =
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
+type SketchState =
+  | { status: "idle"; message: string }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
+
 const HISTORY_KEY = "agryn.ndvi.history.v1";
 const minimumValidCoveragePercentage = 70;
 
@@ -103,12 +109,18 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
     status: "idle",
     message: "A localização só é acessada quando você autorizar.",
   });
+  const [sketchState, setSketchState] = useState<SketchState>({
+    status: "idle",
+    message: "Desenhe pelo menos três pontos para criar o croqui.",
+  });
+  const [regionalLayerDate, setRegionalLayerDate] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [compareLeft, setCompareLeft] = useState("");
   const [compareRight, setCompareRight] = useState("");
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const processingAbortController = useRef<AbortController | null>(null);
   const searchAbortController = useRef<AbortController | null>(null);
+  const mapPanelRef = useRef<HTMLDivElement | null>(null);
 
   const polygon = useMemo(() => {
     try {
@@ -126,8 +138,8 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
     jobState.status === "completed" ? jobState.result : history[0] ?? null;
   const processingApiAvailable = Boolean(getProcessingApiUrl());
   const publicLayerDate = useMemo(
-    () => latestStablePublicDate(today, dateEnd),
-    [dateEnd, today],
+    () => latestStablePublicDate(today, regionalLayerDate ?? dateEnd),
+    [dateEnd, regionalLayerDate, today],
   );
   const compareLeftResult = history.find((result) => result.id === compareLeft) ?? null;
   const compareRightResult = history.find((result) => result.id === compareRight) ?? null;
@@ -260,6 +272,101 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
     setSelectedSceneId("");
     setSearchState({ status: "idle" });
     setJobState({ status: "idle" });
+    setRegionalLayerDate(null);
+    setSketchState({
+      status: "idle",
+      message: "Desenhe pelo menos três pontos para criar o croqui.",
+    });
+  }
+
+  function finishDrawing() {
+    if (!drawing) {
+      setDrawing(true);
+      setSketchState({
+        status: "idle",
+        message: "Toque no mapa para marcar os vértices da lavoura.",
+      });
+      return;
+    }
+
+    if (!polygon) {
+      setSketchState({
+        status: "error",
+        message: "Marque pelo menos três pontos antes de concluir o croqui.",
+      });
+      return;
+    }
+
+    setDrawing(false);
+    applyRegionalNdvi();
+  }
+
+  function applyRegionalNdvi(requestedDate = dateEnd) {
+    if (!polygon) {
+      setSketchState({
+        status: "error",
+        message: "Conclua o desenho da lavoura antes de aplicar o NDVI.",
+      });
+      return;
+    }
+
+    const layerDate = latestStablePublicDate(today, requestedDate.slice(0, 10));
+    setRegionalLayerDate(layerDate);
+    setActiveLayer("ndvi");
+    setDrawing(false);
+    setSketchState({
+      status: "success",
+      message: `NDVI regional de ${formatDate(layerDate)} aplicado ao croqui de ${formatNumber(areaHectares, 2)} ha.`,
+    });
+    window.requestAnimationFrame(() => {
+      mapPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function saveSketch() {
+    if (!polygon) return;
+    if (!agriculture.selectedPlot) {
+      setSketchState({
+        status: "error",
+        message: "Selecione um talhão cadastrado para salvar o croqui. Você ainda pode baixá-lo.",
+      });
+      return;
+    }
+
+    agriculture.updatePlotBoundary(
+      agriculture.selectedPlot.id,
+      polygon,
+      Number(areaHectares.toFixed(4)),
+    );
+    setSketchState({
+      status: "success",
+      message: `Croqui salvo no talhão ${agriculture.selectedPlot.name}.`,
+    });
+  }
+
+  function downloadSketch() {
+    if (!polygon) return;
+    const name = agriculture.selectedPlot?.name ?? "croqui-lavoura";
+    const document = {
+      type: "Feature",
+      properties: {
+        name,
+        crop: agriculture.selectedPlot?.crop ?? "",
+        areaHectares: Number(areaHectares.toFixed(4)),
+        ndviSource: "NASA MODIS/Terra",
+        ndviDate: publicLayerDate,
+      },
+      geometry: polygon,
+    };
+    const blob = new Blob([JSON.stringify(document, null, 2)], {
+      type: "application/geo+json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = `${slugify(name)}.geojson`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   function handleCurrentLocation() {
@@ -449,10 +556,10 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
               className="primary-button"
               type="button"
               data-active={drawing}
-              onClick={() => setDrawing((current) => !current)}
+              onClick={finishDrawing}
             >
               <MapPinned size={17} aria-hidden="true" />
-              {drawing ? "Concluir desenho" : points.length ? "Continuar desenho" : "Desenhar talhão"}
+              {drawing ? "Concluir e aplicar NDVI" : points.length ? "Editar croqui" : "Desenhar croqui"}
             </button>
             <button
               className="ndvi-icon-action"
@@ -485,6 +592,31 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
             <span><small>Vértices</small><strong>{points.length}</strong></span>
           </div>
 
+          {polygon && (
+            <div className="ndvi-sketch-actions">
+              <button type="button" onClick={() => applyRegionalNdvi()}>
+                <Satellite size={17} aria-hidden="true" />
+                Aplicar NDVI ao croqui
+              </button>
+              <button type="button" onClick={saveSketch}>
+                <Save size={17} aria-hidden="true" />
+                Salvar croqui
+              </button>
+              <button type="button" onClick={downloadSketch}>
+                <Download size={17} aria-hidden="true" />
+                Baixar GeoJSON
+              </button>
+            </div>
+          )}
+
+          <small
+            className="ndvi-sketch-status"
+            data-status={sketchState.status}
+            role={sketchState.status === "error" ? "alert" : "status"}
+          >
+            {sketchState.message}
+          </small>
+
           <button
             className="ndvi-search-button"
             type="button"
@@ -500,7 +632,7 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
           </button>
         </aside>
 
-        <div className="ndvi-map-panel" data-fullscreen={fullscreen}>
+        <div className="ndvi-map-panel" data-fullscreen={fullscreen} ref={mapPanelRef}>
           <div className="ndvi-map-toolbar">
             <div className="ndvi-layer-toggle" aria-label="Camada visível">
               <button
@@ -621,7 +753,10 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
                     aria-checked={selected}
                     data-selected={selected}
                     key={scene.id}
-                    onClick={() => setSelectedSceneId(scene.id)}
+                    onClick={() => {
+                      setSelectedSceneId(scene.id);
+                      setRegionalLayerDate(scene.datetime.slice(0, 10));
+                    }}
                   >
                     <span className="ndvi-scene-rank">{index === 0 ? <Sparkles size={15} /> : index + 1}</span>
                     <span>
@@ -666,6 +801,16 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
                   </span>
                 </div>
               )}
+
+              <button
+                className="ndvi-regional-button"
+                type="button"
+                disabled={!polygon}
+                onClick={() => applyRegionalNdvi(selectedScene?.datetime ?? dateEnd)}
+              >
+                <Satellite size={18} aria-hidden="true" />
+                Ver NDVI regional no croqui
+              </button>
 
               {(jobState.status === "submitting" ||
                 jobState.status === "queued" ||
@@ -996,4 +1141,15 @@ function daysSince(value: string): number {
 
 function formatCoordinate([longitude, latitude]: Position): string {
   return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}
+
+function slugify(value: string): string {
+  return (
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "croqui-lavoura"
+  );
 }
