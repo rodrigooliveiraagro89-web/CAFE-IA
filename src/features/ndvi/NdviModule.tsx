@@ -15,6 +15,7 @@ import {
   LoaderCircle,
   MapPinned,
   Maximize2,
+  Navigation,
   Pause,
   Play,
   RotateCcw,
@@ -42,6 +43,7 @@ import {
   getProcessingApiUrl,
   processNdvi,
 } from "./processingClient";
+import { latestStablePublicDate } from "./publicLayers";
 import {
   getStacRootUrl,
   NdviCatalogError,
@@ -63,6 +65,12 @@ type NdviModuleProps = {
 type SearchState =
   | { status: "idle" }
   | { status: "searching"; message: string }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
+
+type LocationState =
+  | { status: "idle"; message: string }
+  | { status: "locating"; message: string }
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
@@ -90,6 +98,11 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
   const [history, setHistory] = useState<NdviResult[]>(loadHistory);
   const [activeLayer, setActiveLayer] = useState<"true-color" | "ndvi">("ndvi");
   const [opacity, setOpacity] = useState(0.78);
+  const [currentLocation, setCurrentLocation] = useState<Position | null>(null);
+  const [locationState, setLocationState] = useState<LocationState>({
+    status: "idle",
+    message: "A localização só é acessada quando você autorizar.",
+  });
   const [fullscreen, setFullscreen] = useState(false);
   const [compareLeft, setCompareLeft] = useState("");
   const [compareRight, setCompareRight] = useState("");
@@ -112,6 +125,10 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
   const currentResult =
     jobState.status === "completed" ? jobState.result : history[0] ?? null;
   const processingApiAvailable = Boolean(getProcessingApiUrl());
+  const publicLayerDate = useMemo(
+    () => latestStablePublicDate(today, dateEnd),
+    [dateEnd, today],
+  );
   const compareLeftResult = history.find((result) => result.id === compareLeft) ?? null;
   const compareRightResult = history.find((result) => result.id === compareRight) ?? null;
 
@@ -245,6 +262,45 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
     setJobState({ status: "idle" });
   }
 
+  function handleCurrentLocation() {
+    if (!navigator.geolocation) {
+      setLocationState({
+        status: "error",
+        message: "Este navegador não oferece localização.",
+      });
+      return;
+    }
+
+    setLocationState({
+      status: "locating",
+      message: "Aguardando sua autorização para localizar o mapa…",
+    });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+        setActiveLayer("ndvi");
+        setLocationState({
+          status: "success",
+          message: `Localização encontrada com precisão aproximada de ${Math.round(position.coords.accuracy)} m.`,
+        });
+      },
+      (error) => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? "Permissão de localização não concedida."
+            : error.code === error.TIMEOUT
+              ? "A localização demorou demais. Tente novamente em área aberta."
+              : "Não foi possível obter a localização atual.";
+        setLocationState({ status: "error", message });
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60_000,
+        timeout: 12_000,
+      },
+    );
+  }
+
   return (
     <div className="page-stack ndvi-page">
       <section className="ndvi-page-header">
@@ -262,9 +318,15 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
               histórico comparável e zonas para conferência em campo.
             </p>
           </div>
-          <div className="ndvi-source-badge">
-            <CheckCircle2 size={16} aria-hidden="true" />
-            <span><strong>Fonte real</strong><small>Copernicus Data Space</small></span>
+          <div className="ndvi-source-stack">
+            <div className="ndvi-source-badge">
+              <CheckCircle2 size={16} aria-hidden="true" />
+              <span><strong>Imagem NDVI ativa</strong><small>NASA MODIS · 250 m</small></span>
+            </div>
+            <div className="ndvi-source-badge" data-secondary="true">
+              <Satellite size={16} aria-hidden="true" />
+              <span><strong>Detalhamento</strong><small>Copernicus Sentinel‑2 · 10 m</small></span>
+            </div>
           </div>
         </div>
       </section>
@@ -293,6 +355,27 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
               ))}
             </select>
           </label>
+
+          <button
+            className="ndvi-location-button"
+            type="button"
+            onClick={handleCurrentLocation}
+            disabled={locationState.status === "locating"}
+          >
+            {locationState.status === "locating" ? (
+              <LoaderCircle className="spin" size={18} aria-hidden="true" />
+            ) : (
+              <Navigation size={18} aria-hidden="true" />
+            )}
+            {locationState.status === "locating" ? "Localizando…" : "Usar minha localização"}
+          </button>
+          <small
+            className="ndvi-location-status"
+            data-status={locationState.status}
+            role={locationState.status === "error" ? "alert" : "status"}
+          >
+            {locationState.message}
+          </small>
 
           <label>
             Talhão
@@ -465,6 +548,8 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
               opacity={opacity}
               ndviLayer={currentResult?.ndviLayer}
               trueColorLayer={currentResult?.trueColorLayer}
+              publicLayerDate={publicLayerDate}
+              currentLocation={currentLocation}
               onAddPoint={(position) => setPoints((current) => [...current, position])}
               onMovePoint={(index, position) =>
                 setPoints((current) =>
@@ -473,10 +558,9 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
               }
             />
             {points.length === 0 && (
-              <div className="ndvi-map-empty">
-                <MapPinned size={26} aria-hidden="true" />
-                <strong>Delimite o talhão</strong>
-                <span>Ative “Desenhar talhão” e toque no mapa para marcar os vértices.</span>
+              <div className="ndvi-map-guide">
+                <MapPinned size={18} aria-hidden="true" />
+                <span><strong>NDVI público visível</strong> Localize-se ou desenhe o talhão para pesquisar Sentinel‑2.</span>
               </div>
             )}
             {drawing && (
@@ -494,10 +578,10 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
           </div>
 
           <div className="ndvi-map-metadata">
-            <span><Satellite size={14} />{currentResult?.sensor ?? "Sentinel‑2 L2A"}</span>
-            <span><CalendarDays size={14} />{currentResult ? formatDate(currentResult.acquiredAt) : "Selecione uma data"}</span>
-            <span><SquareStack size={14} />{currentResult ? `${currentResult.resolutionMeters} m` : "Até 10 m"}</span>
-            <span><Cloud size={14} />{currentResult ? `${formatNumber(100 - currentResult.validCoveragePercentage, 1)}% descartado` : "Máscara SCL"}</span>
+            <span><Satellite size={14} />{currentResult?.sensor ?? "NASA MODIS/Terra"}</span>
+            <span><CalendarDays size={14} />{currentResult ? formatDate(currentResult.acquiredAt) : formatDate(publicLayerDate)}</span>
+            <span><SquareStack size={14} />{currentResult ? `${currentResult.resolutionMeters} m` : "250 m · visão regional"}</span>
+            <span><Cloud size={14} />{currentResult ? `${formatNumber(100 - currentResult.validCoveragePercentage, 1)}% descartado` : "Composição móvel de 8 dias"}</span>
             {currentResult && <span><CheckCircle2 size={14} />Processado em {formatDate(currentResult.processedAt)}</span>}
           </div>
         </div>
@@ -574,10 +658,10 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
                 <div className="ndvi-connector-notice">
                   <TriangleAlert size={18} aria-hidden="true" />
                   <span>
-                    <strong>Processador ainda não conectado</strong>
+                    <strong>Detalhamento Sentinel‑2 ainda não conectado</strong>
                     <small>
-                      A busca real está ativa. O mapa NDVI e as métricas ficam bloqueados até
-                      configurar o serviço seguro descrito na documentação.
+                      A imagem NDVI regional da NASA já está visível no mapa. Estatísticas e
+                      recorte Sentinel‑2 de 10 m exigem o serviço seguro descrito na documentação.
                     </small>
                   </span>
                 </div>
@@ -615,7 +699,7 @@ export function NdviModule({ onNavigate, agriculture }: NdviModuleProps) {
                 onClick={handleProcessing}
               >
                 <Satellite size={18} aria-hidden="true" />
-                Processar NDVI
+                Processar Sentinel‑2 detalhado
               </button>
               <small className="ndvi-cost-note">
                 Catálogo gratuito. O processamento deve usar cota gratuita ou infraestrutura

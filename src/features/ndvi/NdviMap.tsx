@@ -1,6 +1,7 @@
 import { divIcon, type LeafletMouseEvent, type Marker as LeafletMarker } from "leaflet";
 import { useEffect } from "react";
 import {
+  CircleMarker,
   ImageOverlay,
   MapContainer,
   Marker,
@@ -10,6 +11,12 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { NdviLayer, Position } from "./types";
+import {
+  nasaGibsTileUrl,
+  NASA_GIBS_ATTRIBUTION,
+  NASA_NDVI_LAYER,
+  NASA_TRUE_COLOR_LAYER,
+} from "./publicLayers";
 
 type NdviMapProps = {
   points: Position[];
@@ -19,6 +26,8 @@ type NdviMapProps = {
   opacity: number;
   ndviLayer?: NdviLayer;
   trueColorLayer?: NdviLayer;
+  publicLayerDate: string;
+  currentLocation: Position | null;
   onAddPoint: (position: Position) => void;
   onMovePoint: (index: number, position: Position) => void;
 };
@@ -38,10 +47,14 @@ export function NdviMap({
   opacity,
   ndviLayer,
   trueColorLayer,
+  publicLayerDate,
+  currentLocation,
   onAddPoint,
   onMovePoint,
 }: NdviMapProps) {
   const selectedLayer = activeLayer === "ndvi" ? ndviLayer : trueColorLayer;
+  const publicLayer =
+    activeLayer === "ndvi" ? NASA_NDVI_LAYER : NASA_TRUE_COLOR_LAYER;
 
   return (
     <MapContainer
@@ -58,6 +71,17 @@ export function NdviMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
+      {!selectedLayer && (
+        <TileLayer
+          attribution={NASA_GIBS_ATTRIBUTION}
+          url={nasaGibsTileUrl(publicLayer, publicLayerDate)}
+          opacity={opacity}
+          zIndex={410}
+          maxNativeZoom={9}
+          maxZoom={19}
+        />
+      )}
+
       {selectedLayer?.kind === "tiles" && (
         <TileLayer url={selectedLayer.url} opacity={opacity} zIndex={420} />
       )}
@@ -72,6 +96,20 @@ export function NdviMap({
 
       <DrawingEvents enabled={drawing} onAddPoint={onAddPoint} />
       <ResizeMap fullscreen={fullscreen} />
+      <FocusCurrentLocation position={currentLocation} />
+
+      {currentLocation && (
+        <CircleMarker
+          center={[currentLocation[1], currentLocation[0]]}
+          radius={8}
+          pathOptions={{
+            color: "#ffffff",
+            fillColor: "#0ea5e9",
+            fillOpacity: 1,
+            weight: 3,
+          }}
+        />
+      )}
 
       {points.length >= 2 && (
         <Polygon
@@ -102,6 +140,17 @@ export function NdviMap({
       ))}
     </MapContainer>
   );
+}
+
+function FocusCurrentLocation({ position }: { position: Position | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!position) return;
+    map.flyTo([position[1], position[0]], 15, { duration: 0.8 });
+  }, [map, position]);
+
+  return null;
 }
 
 function DrawingEvents({

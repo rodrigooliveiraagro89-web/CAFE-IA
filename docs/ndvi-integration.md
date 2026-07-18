@@ -3,6 +3,10 @@
 ## O que está ativo
 
 - Interface integrada à central de módulos, responsiva e sem indicadores simulados.
+- Camada NDVI regional pública da NASA GIBS, produto MODIS/Terra rolling 8-day, 250 m,
+  exibida imediatamente sem login ou chave privada.
+- Camada de cor natural NASA/MODIS para comparação visual.
+- Botão de localização atual com autorização explícita do navegador e marcador no mapa.
 - Desenho e edição de polígono sobre mapa, com cálculo de área em hectares.
 - Consulta real ao catálogo STAC oficial do Copernicus Data Space:
   `https://stac.dataspace.copernicus.eu/v1/search`.
@@ -11,8 +15,10 @@
 - Contrato assíncrono para processamento, progresso, cancelamento, retry e histórico.
 - Motor testado para a fórmula, NoData, divisão por zero, máscara e estatísticas.
 
-O catálogo retorna metadados reais sem que a AGRYN invente raster, métricas ou zonas. O
-processamento de pixels fica bloqueado quando `VITE_NDVI_API_URL` não está configurado.
+O mapa regional NASA é uma visualização real, mas não substitui o recorte de precisão do
+Sentinel‑2. O catálogo retorna metadados reais sem que a AGRYN invente raster, métricas ou
+zonas. Estatísticas e recorte Sentinel‑2 continuam bloqueados quando `VITE_NDVI_API_URL`
+não está configurado.
 
 ## Fórmula e qualidade
 
