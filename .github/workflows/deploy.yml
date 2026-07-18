@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Validate source
+        env:
+          VITE_NDVI_API_URL: https://agryn-ndvi-api.onrender.com
+          VITE_NDVI_STAC_URL: https://stac.dataspace.copernicus.eu/v1
         run: pnpm lint && pnpm test && pnpm build
       - name: Configure Pages
         uses: actions/configure-pages@v5
