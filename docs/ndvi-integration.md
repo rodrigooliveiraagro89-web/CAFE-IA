@@ -7,6 +7,8 @@
   exibida imediatamente sem login ou chave privada.
 - Camada de cor natural NASA/MODIS para comparação visual.
 - Botão de localização atual com autorização explícita do navegador e marcador no mapa.
+- Fluxo de croqui: desenho por vértices, realce do NDVI dentro do limite, gravação do
+  polígono no talhão e download em GeoJSON.
 - Desenho e edição de polígono sobre mapa, com cálculo de área em hectares.
 - Consulta real ao catálogo STAC oficial do Copernicus Data Space:
   `https://stac.dataspace.copernicus.eu/v1/search`.
