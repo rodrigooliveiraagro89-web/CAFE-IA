@@ -81,7 +81,9 @@ export function App() {
           name={auth.profile?.nome?.split(" ")[0] ?? ""}
         />
       )}
-      {activeView === "propriedades" && <PropertyManager agriculture={agriculture} />}
+      {activeView === "propriedades" && (
+        <PropertyManager agriculture={agriculture} planId={auth.profile?.plano ?? null} />
+      )}
       {activeView === "modulos" && <ModuleHub />}
       {activeView === "ndvi" && (
         <NdviModule

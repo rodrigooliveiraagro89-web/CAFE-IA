@@ -149,6 +149,43 @@
   text-decoration: underline;
 }
 
+.upgrade-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  border: 1px solid color-mix(in srgb, var(--agryn-yellow) 45%, var(--line));
+  background: color-mix(in srgb, var(--agryn-yellow) 9%, var(--surface));
+  border-radius: var(--radius-md);
+  padding: 1rem 1.2rem;
+}
+
+.upgrade-notice > svg {
+  color: var(--agryn-yellow);
+  flex-shrink: 0;
+}
+
+.upgrade-notice > div {
+  flex: 1;
+  min-width: 14rem;
+}
+
+.upgrade-notice strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 0.95rem;
+}
+
+.upgrade-notice p {
+  margin: 0.15rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+.upgrade-notice .primary-button {
+  text-decoration: none;
+}
+
 .import-overlay {
   position: fixed;
   inset: 0;

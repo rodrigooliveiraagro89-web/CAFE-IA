@@ -8,7 +8,11 @@ describe("useAuth", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.userId).toBe("test-user-id");
     await waitFor(() =>
-      expect(result.current.profile).toEqual({ nome: "Rodrigo Teste", tipo: "consultor" }),
+      expect(result.current.profile).toEqual({
+        nome: "Rodrigo Teste",
+        tipo: "consultor",
+        plano: "gratis",
+      }),
     );
   });
 

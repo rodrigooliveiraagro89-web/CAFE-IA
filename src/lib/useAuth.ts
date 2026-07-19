@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import type { PlanId } from "../domain/plans";
 import { supabase } from "./supabaseClient";
 
 export type ProfileTipo = "consultor" | "produtor";
@@ -7,6 +8,7 @@ export type ProfileTipo = "consultor" | "produtor";
 export type Profile = {
   nome: string;
   tipo: ProfileTipo;
+  plano: PlanId;
 };
 
 export type SignUpInput = {
@@ -61,7 +63,7 @@ export function useAuth(): AuthController {
     let active = true;
     supabase
       .from("profiles")
-      .select("nome, tipo")
+      .select("nome, tipo, plano")
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {
@@ -69,6 +71,7 @@ export function useAuth(): AuthController {
         setFetchedProfile({
           nome: (data.nome as string) ?? "",
           tipo: (data.tipo as ProfileTipo) ?? "produtor",
+          plano: data.plano === "pro" ? "pro" : "gratis",
         });
       });
     return () => {

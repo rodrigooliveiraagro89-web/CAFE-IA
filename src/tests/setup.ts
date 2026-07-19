@@ -30,7 +30,7 @@ function makeBuilder(result: QueryResult) {
 }
 
 const tableResults: Record<string, QueryResult> = {
-  profiles: { data: { nome: "Rodrigo Teste", tipo: "consultor" }, error: null },
+  profiles: { data: { nome: "Rodrigo Teste", tipo: "consultor", plano: "gratis" }, error: null },
   properties: { data: [], error: null },
   plots: { data: [], error: null },
   field_records: { data: [], error: null },

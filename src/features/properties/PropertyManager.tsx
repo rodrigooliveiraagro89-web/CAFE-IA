@@ -1,6 +1,7 @@
 import {
   Building2,
   Check,
+  Crown,
   FileUp,
   LandPlot,
   MapPinned,
@@ -16,11 +17,33 @@ import {
   type PlotInput,
   type PropertyInput,
 } from "../../domain/agriculturalContext";
+import { canAddPlot, canAddProperty, resolvePlan } from "../../domain/plans";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 
 type PropertyManagerProps = {
   agriculture: AgriculturalController;
+  planId?: string | null;
 };
+
+function UpgradeNotice({ message }: { message: string }) {
+  return (
+    <div className="upgrade-notice" role="status">
+      <Crown size={20} aria-hidden="true" />
+      <div>
+        <strong>Limite do plano Grátis atingido</strong>
+        <p>{message}</p>
+      </div>
+      <a
+        className="primary-button"
+        href="./landing.html#planos"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Conhecer o plano Pro
+      </a>
+    </div>
+  );
+}
 
 const blankProperty: PropertyInput = {
   name: "",
@@ -44,7 +67,7 @@ const blankPlot: PlotInput = {
   geometry: null,
 };
 
-export function PropertyManager({ agriculture }: PropertyManagerProps) {
+export function PropertyManager({ agriculture, planId = null }: PropertyManagerProps) {
   const { state, selectedProperty, selectedPlot } = agriculture;
   const [propertyDraft, setPropertyDraft] = useState(blankProperty);
   const [plotDraft, setPlotDraft] = useState(blankPlot);
@@ -56,8 +79,13 @@ export function PropertyManager({ agriculture }: PropertyManagerProps) {
     ? state.plots.filter((plot) => plot.propertyId === selectedProperty.id)
     : [];
 
+  const plan = resolvePlan(planId);
+  const propertyAllowed = canAddProperty(plan, state.properties.length);
+  const plotAllowed = canAddPlot(plan, propertyPlots.length);
+
   function submitProperty(event: FormEvent) {
     event.preventDefault();
+    if (!propertyAllowed) return;
     agriculture.addProperty(propertyDraft);
     setPropertyDraft(blankProperty);
     setPropertyFormOpen(false);
@@ -66,7 +94,7 @@ export function PropertyManager({ agriculture }: PropertyManagerProps) {
 
   function submitPlot(event: FormEvent) {
     event.preventDefault();
-    if (!selectedProperty) return;
+    if (!selectedProperty || !plotAllowed) return;
     agriculture.addPlot(selectedProperty.id, plotDraft);
     setPlotDraft(blankPlot);
     setBoundaryMessage("");
@@ -103,12 +131,18 @@ export function PropertyManager({ agriculture }: PropertyManagerProps) {
             acompanha análises, mapas, atividades e custos.
           </p>
         </div>
-        <button className="primary-button" type="button" onClick={() => setPropertyFormOpen(true)}>
-          <Plus size={18} /> Nova propriedade
-        </button>
+        {propertyAllowed && (
+          <button className="primary-button" type="button" onClick={() => setPropertyFormOpen(true)}>
+            <Plus size={18} /> Nova propriedade
+          </button>
+        )}
       </header>
 
-      {propertyFormOpen && (
+      {!propertyAllowed && (
+        <UpgradeNotice message={`O plano ${plan.label} permite ${plan.maxProperties} propriedade. Para gerenciar mais propriedades — ideal para consultores com carteira de clientes — assine o Pro.`} />
+      )}
+
+      {propertyFormOpen && propertyAllowed && (
         <form className="data-form panel-card" onSubmit={submitProperty}>
           <div className="panel-title">
             <Building2 size={21} />
@@ -235,12 +269,18 @@ export function PropertyManager({ agriculture }: PropertyManagerProps) {
                   <h2>Talhões e culturas</h2>
                   <p>Selecione a área operacional ou cadastre um novo limite.</p>
                 </div>
-                <button className="secondary-button" type="button" onClick={() => setPlotFormOpen(true)}>
-                  <Plus size={17} /> Novo talhão
-                </button>
+                {plotAllowed && (
+                  <button className="secondary-button" type="button" onClick={() => setPlotFormOpen(true)}>
+                    <Plus size={17} /> Novo talhão
+                  </button>
+                )}
               </div>
 
-              {plotFormOpen && (
+              {!plotAllowed && (
+                <UpgradeNotice message={`O plano ${plan.label} permite ${plan.maxPlotsPerProperty} talhões por propriedade. Assine o Pro para talhões ilimitados.`} />
+              )}
+
+              {plotFormOpen && plotAllowed && (
                 <form className="data-form inset-form" onSubmit={submitPlot}>
                   <div className="form-grid">
                     <label>
