@@ -4,7 +4,15 @@ import { copyFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
-const legacyFiles = ["agryn.html", "cafe-real-ia.html", "clima.html", "landing.html", ".nojekyll"];
+const legacyFiles = [
+  "agryn.html",
+  "cafe-real-ia.html",
+  "clima.html",
+  "landing.html",
+  "termos.html",
+  "privacidade.html",
+  ".nojekyll",
+];
 
 export default defineConfig(() => {
   const root = process.cwd();

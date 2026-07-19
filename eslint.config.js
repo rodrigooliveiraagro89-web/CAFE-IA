@@ -5,7 +5,19 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "coverage", "agryn.html", "cafe-real-ia.html", "clima.html", "landing.html"] },
+  {
+    ignores: [
+      "dist",
+      "coverage",
+      "agryn.html",
+      "cafe-real-ia.html",
+      "clima.html",
+      "landing.html",
+      "termos.html",
+      "privacidade.html",
+      "services/ndvi-api",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

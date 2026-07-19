@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
+import { AuthScreen } from "../components/AuthScreen";
 import { evaluateRecommendationReadiness } from "../domain/safety";
 import { CostCenter } from "../features/costs/CostCenter";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
 import { ModuleHub } from "../features/modules/ModuleHub";
 import { NdviModule } from "../features/ndvi/NdviModule";
+import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
 import { PropertyManager } from "../features/properties/PropertyManager";
 import { SafetyCenter } from "../features/safety/SafetyCenter";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
+import { useAuth } from "../lib/useAuth";
 import { useFieldRecords } from "../lib/useFieldRecords";
 import { loadPreferences, savePreferences, type ThemePreference } from "../lib/preferences";
 import type { AppView } from "./navigation";
@@ -29,8 +32,9 @@ export function App() {
     getInitialView(initialPreferences.lastView),
   );
   const [theme, setTheme] = useState<ThemePreference>(initialPreferences.theme);
-  const agriculture = useAgriculturalContext();
-  const fieldBook = useFieldRecords();
+  const auth = useAuth();
+  const agriculture = useAgriculturalContext(auth.userId);
+  const fieldBook = useFieldRecords(auth.userId);
   const safety = useMemo(() => evaluateRecommendationReadiness(), []);
 
   useEffect(() => {
@@ -48,6 +52,14 @@ export function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  if (auth.loading) {
+    return <div className="auth-screen" aria-busy="true" />;
+  }
+
+  if (!auth.session || !auth.userId) {
+    return <AuthScreen auth={auth} />;
+  }
+
   return (
     <AppShell
       activeView={activeView}
@@ -56,13 +68,17 @@ export function App() {
       onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
       selectedProperty={agriculture.selectedProperty}
       selectedPlot={agriculture.selectedPlot}
+      profile={auth.profile}
+      onSignOut={auth.signOut}
     >
+      <ImportLocalDataDialog userId={auth.userId} onDone={() => window.location.reload()} />
       {activeView === "inicio" && (
         <Dashboard
           safety={safety}
           onNavigate={navigate}
           agriculture={agriculture}
           records={fieldBook.records}
+          name={auth.profile?.nome?.split(" ")[0] ?? ""}
         />
       )}
       {activeView === "propriedades" && <PropertyManager agriculture={agriculture} />}

@@ -8,6 +8,7 @@ import {
   FlaskConical,
   House,
   LayoutGrid,
+  LogOut,
   Map,
   Moon,
   ScanLine,
@@ -18,6 +19,7 @@ import {
 import { useState, type PropsWithChildren } from "react";
 import { navigationItems, type AppView } from "../app/navigation";
 import { propertyLocation, type FarmPlot, type FarmProperty } from "../domain/agriculturalContext";
+import type { Profile } from "../lib/useAuth";
 import type { ThemePreference } from "../lib/preferences";
 import { AgrynBrand } from "./brand/AgrynBrand";
 
@@ -28,7 +30,21 @@ type AppShellProps = PropsWithChildren<{
   onToggleTheme: () => void;
   selectedProperty: FarmProperty | null;
   selectedPlot: FarmPlot | null;
+  profile: Profile | null;
+  onSignOut: () => void;
 }>;
+
+const tipoLabels: Record<Profile["tipo"], string> = {
+  consultor: "Consultor(a)",
+  produtor: "Produtor(a)",
+};
+
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
 
 const operationLinks = [
   { label: "Diagnóstico", href: "./agryn.html?tab=foto", icon: ScanLine },
@@ -45,14 +61,20 @@ export function AppShell({
   onToggleTheme,
   selectedProperty,
   selectedPlot,
+  profile,
+  onSignOut,
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const today = new Intl.DateTimeFormat("pt-BR", {
     weekday: "short",
     day: "2-digit",
     month: "short",
   }).format(new Date());
+  const displayName = profile?.nome || "Sua conta";
+  const displayTipo = profile ? tipoLabels[profile.tipo] : "";
+  const initials = initialsFromName(displayName);
 
   return (
     <div className="app-frame" data-sidebar-collapsed={collapsed}>
@@ -110,8 +132,8 @@ export function AppShell({
         )}
 
         <div className="sidebar-footer" data-collapsed={collapsed}>
-          <span className="avatar" aria-hidden="true">RO</span>
-          {!collapsed && <span><strong>Rodrigo Oliveira</strong><small>Administrador</small></span>}
+          <span className="avatar" aria-hidden="true">{initials}</span>
+          {!collapsed && <span><strong>{displayName}</strong><small>{displayTipo}</small></span>}
         </div>
       </aside>
 
@@ -132,7 +154,34 @@ export function AppShell({
             <a className="weather-pill" href="./clima.html" aria-label="Abrir previsão do tempo"><CloudSun size={18} aria-hidden="true" /><span><small>Clima</small><strong>Sincronizar</strong></span></a>
             <button className="icon-button" type="button" aria-label="Notificações"><Bell size={19} /></button>
             <button className="icon-button" onClick={onToggleTheme} type="button" aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}>{theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}</button>
-            <a className="profile-button" href="./agryn.html?open=account" aria-label="Abrir perfil de Rodrigo Oliveira"><span className="avatar">RO</span><span><strong>Rodrigo</strong><small>Administrador</small></span><UserRound size={17} aria-hidden="true" /></a>
+            <div className="profile-menu">
+              <button
+                type="button"
+                className="profile-button"
+                onClick={() => setAccountMenuOpen((current) => !current)}
+                aria-haspopup="true"
+                aria-expanded={accountMenuOpen}
+                aria-label={`Abrir menu de conta de ${displayName}`}
+              >
+                <span className="avatar">{initials}</span>
+                <span><strong>{displayName.split(" ")[0]}</strong><small>{displayTipo}</small></span>
+                <UserRound size={17} aria-hidden="true" />
+              </button>
+              {accountMenuOpen && (
+                <div className="profile-dropdown" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      onSignOut();
+                    }}
+                  >
+                    <LogOut size={16} aria-hidden="true" /> Sair
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

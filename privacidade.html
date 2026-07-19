@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="index, follow" />
+  <title>Política de Privacidade — AGRYN</title>
+  <style>
+    :root {
+      --emerald: #10b981;
+      --emerald-deep: #059669;
+      --canvas: #f3f6f4;
+      --surface: #ffffff;
+      --text: #10211a;
+      --text-soft: #607168;
+      --line: #dce6e0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --canvas: #050a0d;
+        --surface: #0b1318;
+        --text: #e7f0eb;
+        --text-soft: #9eb0a7;
+        --line: #1d2c34;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.65;
+    }
+    .page { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 1.1rem; padding: 2rem; }
+    h1 { font-size: 1.6rem; margin: 0.25rem 0; }
+    h2 { font-size: 1.1rem; margin: 1.8rem 0 0.5rem; color: var(--emerald-deep); }
+    p, li { color: var(--text); font-size: 0.95rem; }
+    .meta { color: var(--text-soft); font-size: 0.85rem; }
+    a { color: var(--emerald-deep); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 0.75rem 0; }
+    th, td { text-align: left; border: 1px solid var(--line); padding: 0.5rem 0.6rem; vertical-align: top; }
+    th { background: color-mix(in srgb, var(--emerald) 8%, transparent); }
+    .brand { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; font-weight: 800; letter-spacing: 0.06em; }
+    .brand small { display: block; font-weight: 400; letter-spacing: 0; color: var(--text-soft); }
+    .back { display: inline-block; margin-bottom: 1rem; font-size: 0.9rem; }
+    .overflow { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="./">← Voltar ao AGRYN</a>
+    <div class="card">
+      <div class="brand">AGRYN<small>Inteligência que cultiva resultados</small></div>
+      <h1>Política de Privacidade</h1>
+      <p class="meta">Última atualização: 19 de julho de 2026 · Versão 1.0 (minuta inicial) · Elaborada em conformidade com a Lei nº 13.709/2018 (LGPD)</p>
+
+      <h2>1. Controlador dos dados</h2>
+      <p><strong>Rodrigo Oliveira</strong> ("Controlador"), contato para assuntos de privacidade e exercício de direitos: <a href="mailto:rodrigooliveiraagro89@gmail.com">rodrigooliveiraagro89@gmail.com</a>.</p>
+
+      <h2>2. Quais dados coletamos e por quê</h2>
+      <div class="overflow">
+      <table>
+        <tr><th>Dados</th><th>Quando</th><th>Finalidade</th><th>Base legal (LGPD art. 7º)</th></tr>
+        <tr>
+          <td>Nome, e-mail, senha (criptografada) e tipo de perfil (consultor/produtor)</td>
+          <td>No cadastro</td>
+          <td>Criar e autenticar sua conta; personalizar a experiência</td>
+          <td>Execução de contrato (inciso V)</td>
+        </tr>
+        <tr>
+          <td>Dados da operação agrícola: propriedades, talhões, limites geográficos (polígonos/coordenadas), cultura, safra, registros de campo, custos</td>
+          <td>Quando você cadastra</td>
+          <td>Prestar as funcionalidades da plataforma (mapas, NDVI, caderno de campo, custos)</td>
+          <td>Execução de contrato (inciso V)</td>
+        </tr>
+        <tr>
+          <td>Análises de solo/foliares enviadas (arquivos e valores extraídos)</td>
+          <td>Quando você envia</td>
+          <td>Interpretação e recomendações técnicas</td>
+          <td>Execução de contrato (inciso V)</td>
+        </tr>
+        <tr>
+          <td>Localização geográfica aproximada</td>
+          <td>Somente se você autorizar no navegador</td>
+          <td>Centralizar mapas e busca de imagens de satélite</td>
+          <td>Consentimento (inciso I) — revogável a qualquer momento</td>
+        </tr>
+        <tr>
+          <td>Registros técnicos (logs de acesso, endereço IP, dados do navegador)</td>
+          <td>Automático</td>
+          <td>Segurança, prevenção a fraudes e cumprimento do Marco Civil da Internet</td>
+          <td>Obrigação legal (inciso II) e legítimo interesse (inciso IX)</td>
+        </tr>
+      </table>
+      </div>
+      <p>Não coletamos dados pessoais sensíveis (art. 5º, II da LGPD) intencionalmente, nem dados de menores de idade. Não solicite nem insira esse tipo de dado em campos de texto livre.</p>
+
+      <h2>3. Com quem os dados são compartilhados (operadores)</h2>
+      <p>Não vendemos seus dados. Compartilhamos apenas com os fornecedores estritamente necessários para operar o serviço:</p>
+      <div class="overflow">
+      <table>
+        <tr><th>Fornecedor</th><th>Papel</th><th>O que recebe</th></tr>
+        <tr><td>Supabase Inc.</td><td>Banco de dados e autenticação</td><td>Conta e todos os dados cadastrados na plataforma</td></tr>
+        <tr><td>Render Services, Inc.</td><td>Processamento geoespacial (NDVI)</td><td>Limite geográfico do talhão e período consultado (sem nome/e-mail)</td></tr>
+        <tr><td>Copernicus Data Space Ecosystem (ESA/União Europeia)</td><td>Catálogo e imagens de satélite</td><td>Coordenadas da área consultada</td></tr>
+        <tr><td>GitHub, Inc.</td><td>Hospedagem do site</td><td>Registros técnicos de acesso (IP, navegador)</td></tr>
+      </table>
+      </div>
+
+      <h2>4. Transferência internacional</h2>
+      <p>Os fornecedores acima armazenam ou processam dados fora do Brasil (Estados Unidos e União Europeia). A transferência ocorre com fundamento no art. 33 da LGPD, para países ou mediante cláusulas que asseguram grau de proteção adequado, sendo condição necessária para a prestação do serviço.</p>
+
+      <h2>5. Por quanto tempo guardamos</h2>
+      <ul>
+        <li><strong>Dados da conta e da operação:</strong> enquanto a conta existir. Ao encerrar a conta, são excluídos em até 30 dias, salvo obrigação legal de retenção.</li>
+        <li><strong>Resultados de processamento NDVI:</strong> arquivos temporários são apagados automaticamente do servidor de processamento em até 7 dias.</li>
+        <li><strong>Logs técnicos:</strong> mantidos pelo prazo do Marco Civil da Internet (6 meses para registros de acesso).</li>
+      </ul>
+
+      <h2>6. Onde os dados ficam no seu aparelho</h2>
+      <p>O aplicativo usa o armazenamento local do navegador como cache para carregamento rápido. Esse cache é limpo automaticamente quando você sai da conta. Não usamos cookies de publicidade nem rastreadores de terceiros.</p>
+
+      <h2>7. Segurança</h2>
+      <p>Adotamos medidas técnicas compatíveis com o porte do serviço: criptografia em trânsito (HTTPS/TLS), senhas armazenadas com hash, isolamento de dados por usuário no banco (Row Level Security — cada conta só consegue ler e alterar os próprios registros) e segregação de credenciais de serviços em ambiente seguro.</p>
+
+      <h2>8. Seus direitos (LGPD art. 18)</h2>
+      <p>Você pode, a qualquer momento e gratuitamente, solicitar:</p>
+      <ul>
+        <li>Confirmação de tratamento e acesso aos seus dados;</li>
+        <li>Correção de dados incompletos, inexatos ou desatualizados;</li>
+        <li>Anonimização, bloqueio ou eliminação de dados desnecessários;</li>
+        <li>Portabilidade (a plataforma oferece exportação dos seus dados em formatos abertos, como GeoJSON);</li>
+        <li>Eliminação dos dados tratados com consentimento;</li>
+        <li>Informação sobre compartilhamentos realizados;</li>
+        <li>Revogação do consentimento (ex.: desativar a localização no navegador).</li>
+      </ul>
+      <p>Para exercer qualquer direito, escreva para <a href="mailto:rodrigooliveiraagro89@gmail.com">rodrigooliveiraagro89@gmail.com</a>. Responderemos nos prazos da LGPD. Você também pode peticionar à Autoridade Nacional de Proteção de Dados (ANPD).</p>
+
+      <h2>9. Incidentes de segurança</h2>
+      <p>Em caso de incidente de segurança que possa acarretar risco ou dano relevante, comunicaremos você e a ANPD nos termos do art. 48 da LGPD.</p>
+
+      <h2>10. Alterações desta Política</h2>
+      <p>Esta Política pode ser atualizada para refletir mudanças no serviço ou na legislação. Mudanças relevantes serão comunicadas na plataforma ou por e-mail, com indicação da data de vigência.</p>
+
+      <p class="meta">Contato do Controlador: Rodrigo Oliveira — <a href="mailto:rodrigooliveiraagro89@gmail.com">rodrigooliveiraagro89@gmail.com</a></p>
+    </div>
+  </div>
+</body>
+</html>

@@ -6,9 +6,9 @@ import { App } from "./App";
 describe("App AGRYN", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("apresenta a jornada AGRYN sem inventar indicadores", () => {
+  it("apresenta a jornada AGRYN sem inventar indicadores", async () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: /Rodrigo/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Rodrigo/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Módulos da operação" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Solo:/i })).toHaveAttribute(
       "href",
@@ -21,7 +21,9 @@ describe("App AGRYN", () => {
   it("abre a central de módulos e filtra recursos reais", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: /MódulosTodas as ferramentas AGRYN/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /MódulosTodas as ferramentas AGRYN/i }),
+    );
     expect(screen.getByRole("heading", { name: "Todos os módulos AGRYN" })).toBeInTheDocument();
 
     await user.type(screen.getByRole("searchbox", { name: "Buscar módulo" }), "clima");
@@ -32,7 +34,9 @@ describe("App AGRYN", () => {
   it("abre os critérios de governança pela navegação", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: /GovernançaSegurança técnica e validações/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /GovernançaSegurança técnica e validações/i }),
+    );
     expect(screen.getByRole("heading", { name: "Confiança técnica em cada decisão" })).toBeInTheDocument();
     expect(screen.getByText("Bloqueado com segurança")).toBeInTheDocument();
   });

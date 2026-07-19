@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "../features/ndvi/ndvi.css";
+@import "../components/auth.css";
 
 * {
   box-sizing: border-box;
@@ -505,6 +506,47 @@ a {
 
 .profile-button > svg {
   color: var(--text-faint);
+}
+
+.profile-menu {
+  position: relative;
+}
+
+.profile-button {
+  cursor: pointer;
+}
+
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 40;
+  min-width: 8rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: 0.35rem;
+}
+
+.profile-dropdown button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--danger);
+  cursor: pointer;
+  text-align: left;
+}
+
+.profile-dropdown button:hover {
+  background: var(--danger-soft);
 }
 
 main {

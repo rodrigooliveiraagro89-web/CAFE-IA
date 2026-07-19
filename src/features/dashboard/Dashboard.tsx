@@ -27,6 +27,7 @@ type DashboardProps = {
   onNavigate: (view: AppView) => void;
   agriculture: AgriculturalController;
   records: FieldRecord[];
+  name: string;
 };
 
 const featuredModuleIds = ["solo", "visao", "ndvi", "recomendacoes", "clima", "defensivos", "mapa", "caderno"];
@@ -34,7 +35,7 @@ const featuredModules = featuredModuleIds
   .map((id) => moduleCatalog.find((module) => module.id === id))
   .filter((module): module is NonNullable<typeof module> => Boolean(module));
 
-export function Dashboard({ safety, onNavigate, agriculture, records }: DashboardProps) {
+export function Dashboard({ safety, onNavigate, agriculture, records, name }: DashboardProps) {
   const hour = new Date().getHours();
   const salutation = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const plotRecords = records.filter((record) => record.plotId === agriculture.selectedPlot?.id);
@@ -56,7 +57,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records }: Dashboar
       <section className="agryn-hero" aria-labelledby="welcome-title">
         <div className="hero-copy">
           <span className="eyebrow">Inteligência que cultiva resultados</span>
-          <h1 id="welcome-title">{salutation}, Rodrigo.</h1>
+          <h1 id="welcome-title">{salutation}{name ? `, ${name}` : ""}.</h1>
           <p>{agriculture.selectedPlot ? `Acompanhe ${agriculture.selectedPlot.crop.toLocaleLowerCase("pt-BR")} no ${agriculture.selectedPlot.name}, safra ${agriculture.selectedPlot.season}.` : "Conecte uma propriedade para transformar análises, clima e manejo em decisões rastreáveis para qualquer cultura."}</p>
           <div className="hero-actions">
             <button className="primary-button" type="button" onClick={() => onNavigate(agriculture.selectedPlot ? "caderno" : "propriedades")}><Plus size={18} /> {agriculture.selectedPlot ? "Registrar atividade" : "Cadastrar propriedade"}</button>

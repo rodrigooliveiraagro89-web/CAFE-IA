@@ -38,6 +38,8 @@ jobs:
         env:
           VITE_NDVI_API_URL: https://agryn-ndvi-api.onrender.com
           VITE_NDVI_STAC_URL: https://stac.dataspace.copernicus.eu/v1
+          VITE_SUPABASE_URL: https://eqtacmanqmdcjvxezuah.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: pnpm lint && pnpm test && pnpm build
       - name: Configure Pages
         uses: actions/configure-pages@v5
