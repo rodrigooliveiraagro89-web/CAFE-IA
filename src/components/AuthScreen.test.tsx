@@ -14,6 +14,7 @@ function makeAuth(): AuthController {
     signUp: vi.fn().mockResolvedValue(undefined),
     signIn: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn().mockResolvedValue(undefined),
+    startTrial: vi.fn().mockResolvedValue(undefined),
   };
 }
 

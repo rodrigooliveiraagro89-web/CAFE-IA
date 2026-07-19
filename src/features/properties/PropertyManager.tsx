@@ -17,15 +17,25 @@ import {
   type PlotInput,
   type PropertyInput,
 } from "../../domain/agriculturalContext";
-import { canAddPlot, canAddProperty, resolvePlan } from "../../domain/plans";
+import { canAddPlot, canAddProperty, resolvePlan, TRIAL_DAYS } from "../../domain/plans";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 
 type PropertyManagerProps = {
   agriculture: AgriculturalController;
   planId?: string | null;
+  trialAvailable?: boolean;
+  onStartTrial?: () => void;
 };
 
-function UpgradeNotice({ message }: { message: string }) {
+function UpgradeNotice({
+  message,
+  trialAvailable,
+  onStartTrial,
+}: {
+  message: string;
+  trialAvailable?: boolean;
+  onStartTrial?: () => void;
+}) {
   return (
     <div className="upgrade-notice" role="status">
       <Crown size={20} aria-hidden="true" />
@@ -33,8 +43,13 @@ function UpgradeNotice({ message }: { message: string }) {
         <strong>Limite do plano Grátis atingido</strong>
         <p>{message}</p>
       </div>
+      {trialAvailable && onStartTrial && (
+        <button className="primary-button" type="button" onClick={onStartTrial}>
+          Testar o Pro grátis por {TRIAL_DAYS} dias
+        </button>
+      )}
       <a
-        className="primary-button"
+        className="secondary-button"
         href="./landing.html#planos"
         target="_blank"
         rel="noreferrer"
@@ -67,7 +82,12 @@ const blankPlot: PlotInput = {
   geometry: null,
 };
 
-export function PropertyManager({ agriculture, planId = null }: PropertyManagerProps) {
+export function PropertyManager({
+  agriculture,
+  planId = null,
+  trialAvailable = false,
+  onStartTrial,
+}: PropertyManagerProps) {
   const { state, selectedProperty, selectedPlot } = agriculture;
   const [propertyDraft, setPropertyDraft] = useState(blankProperty);
   const [plotDraft, setPlotDraft] = useState(blankPlot);
@@ -139,7 +159,11 @@ export function PropertyManager({ agriculture, planId = null }: PropertyManagerP
       </header>
 
       {!propertyAllowed && (
-        <UpgradeNotice message={`O plano ${plan.label} permite ${plan.maxProperties} propriedade. Para gerenciar mais propriedades — ideal para consultores com carteira de clientes — assine o Pro.`} />
+        <UpgradeNotice
+          message={`O plano ${plan.label} permite ${plan.maxProperties} propriedade. Para gerenciar mais propriedades — ideal para consultores com carteira de clientes — assine o Pro.`}
+          trialAvailable={trialAvailable}
+          onStartTrial={onStartTrial}
+        />
       )}
 
       {propertyFormOpen && propertyAllowed && (
@@ -277,7 +301,11 @@ export function PropertyManager({ agriculture, planId = null }: PropertyManagerP
               </div>
 
               {!plotAllowed && (
-                <UpgradeNotice message={`O plano ${plan.label} permite ${plan.maxPlotsPerProperty} talhões por propriedade. Assine o Pro para talhões ilimitados.`} />
+                <UpgradeNotice
+                  message={`O plano ${plan.label} permite ${plan.maxPlotsPerProperty} talhões por propriedade. Assine o Pro para talhões ilimitados.`}
+                  trialAvailable={trialAvailable}
+                  onStartTrial={onStartTrial}
+                />
               )}
 
               {plotFormOpen && plotAllowed && (

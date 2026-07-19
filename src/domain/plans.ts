@@ -25,8 +25,28 @@ export const plans: Record<PlanId, PlanLimits> = {
   },
 };
 
+export const TRIAL_DAYS = 14;
+
 export function resolvePlan(planId: string | null | undefined): PlanLimits {
   return planId === "pro" ? plans.pro : plans.gratis;
+}
+
+// Plano efetivo: assinatura Pro OU período de teste ainda vigente.
+export function effectivePlanId(
+  planId: string | null | undefined,
+  trialAte: string | null | undefined,
+  now: Date = new Date(),
+): PlanId {
+  if (planId === "pro") return "pro";
+  if (trialAte) {
+    const end = new Date(trialAte).getTime();
+    if (Number.isFinite(end) && end > now.getTime()) return "pro";
+  }
+  return "gratis";
+}
+
+export function trialAlreadyUsed(trialAte: string | null | undefined): boolean {
+  return Boolean(trialAte);
 }
 
 export function canAddProperty(plan: PlanLimits, currentCount: number): boolean {

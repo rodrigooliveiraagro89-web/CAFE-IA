@@ -12,6 +12,7 @@ describe("useAuth", () => {
         nome: "Rodrigo Teste",
         tipo: "consultor",
         plano: "gratis",
+        trialAte: null,
       }),
     );
   });

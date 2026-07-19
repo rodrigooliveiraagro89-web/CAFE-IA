@@ -8,8 +8,10 @@ import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
 import { ModuleHub } from "../features/modules/ModuleHub";
 import { NdviModule } from "../features/ndvi/NdviModule";
 import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
+import { PortfolioPanel } from "../features/portfolio/PortfolioPanel";
 import { PropertyManager } from "../features/properties/PropertyManager";
 import { SafetyCenter } from "../features/safety/SafetyCenter";
+import { effectivePlanId, trialAlreadyUsed } from "../domain/plans";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
 import { useAuth } from "../lib/useAuth";
 import { useFieldRecords } from "../lib/useFieldRecords";
@@ -18,6 +20,7 @@ import type { AppView } from "./navigation";
 
 const validViews: AppView[] = [
   "inicio",
+  "carteira",
   "propriedades",
   "modulos",
   "ndvi",
@@ -81,8 +84,20 @@ export function App() {
           name={auth.profile?.nome?.split(" ")[0] ?? ""}
         />
       )}
+      {activeView === "carteira" && (
+        <PortfolioPanel
+          agriculture={agriculture}
+          records={fieldBook.records}
+          onNavigate={navigate}
+        />
+      )}
       {activeView === "propriedades" && (
-        <PropertyManager agriculture={agriculture} planId={auth.profile?.plano ?? null} />
+        <PropertyManager
+          agriculture={agriculture}
+          planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
+          trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
+          onStartTrial={() => void auth.startTrial()}
+        />
       )}
       {activeView === "modulos" && <ModuleHub />}
       {activeView === "ndvi" && (

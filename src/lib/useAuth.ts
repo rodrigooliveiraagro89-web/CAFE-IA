@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { PlanId } from "../domain/plans";
+import { TRIAL_DAYS, type PlanId } from "../domain/plans";
 import { supabase } from "./supabaseClient";
 
 export type ProfileTipo = "consultor" | "produtor";
@@ -9,6 +9,7 @@ export type Profile = {
   nome: string;
   tipo: ProfileTipo;
   plano: PlanId;
+  trialAte: string | null;
 };
 
 export type SignUpInput = {
@@ -32,6 +33,7 @@ export type AuthController = {
   signUp: (input: SignUpInput) => Promise<void>;
   signIn: (input: SignInInput) => Promise<void>;
   signOut: () => Promise<void>;
+  startTrial: () => Promise<void>;
 };
 
 export function useAuth(): AuthController {
@@ -63,7 +65,9 @@ export function useAuth(): AuthController {
     let active = true;
     supabase
       .from("profiles")
-      .select("nome, tipo, plano")
+      // select("*") tolera colunas ainda não migradas (ex.: trial_ate) sem
+      // derrubar o carregamento do perfil inteiro.
+      .select("*")
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {
@@ -72,6 +76,7 @@ export function useAuth(): AuthController {
           nome: (data.nome as string) ?? "",
           tipo: (data.tipo as ProfileTipo) ?? "produtor",
           plano: data.plano === "pro" ? "pro" : "gratis",
+          trialAte: (data.trial_ate as string | null) ?? null,
         });
       });
     return () => {
@@ -108,6 +113,21 @@ export function useAuth(): AuthController {
     await supabase.auth.signOut();
   }, []);
 
+  const startTrial = useCallback(async () => {
+    if (!userId) return;
+    const trialAte = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const { error: trialError } = await supabase
+      .from("profiles")
+      .update({ trial_ate: trialAte })
+      .eq("id", userId)
+      .is("trial_ate", null);
+    if (trialError) {
+      setError(trialError.message);
+      throw trialError;
+    }
+    setFetchedProfile((current) => (current ? { ...current, trialAte } : current));
+  }, [userId]);
+
   return {
     session,
     userId,
@@ -117,5 +137,6 @@ export function useAuth(): AuthController {
     signUp,
     signIn,
     signOut,
+    startTrial,
   };
 }

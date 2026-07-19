@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpenCheck,
+  Briefcase,
   CircleDollarSign,
   House,
   LandPlot,
@@ -11,6 +12,7 @@ import {
 
 export type AppView =
   | "inicio"
+  | "carteira"
   | "propriedades"
   | "modulos"
   | "ndvi"
@@ -27,6 +29,12 @@ export type NavigationItem = {
 
 export const navigationItems: NavigationItem[] = [
   { id: "inicio", label: "Início", description: "Visão geral da operação", icon: House },
+  {
+    id: "carteira",
+    label: "Carteira",
+    description: "Todas as propriedades num só lugar",
+    icon: Briefcase,
+  },
   {
     id: "propriedades",
     label: "Propriedades e talhões",
