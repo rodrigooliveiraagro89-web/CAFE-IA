@@ -66,6 +66,7 @@ type NdviModuleProps = {
   onNavigate: (view: AppView) => void;
   agriculture: AgriculturalController;
   onCreateInspection: (input: FieldRecordInput) => void;
+  accessToken: string;
 };
 
 type SearchState =
@@ -92,6 +93,7 @@ export function NdviModule({
   onNavigate,
   agriculture,
   onCreateInspection,
+  accessToken,
 }: NdviModuleProps) {
   const today = useMemo(() => formatInputDate(new Date()), []);
   const ninetyDaysAgo = useMemo(() => {
@@ -240,6 +242,7 @@ export function NdviModule({
           plotId: agriculture.selectedPlot?.id ?? "area-avulsa",
           minimumValidCoveragePercentage,
         },
+        accessToken,
         updateJobState,
         controller.signal,
       );

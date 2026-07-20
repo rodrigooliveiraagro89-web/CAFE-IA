@@ -6,12 +6,13 @@ import json
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Response, status
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .config import settings
 from .models import JobEnvelope, NdviJobInput
+from .quota import check_quota, get_effective_plan, verify_user
 from .sentinelhub import processor
 
 
@@ -60,6 +61,7 @@ async def create_job(
     request: NdviJobInput,
     background_tasks: BackgroundTasks,
     response: Response,
+    authorization: str | None = Header(default=None),
 ) -> JobEnvelope:
     cache_key = request_hash(request)
     async with lock:
@@ -68,6 +70,14 @@ async def create_job(
         if cached_job and cached_job.status == "completed":
             response.status_code = status.HTTP_200_OK
             return cached_job
+
+    # Só cobra cota por processamento genuinamente novo — uma cena já
+    # processada e em cache (acima) não consome a cota do usuário.
+    user = await verify_user(authorization)
+    plan = await get_effective_plan(user["id"], user["token"])
+    await check_quota(user["id"], user["token"], plan)
+
+    async with lock:
         job_id = uuid.uuid4().hex
         envelope = JobEnvelope(
             id=job_id,

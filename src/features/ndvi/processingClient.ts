@@ -18,6 +18,7 @@ export function getProcessingApiUrl(): string | null {
 
 export async function processNdvi(
   input: ProcessNdviInput,
+  accessToken: string,
   onProgress: (job: NdviJobResponse) => void,
   signal?: AbortSignal,
 ): Promise<NdviResult> {
@@ -33,6 +34,7 @@ export async function processNdvi(
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
       scene_id: input.sceneId,

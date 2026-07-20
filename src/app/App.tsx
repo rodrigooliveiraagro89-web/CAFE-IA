@@ -104,6 +104,7 @@ export function App() {
         <NdviModule
           onNavigate={navigate}
           agriculture={agriculture}
+          accessToken={auth.session?.access_token ?? ""}
           onCreateInspection={(input) => {
             if (!agriculture.selectedProperty || !agriculture.selectedPlot) return;
             fieldBook.addRecord(

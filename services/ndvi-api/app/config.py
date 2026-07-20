@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     result_ttl_hours: int = 168
     max_output_pixels: int = 4_000_000
 
+    # Usados para validar a sessão do usuário e checar a cota de NDVI por
+    # plano. São os mesmos valores públicos já usados pelo frontend
+    # (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) — não são segredo novo.
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    ndvi_quota_free_monthly: int = 2
+    ndvi_quota_pro_monthly: int = 100
+
     @property
     def origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
