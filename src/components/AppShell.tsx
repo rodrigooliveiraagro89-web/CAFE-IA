@@ -51,7 +51,7 @@ const operationLinks = [
   { label: "Análises", href: "./agryn.html?tab=solo", icon: FlaskConical },
   { label: "Clima", href: "./clima.html", icon: CloudSun },
   { label: "Recomendações", href: "./agryn.html?tab=adubacao", icon: Sprout },
-  { label: "Relatórios", href: "./agryn.html?tab=relatorio", icon: FileText },
+  { label: "Relatórios", href: "./?view=relatorios", icon: FileText },
 ];
 
 export function AppShell({

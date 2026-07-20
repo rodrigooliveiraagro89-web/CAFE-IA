@@ -3,6 +3,7 @@ import {
   BookOpenCheck,
   Briefcase,
   CircleDollarSign,
+  FileText,
   House,
   LandPlot,
   LayoutGrid,
@@ -18,6 +19,7 @@ export type AppView =
   | "ndvi"
   | "caderno"
   | "custos"
+  | "relatorios"
   | "seguranca";
 
 export type NavigationItem = {
@@ -45,6 +47,12 @@ export const navigationItems: NavigationItem[] = [
   { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },
   { id: "caderno", label: "Caderno de campo", description: "Atividades e histórico", icon: BookOpenCheck },
   { id: "custos", label: "Custos", description: "Gestão financeira por área", icon: CircleDollarSign },
+  {
+    id: "relatorios",
+    label: "Relatórios",
+    description: "Documento técnico por propriedade",
+    icon: FileText,
+  },
   {
     id: "seguranca",
     label: "Governança",

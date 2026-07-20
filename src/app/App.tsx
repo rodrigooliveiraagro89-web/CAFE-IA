@@ -6,10 +6,12 @@ import { CostCenter } from "../features/costs/CostCenter";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
 import { ModuleHub } from "../features/modules/ModuleHub";
+import { useNdviHistory } from "../features/ndvi/historyStore";
 import { NdviModule } from "../features/ndvi/NdviModule";
 import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
 import { PortfolioPanel } from "../features/portfolio/PortfolioPanel";
 import { PropertyManager } from "../features/properties/PropertyManager";
+import { ReportModule } from "../features/reports/ReportModule";
 import { SafetyCenter } from "../features/safety/SafetyCenter";
 import { effectivePlanId, trialAlreadyUsed } from "../domain/plans";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
@@ -26,6 +28,7 @@ const validViews: AppView[] = [
   "ndvi",
   "caderno",
   "custos",
+  "relatorios",
   "seguranca",
 ];
 
@@ -38,6 +41,7 @@ export function App() {
   const auth = useAuth();
   const agriculture = useAgriculturalContext(auth.userId);
   const fieldBook = useFieldRecords(auth.userId);
+  const ndviHistory = useNdviHistory(auth.userId);
   const safety = useMemo(() => evaluateRecommendationReadiness(), []);
 
   useEffect(() => {
@@ -81,6 +85,7 @@ export function App() {
           onNavigate={navigate}
           agriculture={agriculture}
           records={fieldBook.records}
+          ndviHistory={ndviHistory.history}
           name={auth.profile?.nome?.split(" ")[0] ?? ""}
         />
       )}
@@ -105,6 +110,8 @@ export function App() {
           onNavigate={navigate}
           agriculture={agriculture}
           accessToken={auth.session?.access_token ?? ""}
+          history={ndviHistory.history}
+          onAddResult={ndviHistory.addResult}
           onCreateInspection={(input) => {
             if (!agriculture.selectedProperty || !agriculture.selectedPlot) return;
             fieldBook.addRecord(
@@ -129,6 +136,17 @@ export function App() {
         <CostCenter
           agriculture={agriculture}
           records={fieldBook.records}
+          onNavigate={navigate}
+        />
+      )}
+      {activeView === "relatorios" && (
+        <ReportModule
+          agriculture={agriculture}
+          records={fieldBook.records}
+          ndviHistory={ndviHistory.history}
+          planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
+          trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
+          onStartTrial={() => void auth.startTrial()}
           onNavigate={navigate}
         />
       )}

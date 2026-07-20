@@ -19,8 +19,10 @@ function makeBuilder(result: QueryResult) {
     select: () => builder,
     order: () => builder,
     eq: () => builder,
+    limit: () => builder,
     maybeSingle: () => Promise.resolve(result),
     insert: () => Promise.resolve(result),
+    upsert: () => Promise.resolve(result),
     update: () => builder,
     delete: () => builder,
     then: (onFulfilled: (value: QueryResult) => unknown, onRejected?: (reason: unknown) => unknown) =>
@@ -37,6 +39,7 @@ const tableResults: Record<string, QueryResult> = {
   properties: { data: [], error: null },
   plots: { data: [], error: null },
   field_records: { data: [], error: null },
+  ndvi_results: { data: [], error: null },
 };
 
 vi.mock("../lib/supabaseClient", () => ({

@@ -67,6 +67,8 @@ type NdviModuleProps = {
   agriculture: AgriculturalController;
   onCreateInspection: (input: FieldRecordInput) => void;
   accessToken: string;
+  history: NdviResult[];
+  onAddResult: (result: NdviResult) => void;
 };
 
 type SearchState =
@@ -86,7 +88,6 @@ type SketchState =
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
-const HISTORY_KEY = "agryn.ndvi.history.v1";
 const minimumValidCoveragePercentage = 70;
 
 export function NdviModule({
@@ -94,6 +95,8 @@ export function NdviModule({
   agriculture,
   onCreateInspection,
   accessToken,
+  history,
+  onAddResult,
 }: NdviModuleProps) {
   const today = useMemo(() => formatInputDate(new Date()), []);
   const ninetyDaysAgo = useMemo(() => {
@@ -112,7 +115,6 @@ export function NdviModule({
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [searchState, setSearchState] = useState<SearchState>({ status: "idle" });
   const [jobState, setJobState] = useState<NdviJobState>({ status: "idle" });
-  const [history, setHistory] = useState<NdviResult[]>(loadHistory);
   const [activeLayer, setActiveLayer] = useState<"true-color" | "ndvi">("ndvi");
   const [classificationMode, setClassificationMode] = useState<"relative" | "general">(
     "relative",
@@ -246,9 +248,7 @@ export function NdviModule({
         updateJobState,
         controller.signal,
       );
-      const nextHistory = [result, ...history.filter((item) => item.id !== result.id)].slice(0, 24);
-      setHistory(nextHistory);
-      saveHistory(nextHistory);
+      onAddResult(result);
       setJobState({ status: "completed", jobId: result.id, result });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -1280,21 +1280,6 @@ function ComparisonSummary({ left, right }: { left: NdviResult; right: NdviResul
       </span>
     </div>
   );
-}
-
-function loadHistory(): NdviResult[] {
-  try {
-    const value = window.localStorage.getItem(HISTORY_KEY);
-    if (!value) return [];
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? (parsed as NdviResult[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(history: NdviResult[]) {
-  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
 function pointsFromGeometry(ring: Position[] | undefined): Position[] {

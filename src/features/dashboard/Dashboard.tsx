@@ -1,13 +1,17 @@
 import {
   ArrowRight,
   Bot,
+  Building2,
   Camera,
+  Circle,
   CheckCircle2,
   CircleDollarSign,
   ClipboardCheck,
   CloudSun,
+  FileText,
   FlaskConical,
   LandPlot,
+  type LucideIcon,
   Plus,
   Satellite,
   ShieldCheck,
@@ -20,6 +24,7 @@ import { propertyLocation } from "../../domain/agriculturalContext";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
 import type { SafetyCheck } from "../../domain/safety";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
+import type { NdviResult } from "../ndvi/types";
 import { moduleCatalog } from "./moduleCatalog";
 
 type DashboardProps = {
@@ -27,17 +32,105 @@ type DashboardProps = {
   onNavigate: (view: AppView) => void;
   agriculture: AgriculturalController;
   records: FieldRecord[];
+  ndviHistory: NdviResult[];
   name: string;
 };
+
+type OnboardingStep = {
+  id: string;
+  label: string;
+  description: string;
+  done: boolean;
+  view: AppView;
+  icon: LucideIcon;
+};
+
+function OnboardingChecklist({
+  steps,
+  onNavigate,
+}: {
+  steps: OnboardingStep[];
+  onNavigate: (view: AppView) => void;
+}) {
+  return (
+    <section className="panel-card onboarding-panel" aria-labelledby="onboarding-title">
+      <div className="panel-title">
+        <ClipboardCheck size={21} />
+        <div>
+          <span className="eyebrow">Primeiros passos</span>
+          <h2 id="onboarding-title">Configure sua operação na AGRYN</h2>
+        </div>
+      </div>
+      <ol className="onboarding-steps">
+        {steps.map((step, index) => (
+          <li key={step.id} className="onboarding-step" data-done={step.done}>
+            <span className="onboarding-step-status">
+              {step.done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+            </span>
+            <span className="onboarding-step-body">
+              <strong>
+                {index + 1}. {step.label}
+              </strong>
+              <small>{step.description}</small>
+            </span>
+            <button
+              className={step.done ? "secondary-button" : "primary-button"}
+              type="button"
+              onClick={() => onNavigate(step.view)}
+            >
+              <step.icon size={16} aria-hidden="true" />
+              {step.done ? "Revisar" : "Começar"}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
 const featuredModuleIds = ["solo", "visao", "ndvi", "recomendacoes", "clima", "defensivos", "mapa", "caderno"];
 const featuredModules = featuredModuleIds
   .map((id) => moduleCatalog.find((module) => module.id === id))
   .filter((module): module is NonNullable<typeof module> => Boolean(module));
 
-export function Dashboard({ safety, onNavigate, agriculture, records, name }: DashboardProps) {
+export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistory, name }: DashboardProps) {
   const hour = new Date().getHours();
   const salutation = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const isNewAccount = agriculture.state.properties.length === 0 || agriculture.state.plots.length === 0;
+  const onboardingSteps: OnboardingStep[] = [
+    {
+      id: "propriedade",
+      label: "Cadastrar propriedade",
+      description: "Identifique a fazenda ou o cliente que você atende.",
+      done: agriculture.state.properties.length > 0,
+      view: "propriedades",
+      icon: Building2,
+    },
+    {
+      id: "talhao",
+      label: "Cadastrar talhão",
+      description: "Adicione a área produtiva com cultura e safra.",
+      done: agriculture.state.plots.length > 0,
+      view: "propriedades",
+      icon: LandPlot,
+    },
+    {
+      id: "dados",
+      label: "Processar NDVI ou registrar atividade",
+      description: "Rode o monitoramento por satélite ou anote uma atividade no caderno de campo.",
+      done: records.length > 0 || ndviHistory.length > 0,
+      view: "ndvi",
+      icon: Satellite,
+    },
+    {
+      id: "relatorio",
+      label: "Gerar o relatório da propriedade",
+      description: "Consolide os dados num documento pronto para entregar ao produtor.",
+      done: false,
+      view: "relatorios",
+      icon: FileText,
+    },
+  ];
   const plotRecords = records.filter((record) => record.plotId === agriculture.selectedPlot?.id);
   const plannedActivities = plotRecords.filter((record) => record.status === "planejada").length;
   const costSummary = summarizeCosts(plotRecords);
@@ -54,6 +147,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records, name }: Da
 
   return (
     <div className="page-stack dashboard-page">
+      {isNewAccount && <OnboardingChecklist steps={onboardingSteps} onNavigate={onNavigate} />}
       <section className="agryn-hero" aria-labelledby="welcome-title">
         <div className="hero-copy">
           <span className="eyebrow">Inteligência que cultiva resultados</span>
