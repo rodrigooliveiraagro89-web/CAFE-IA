@@ -7,6 +7,7 @@ import {
   House,
   LandPlot,
   LayoutGrid,
+  Map,
   Satellite,
   ShieldCheck,
 } from "lucide-react";
@@ -15,6 +16,7 @@ export type AppView =
   | "inicio"
   | "carteira"
   | "propriedades"
+  | "mapeamento"
   | "modulos"
   | "ndvi"
   | "caderno"
@@ -42,6 +44,12 @@ export const navigationItems: NavigationItem[] = [
     label: "Propriedades e talhões",
     description: "Culturas, safras e áreas",
     icon: LandPlot,
+  },
+  {
+    id: "mapeamento",
+    label: "Mapeamento",
+    description: "Medição de talhões por satélite",
+    icon: Map,
   },
   { id: "modulos", label: "Módulos", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
   { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },

@@ -6,6 +6,7 @@ import { CostCenter } from "../features/costs/CostCenter";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
 import { ModuleHub } from "../features/modules/ModuleHub";
+import { MappingModule } from "../features/mapping/MappingModule";
 import { useNdviHistory } from "../features/ndvi/historyStore";
 import { NdviModule } from "../features/ndvi/NdviModule";
 import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
@@ -24,6 +25,7 @@ const validViews: AppView[] = [
   "inicio",
   "carteira",
   "propriedades",
+  "mapeamento",
   "modulos",
   "ndvi",
   "caderno",
@@ -102,6 +104,15 @@ export function App() {
           planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
           trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
           onStartTrial={() => void auth.startTrial()}
+        />
+      )}
+      {activeView === "mapeamento" && (
+        <MappingModule
+          agriculture={agriculture}
+          planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
+          trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
+          onStartTrial={() => void auth.startTrial()}
+          onNavigate={navigate}
         />
       )}
       {activeView === "modulos" && <ModuleHub />}

@@ -192,7 +192,7 @@ export function AppShell({
           <button type="button" onClick={() => onNavigate("inicio")} aria-current={activeView === "inicio" ? "page" : undefined} data-active={activeView === "inicio"}><House size={21} /><span>Início</span></button>
           <button type="button" onClick={() => onNavigate("propriedades")} aria-current={activeView === "propriedades" ? "page" : undefined} data-active={activeView === "propriedades"}><Sprout size={21} /><span>Áreas</span></button>
           <a href="./agryn.html?tab=solo"><FlaskConical size={21} /><span>Análises</span></a>
-          <button type="button" onClick={() => onNavigate("ndvi")} aria-current={activeView === "ndvi" ? "page" : undefined} data-active={activeView === "ndvi"}><Map size={21} /><span>Mapas</span></button>
+          <button type="button" onClick={() => onNavigate("mapeamento")} aria-current={activeView === "mapeamento" ? "page" : undefined} data-active={activeView === "mapeamento"}><Map size={21} /><span>Mapas</span></button>
           <button type="button" onClick={() => onNavigate("modulos")} aria-current={activeView === "modulos" ? "page" : undefined} data-active={activeView === "modulos"}><LayoutGrid size={21} /><span>Mais</span></button>
         </nav>
       </div>
