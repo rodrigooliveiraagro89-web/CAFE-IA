@@ -49,12 +49,20 @@ function UpgradeNotice({
         </button>
       )}
       <a
+        className="primary-button"
+        href="https://www.asaas.com/c/fw5jokq1e8cfdink"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Assinar o Pro — R$ 49,90/mês
+      </a>
+      <a
         className="secondary-button"
         href="./landing.html#planos"
         target="_blank"
         rel="noreferrer"
       >
-        Conhecer o plano Pro
+        Ver planos
       </a>
     </div>
   );
