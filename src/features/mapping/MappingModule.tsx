@@ -4,16 +4,20 @@ import {
   Crosshair,
   Crown,
   FileUp,
+  Footprints,
   LandPlot,
+  LocateFixed,
+  MapPin,
   MapPinned,
   Pencil,
   Plus,
   RotateCcw,
+  Satellite,
   Search,
   Undo2,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { AppView } from "../../app/navigation";
 import {
   cropOptions,
@@ -29,8 +33,36 @@ import {
   polygonValidationIssue,
 } from "../ndvi/domain";
 import type { Position } from "../ndvi/types";
-import { MappingMap, type Basemap } from "./MappingMap";
+import { MappingMap, type Basemap, type LiveLocation } from "./MappingMap";
 import "./mapping.css";
+
+const MAX_ACCEPTABLE_ACCURACY_METERS = 10;
+const DUPLICATE_POINT_THRESHOLD_METERS = 2;
+const AUTO_CLOSE_THRESHOLD_METERS = 10;
+
+function haversineMeters(a: Position, b: Position): number {
+  const earthRadius = 6371008.8;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRadians(b[1] - a[1]);
+  const dLon = toRadians(b[0] - a[0]);
+  const lat1 = toRadians(a[1]);
+  const lat2 = toRadians(b[1]);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * earthRadius * Math.asin(Math.sqrt(h));
+}
+
+function pathPerimeterMeters(points: Position[], closed: boolean): number {
+  if (points.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    total += haversineMeters(points[i - 1], points[i]);
+  }
+  if (closed && points.length >= 3) {
+    total += haversineMeters(points[points.length - 1], points[0]);
+  }
+  return total;
+}
 
 type MappingModuleProps = {
   agriculture: AgriculturalController;
@@ -72,7 +104,20 @@ export function MappingModule({
   const [newPlotCrop, setNewPlotCrop] = useState<string>("Café");
   const [newPlotSeason, setNewPlotSeason] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [walking, setWalking] = useState(false);
+  const [liveLocation, setLiveLocation] = useState<LiveLocation | null>(null);
+  const [follow, setFollow] = useState(true);
+  const [gpsMessage, setGpsMessage] = useState("");
+  const watchIdRef = useRef<number | null>(null);
   const boundaryFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation?.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
 
   const propertyPlots = useMemo(
     () =>
@@ -169,6 +214,86 @@ export function MappingModule({
     setDrawing(false);
     setPoints([]);
     setSaveMode("idle");
+    stopWalking();
+  }
+
+  function startWalking() {
+    if (!navigator.geolocation) {
+      setGpsMessage("Geolocalização indisponível neste navegador.");
+      return;
+    }
+    setWalking(true);
+    setDrawing(false);
+    setSaveMode("idle");
+    setFeedback("");
+    setFollow(true);
+    setGpsMessage("Obtendo sinal de GPS…");
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        setLiveLocation({
+          position: [position.coords.longitude, position.coords.latitude],
+          accuracy: position.coords.accuracy,
+        });
+        setGpsMessage("");
+      },
+      () => {
+        setGpsMessage("Não foi possível obter o GPS. Verifique a permissão de localização.");
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+  }
+
+  function stopWalking() {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation?.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setWalking(false);
+    setLiveLocation(null);
+    setGpsMessage("");
+  }
+
+  function capturePoint() {
+    if (!liveLocation) {
+      setGpsMessage("Aguardando sinal de GPS…");
+      return;
+    }
+    const { position, accuracy } = liveLocation;
+    if (accuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
+      setGpsMessage(
+        `Precisão do GPS fraca (±${accuracy.toFixed(0)} m). Aguarde melhorar ou capture mesmo assim tocando de novo.`,
+      );
+      // Segundo toque com a mesma mensagem ativa captura mesmo com precisão fraca.
+      if (!gpsMessage.startsWith("Precisão do GPS fraca")) return;
+    }
+    const last = points[points.length - 1];
+    if (last && haversineMeters(last, position) < DUPLICATE_POINT_THRESHOLD_METERS) {
+      setGpsMessage("Ponto muito próximo do anterior — ande mais um pouco antes de capturar.");
+      return;
+    }
+    if (
+      points.length >= 3 &&
+      haversineMeters(points[0], position) < AUTO_CLOSE_THRESHOLD_METERS
+    ) {
+      setGpsMessage("");
+      setFeedback("Você voltou ao ponto inicial — o perímetro foi fechado.");
+      stopWalking();
+      setDrawing(true);
+      return;
+    }
+    setGpsMessage("");
+    setPoints((current) => [...current, position]);
+  }
+
+  function finishWalking() {
+    stopWalking();
+    if (points.length >= 3) {
+      setDrawing(true);
+      setFeedback("Caminhada concluída — revise os pontos ou salve a medição.");
+    } else {
+      setFeedback("Caminhada encerrada sem pontos suficientes (mínimo 3).");
+      setPoints([]);
+    }
   }
 
   async function importBoundary(file: File | undefined) {
@@ -344,10 +469,13 @@ export function MappingModule({
           })}
 
           <div className="mapping-sidebar-actions">
-            {!drawing ? (
+            {!drawing && !walking ? (
               <>
-                <button className="primary-button" type="button" onClick={startDrawing}>
-                  <Plus size={17} /> Nova medição
+                <button className="primary-button" type="button" onClick={startWalking}>
+                  <Footprints size={17} /> Mapear caminhando (GPS)
+                </button>
+                <button className="secondary-button" type="button" onClick={startDrawing}>
+                  <Plus size={17} /> Desenhar no mapa
                 </button>
                 <button
                   className="secondary-button"
@@ -363,6 +491,28 @@ export function MappingModule({
                   accept=".geojson,.json,.kml,application/geo+json,application/vnd.google-earth.kml+xml"
                   onChange={(event) => void importBoundary(event.target.files?.[0])}
                 />
+              </>
+            ) : walking ? (
+              <>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={points.length === 0}
+                  onClick={() => setPoints((current) => current.slice(0, -1))}
+                >
+                  <Undo2 size={16} /> Desfazer ponto
+                </button>
+                <button
+                  className="primary-button"
+                  type="button"
+                  disabled={points.length < 3}
+                  onClick={finishWalking}
+                >
+                  <Check size={16} /> Concluir caminhada
+                </button>
+                <button className="secondary-button" type="button" onClick={cancelDrawing}>
+                  <X size={16} /> Cancelar
+                </button>
               </>
             ) : (
               <>
@@ -388,6 +538,52 @@ export function MappingModule({
               </>
             )}
           </div>
+
+          {(drawing || walking) && points.length > 0 && (
+            <div className="mapping-stats" aria-live="polite">
+              <span>
+                <small>Perímetro</small>
+                <strong>
+                  {pathPerimeterMeters(points, points.length >= 3).toLocaleString("pt-BR", {
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  m
+                </strong>
+              </span>
+              <span>
+                <small>Área</small>
+                <strong>
+                  {liveArea !== null
+                    ? `${liveArea.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha`
+                    : "—"}
+                </strong>
+              </span>
+              <span>
+                <small>Pontos</small>
+                <strong>{points.length}</strong>
+              </span>
+            </div>
+          )}
+
+          {walking && (
+            <div className="mapping-gps-panel">
+              <span className="mapping-gps-status" data-weak={Boolean(liveLocation && liveLocation.accuracy > MAX_ACCEPTABLE_ACCURACY_METERS)}>
+                <Satellite size={15} />
+                {liveLocation
+                  ? `GPS ±${liveLocation.accuracy.toFixed(0)} m`
+                  : "Aguardando GPS…"}
+              </span>
+              <button
+                className="secondary-button"
+                type="button"
+                data-active={follow}
+                onClick={() => setFollow((current) => !current)}
+              >
+                <LocateFixed size={15} /> {follow ? "Seguindo você" : "Seguir minha posição"}
+              </button>
+              {gpsMessage && <p className="mapping-gps-message">{gpsMessage}</p>}
+            </div>
+          )}
 
           {feedback && (
             <p className="mapping-feedback" role="status">
@@ -569,6 +765,8 @@ export function MappingModule({
             drawing={drawing}
             points={points}
             focusTarget={focusTarget}
+            liveLocation={liveLocation}
+            follow={walking && follow}
             onAddPoint={(position) => setPoints((current) => [...current, position])}
             onMovePoint={(index, position) =>
               setPoints((current) =>
@@ -577,6 +775,17 @@ export function MappingModule({
             }
             onSelectPlot={(plotId) => agriculture.selectPlot(plotId)}
           />
+
+          {walking && (
+            <button
+              className="mapping-capture-button"
+              type="button"
+              onClick={capturePoint}
+              disabled={!liveLocation}
+            >
+              <MapPin size={20} /> Capturar ponto
+            </button>
+          )}
 
           {drawing && (
             <div className="mapping-area-badge" aria-live="polite">

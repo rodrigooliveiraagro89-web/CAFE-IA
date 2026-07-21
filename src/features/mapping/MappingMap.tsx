@@ -7,10 +7,12 @@ import {
 } from "leaflet";
 import { useEffect } from "react";
 import {
+  Circle,
   CircleMarker,
   MapContainer,
   Marker,
   Polygon,
+  Polyline,
   TileLayer,
   Tooltip,
   useMap,
@@ -21,6 +23,11 @@ import type { Position } from "../ndvi/types";
 
 export type Basemap = "satelite" | "mapa";
 
+export type LiveLocation = {
+  position: Position;
+  accuracy: number;
+};
+
 type MappingMapProps = {
   basemap: Basemap;
   plots: FarmPlot[];
@@ -28,6 +35,8 @@ type MappingMapProps = {
   drawing: boolean;
   points: Position[];
   focusTarget: { center: Position; zoom?: number } | { bounds: Position[] } | null;
+  liveLocation: LiveLocation | null;
+  follow: boolean;
   onAddPoint: (position: Position) => void;
   onMovePoint: (index: number, position: Position) => void;
   onSelectPlot: (plotId: string) => void;
@@ -52,6 +61,8 @@ export function MappingMap({
   drawing,
   points,
   focusTarget,
+  liveLocation,
+  follow,
   onAddPoint,
   onMovePoint,
   onSelectPlot,
@@ -77,6 +88,7 @@ export function MappingMap({
 
       <DrawingEvents enabled={drawing} onAddPoint={onAddPoint} />
       <FocusController target={focusTarget} />
+      <FollowController location={liveLocation} follow={follow} />
 
       {plots.map((plot) => {
         if (!plot.geometry) return null;
@@ -139,8 +151,59 @@ export function MappingMap({
           pathOptions={{ color: "#0ea5e9", fillColor: "#0ea5e9", fillOpacity: 0.9 }}
         />
       )}
+
+      {liveLocation && (
+        <>
+          <Circle
+            center={[liveLocation.position[1], liveLocation.position[0]]}
+            radius={Math.max(liveLocation.accuracy, 1)}
+            pathOptions={{
+              color: "#0ea5e9",
+              fillColor: "#0ea5e9",
+              fillOpacity: 0.12,
+              weight: 1,
+            }}
+          />
+          <CircleMarker
+            center={[liveLocation.position[1], liveLocation.position[0]]}
+            radius={8}
+            pathOptions={{
+              color: "#ffffff",
+              fillColor: "#2563eb",
+              fillOpacity: 1,
+              weight: 3,
+            }}
+          />
+          {points.length > 0 && (
+            <Polyline
+              positions={[
+                [points[points.length - 1][1], points[points.length - 1][0]],
+                [liveLocation.position[1], liveLocation.position[0]],
+              ]}
+              pathOptions={{ color: "#2563eb", weight: 2, dashArray: "4 6", opacity: 0.7 }}
+            />
+          )}
+        </>
+      )}
     </MapContainer>
   );
+}
+
+function FollowController({
+  location,
+  follow,
+}: {
+  location: LiveLocation | null;
+  follow: boolean;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!follow || !location) return;
+    map.panTo([location.position[1], location.position[0]], { animate: true });
+  }, [map, follow, location]);
+
+  return null;
 }
 
 function FocusController({
