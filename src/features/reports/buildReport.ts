@@ -1,5 +1,6 @@
 import type { FarmPlot, FarmProperty } from "../../domain/agriculturalContext";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
+import { buildManagementZones, type ManagementZone } from "../ndvi/managementZones";
 import type { NdviResult } from "../ndvi/types";
 
 export type PriorityLevel = "critica" | "alta" | "moderada" | "baixa" | "sem-dados";
@@ -23,6 +24,7 @@ export type PlotReportRow = {
   activitiesPlanned: number;
   activitiesCompleted: number;
   priority: PriorityLevel;
+  zones: ManagementZone[] | null;
 };
 
 export type PropertyReport = {
@@ -78,6 +80,7 @@ export function buildPropertyReport(
       activitiesPlanned: plotRecords.filter((record) => record.status === "planejada").length,
       activitiesCompleted: plotRecords.filter((record) => record.status === "concluida").length,
       priority: plotPriority(ndviMean),
+      zones: latestNdvi ? buildManagementZones(latestNdvi) : null,
     };
   });
 

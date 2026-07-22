@@ -123,6 +123,29 @@
 .report-priority-baixa { background: var(--success-soft); color: var(--success); }
 .report-priority-sem-dados { background: var(--surface-muted); color: var(--text-soft); }
 
+.report-zones-block {
+  margin: 0.6rem 0 1.2rem;
+}
+
+.report-zones-block h3 {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.report-zone-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  vertical-align: middle;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 .report-chart-card {
   margin: 0.8rem 0 1.2rem;
 }

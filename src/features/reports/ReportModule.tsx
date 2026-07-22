@@ -212,6 +212,46 @@ function ReportDocument({ report }: { report: PropertyReport }) {
         <BarChart data={ndviChart} formatValue={(value) => value.toFixed(2)} />
       </div>
 
+      {plots
+        .filter((row) => row.zones && row.zones.some((zone) => zone.percentage > 0))
+        .map((row) => (
+          <div className="report-zones-block" key={`zones-${row.plot.id}`}>
+            <h3>Zonas de manejo — {row.plot.name}</h3>
+            <table className="report-data-table">
+              <thead>
+                <tr>
+                  <th>Zona</th>
+                  <th>Faixa NDVI</th>
+                  <th>% da área</th>
+                  <th>Hectares</th>
+                  <th>Orientação de manejo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(row.zones ?? [])
+                  .filter((zone) => zone.percentage > 0)
+                  .map((zone) => (
+                    <tr key={zone.letter}>
+                      <td>
+                        <span className="report-zone-badge" style={{ background: zone.color }}>
+                          {zone.letter}
+                        </span>{" "}
+                        {zone.label}
+                      </td>
+                      <td>
+                        {zone.ndviMin.toFixed(2)}
+                        {zone.letter === "A" ? "+" : `–${zone.ndviMax.toFixed(2)}`}
+                      </td>
+                      <td>{zone.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td>
+                      <td>{zone.hectares.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                      <td>{zone.guidance}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
       <h2>2. Custos</h2>
       <table className="report-data-table">
         <thead>
@@ -286,10 +326,11 @@ function ReportDocument({ report }: { report: PropertyReport }) {
       <p>{conclusion}</p>
 
       <div className="report-disclaimer">
-        Relatório gerado automaticamente pela AGRYN com base nos dados registrados na conta. Não
-        substitui laudo técnico de engenheiro(a) agrônomo(a) responsável, que deve validar a
-        recomendação final considerando textura do solo, histórico de produtividade, condições
-        climáticas e legislação aplicável.
+        Relatório gerado automaticamente pela AGRYN com base nos dados registrados na conta. As
+        zonas de manejo indicam o vigor relativo por área e não substituem laudo técnico de
+        engenheiro(a) agrônomo(a) responsável; doses de adubo por zona só são geradas com análise
+        de solo vinculada. A recomendação final deve considerar textura do solo, histórico de
+        produtividade, condições climáticas e legislação aplicável.
       </div>
     </article>
   );

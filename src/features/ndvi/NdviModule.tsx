@@ -42,6 +42,11 @@ import {
   polygonValidationIssue,
   responsibleInterpretation,
 } from "./domain";
+import {
+  buildManagementZones,
+  ZONES_SOIL_NOTE,
+  zonesDiagnosis,
+} from "./managementZones";
 import { NdviMap } from "./NdviMap";
 import {
   cancelNdviJob,
@@ -169,6 +174,11 @@ export function NdviModule({
     classificationMode === "relative"
       ? currentResult?.relativeClasses ?? currentResult?.classes ?? []
       : currentResult?.generalClasses ?? currentResult?.classes ?? [];
+  const managementZones = useMemo(
+    () => (currentResult ? buildManagementZones(currentResult) : []),
+    [currentResult],
+  );
+  const zonesDiagnosisText = currentResult ? zonesDiagnosis(currentResult) : "";
 
   useEffect(() => {
     if (!timelinePlaying || history.length < 2) return;
@@ -1098,6 +1108,46 @@ export function NdviModule({
                 </ul>
               </article>
             </div>
+
+            <article className="ndvi-zones-card">
+              <div className="ndvi-card-title">
+                <span><Layers3 size={18} /></span>
+                <div>
+                  <strong>Zonas de manejo</strong>
+                  <small>Cinco faixas de vigor com orientação por área</small>
+                </div>
+              </div>
+              <div className="ndvi-zones-list">
+                {managementZones.map((zone) => (
+                  <div key={zone.letter} className="ndvi-zone-row">
+                    <span className="ndvi-zone-badge" style={{ backgroundColor: zone.color }}>
+                      {zone.letter}
+                    </span>
+                    <div className="ndvi-zone-head">
+                      <strong>
+                        {zone.label}
+                        <em>
+                          NDVI {zone.ndviMin.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          {zone.letter === "A" ? "+" : `–${zone.ndviMax.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+                        </em>
+                      </strong>
+                      <span className="ndvi-zone-figures">
+                        {formatNumber(zone.percentage, 1)}% · {formatNumber(zone.hectares, 2)} ha
+                      </span>
+                    </div>
+                    <div className="ndvi-zone-bar">
+                      <i style={{ width: `${Math.max(zone.percentage, 1)}%`, backgroundColor: zone.color }} />
+                    </div>
+                    <p className="ndvi-zone-guidance">{zone.guidance}</p>
+                  </div>
+                ))}
+              </div>
+              {zonesDiagnosisText && <p className="ndvi-zones-diagnosis">{zonesDiagnosisText}</p>}
+              <p className="ndvi-zones-note">
+                {ZONES_SOIL_NOTE}{" "}
+                <a href="./agryn.html?tab=solo">Vincular análise de solo</a>
+              </p>
+            </article>
           </>
         ) : (
           <div className="ndvi-empty-state ndvi-empty-result">
