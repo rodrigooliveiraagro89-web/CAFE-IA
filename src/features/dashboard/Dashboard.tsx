@@ -52,6 +52,8 @@ function OnboardingChecklist({
   steps: OnboardingStep[];
   onNavigate: (view: AppView) => void;
 }) {
+  const doneCount = steps.filter((step) => step.done).length;
+  const progress = Math.round((doneCount / steps.length) * 100);
   return (
     <section className="panel-card onboarding-panel" aria-labelledby="onboarding-title">
       <div className="panel-title">
@@ -59,6 +61,23 @@ function OnboardingChecklist({
         <div>
           <span className="eyebrow">Primeiros passos</span>
           <h2 id="onboarding-title">Configure sua operação na AGRYN</h2>
+        </div>
+      </div>
+      <div className="onboarding-progress">
+        <div className="onboarding-progress-head">
+          <span>
+            {doneCount} de {steps.length} etapas concluídas
+          </span>
+          <strong>{progress}%</strong>
+        </div>
+        <div
+          className="onboarding-progress-bar"
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <i style={{ width: `${progress}%` }} />
         </div>
       </div>
       <ol className="onboarding-steps">
