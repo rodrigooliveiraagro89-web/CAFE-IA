@@ -6,7 +6,16 @@ import json
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Response, status
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -14,6 +23,7 @@ from .config import settings
 from .models import JobEnvelope, NdviJobInput
 from .quota import check_quota, get_effective_plan, verify_user
 from .sentinelhub import processor
+from .soil import extract_soil_values
 
 
 @asynccontextmanager
@@ -123,6 +133,31 @@ async def get_asset(job_id: str, file_name: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
     media_type = "image/png" if file_name.endswith(".png") else "image/tiff"
     return FileResponse(path, media_type=media_type)
+
+
+@app.post("/v1/soil/extract")
+async def extract_soil(
+    file: UploadFile = File(...),
+    authorization: str | None = Header(default=None),
+) -> dict:
+    # Auth + cota antes de gastar uma chamada paga da IA. A cota de solo é
+    # independente da de NDVI (RPC e limites próprios).
+    user = await verify_user(authorization)
+    plan = await get_effective_plan(user["id"], user["token"])
+    await check_quota(
+        user["id"],
+        user["token"],
+        plan,
+        rpc="check_and_increment_soil_usage",
+        free_limit=settings.soil_quota_free_monthly,
+        pro_limit=settings.soil_quota_pro_monthly,
+        feature="a análise de solo",
+    )
+
+    data = await file.read()
+    media_type = (file.content_type or "").split(";")[0].strip().lower()
+    values = await extract_soil_values(media_type, data)
+    return {"values": values}
 
 
 async def run_job(job_id: str, request: NdviJobInput) -> None:

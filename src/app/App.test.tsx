@@ -12,7 +12,7 @@ describe("App AGRYN", () => {
     expect(screen.getByRole("heading", { name: "Módulos da operação" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Solo:/i })).toHaveAttribute(
       "href",
-      "./agryn.html?tab=solo",
+      "./?view=analise-solo",
     );
     expect(screen.getAllByText("Selecione uma propriedade").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Recomendação protegida" })).toBeInTheDocument();

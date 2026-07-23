@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     ndvi_quota_free_monthly: int = 2
     ndvi_quota_pro_monthly: int = 100
 
+    # Extração de laudo de solo por IA (Claude). A chave é secreta e fica só no
+    # servidor (Render); o app nunca a vê. Sem chave, o endpoint responde 503 e
+    # o app cai no modo de digitação manual.
+    anthropic_api_key: str = ""
+    soil_quota_free_monthly: int = 2
+    soil_quota_pro_monthly: int = 30
+
     @property
     def origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

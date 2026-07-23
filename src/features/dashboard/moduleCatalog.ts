@@ -46,7 +46,7 @@ export type AgrynModule = {
 
 export const moduleCatalog: AgrynModule[] = [
   { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun, accent: "cyan", group: "Monitoramento", href: "./clima.html", badge: "Ao vivo" },
-  { id: "solo", label: "Solo", description: "Laudos, nutrientes e interpretação", icon: FlaskConical, accent: "emerald", group: "Análises", href: "./agryn.html?tab=solo" },
+  { id: "solo", label: "Solo", description: "Laudos, nutrientes e interpretação", icon: FlaskConical, accent: "emerald", group: "Análises", href: "./?view=analise-solo", badge: "IA" },
   { id: "foliar", label: "Análise foliar", description: "Estado nutricional da cultura", icon: Leaf, accent: "lime", group: "Análises", href: "./agryn.html?tab=foliar" },
   { id: "ndvi", label: "NDVI por satélite", description: "Vigor espectral, cenas e evolução", icon: Satellite, accent: "lime", group: "Monitoramento", href: "./?view=ndvi", badge: "Fonte pública" },
   { id: "defensivos", label: "Pragas e doenças", description: "Identificação e manejo integrado", icon: Bug, accent: "rose", group: "Manejo", href: "./agryn.html?tab=defensivos" },

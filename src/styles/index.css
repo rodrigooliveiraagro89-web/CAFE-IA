@@ -952,6 +952,11 @@ main {
   text-transform: uppercase;
 }
 
+.module-badge-legacy {
+  background: var(--surface-muted);
+  color: var(--text-soft);
+}
+
 .module-arrow {
   color: var(--text-faint);
   transition: transform 160ms ease, color 160ms ease;

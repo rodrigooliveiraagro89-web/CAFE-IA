@@ -1,7 +1,13 @@
 import type { FarmPlot, FarmProperty } from "../../domain/agriculturalContext";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
+import {
+  interpretSoil,
+  soilAlerts,
+  type SoilInterpretationRow,
+} from "../../domain/soilAnalysis";
 import { buildManagementZones, type ManagementZone } from "../ndvi/managementZones";
 import type { NdviResult } from "../ndvi/types";
+import type { SoilAnalysis } from "../soil/soilStore";
 
 export type PriorityLevel = "critica" | "alta" | "moderada" | "baixa" | "sem-dados";
 
@@ -25,6 +31,11 @@ export type PlotReportRow = {
   activitiesCompleted: number;
   priority: PriorityLevel;
   zones: ManagementZone[] | null;
+  soil: {
+    date: string | null;
+    rows: SoilInterpretationRow[];
+    alerts: string[];
+  } | null;
 };
 
 export type PropertyReport = {
@@ -54,11 +65,23 @@ function latestNdviForPlot(history: NdviResult[], plotId: string): NdviResult | 
   return matches[0] ?? null;
 }
 
+function latestSoilForPlot(analyses: SoilAnalysis[], plotId: string): SoilAnalysis | null {
+  const matches = analyses
+    .filter((item) => item.plotId === plotId)
+    .sort(
+      (a, b) =>
+        new Date(b.analysisDate ?? b.createdAt).getTime() -
+        new Date(a.analysisDate ?? a.createdAt).getTime(),
+    );
+  return matches[0] ?? null;
+}
+
 export function buildPropertyReport(
   property: FarmProperty,
   plots: FarmPlot[],
   records: FieldRecord[],
   ndviHistory: NdviResult[],
+  soilAnalyses: SoilAnalysis[] = [],
   generatedAt: string = new Date().toISOString(),
 ): PropertyReport {
   const propertyPlots = plots.filter((plot) => plot.propertyId === property.id);
@@ -68,6 +91,8 @@ export function buildPropertyReport(
     const costs = summarizeCosts(plotRecords);
     const latestNdvi = latestNdviForPlot(ndviHistory, plot.id);
     const ndviMean = latestNdvi?.statistics.mean ?? null;
+    const latestSoil = latestSoilForPlot(soilAnalyses, plot.id);
+    const soilRows = latestSoil ? interpretSoil(latestSoil.values) : [];
 
     return {
       plot,
@@ -81,6 +106,13 @@ export function buildPropertyReport(
       activitiesCompleted: plotRecords.filter((record) => record.status === "concluida").length,
       priority: plotPriority(ndviMean),
       zones: latestNdvi ? buildManagementZones(latestNdvi) : null,
+      soil: latestSoil
+        ? {
+            date: latestSoil.analysisDate ?? latestSoil.createdAt,
+            rows: soilRows,
+            alerts: soilAlerts(soilRows),
+          }
+        : null,
     };
   });
 

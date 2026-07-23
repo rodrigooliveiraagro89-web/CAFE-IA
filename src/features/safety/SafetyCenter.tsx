@@ -96,7 +96,7 @@ export function SafetyCenter({ safety }: SafetyCenterProps) {
           <h2>Funcionalidades preservadas durante a evolução</h2>
           <p>Os cálculos, históricos e integrações atuais continuam disponíveis.</p>
         </div>
-        <a href="./agryn.html">
+        <a href="./agryn.html" target="_blank" rel="noopener noreferrer">
           Abrir central técnica <ExternalLink size={15} aria-hidden="true" />
         </a>
       </section>

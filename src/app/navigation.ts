@@ -4,6 +4,7 @@ import {
   Briefcase,
   CircleDollarSign,
   FileText,
+  FlaskConical,
   House,
   LandPlot,
   LayoutGrid,
@@ -19,6 +20,7 @@ export type AppView =
   | "mapeamento"
   | "modulos"
   | "ndvi"
+  | "analise-solo"
   | "caderno"
   | "custos"
   | "relatorios"
@@ -53,6 +55,12 @@ export const navigationItems: NavigationItem[] = [
   },
   { id: "modulos", label: "Módulos", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
   { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },
+  {
+    id: "analise-solo",
+    label: "Análise de solo",
+    description: "Laudo por IA e interpretação",
+    icon: FlaskConical,
+  },
   { id: "caderno", label: "Caderno de campo", description: "Atividades e histórico", icon: BookOpenCheck },
   { id: "custos", label: "Custos", description: "Gestão financeira por área", icon: CircleDollarSign },
   {

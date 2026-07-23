@@ -13,6 +13,8 @@ import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDia
 import { PortfolioPanel } from "../features/portfolio/PortfolioPanel";
 import { PropertyManager } from "../features/properties/PropertyManager";
 import { ReportModule } from "../features/reports/ReportModule";
+import { SoilModule } from "../features/soil/SoilModule";
+import { useSoilAnalyses } from "../features/soil/soilStore";
 import { SafetyCenter } from "../features/safety/SafetyCenter";
 import { effectivePlanId, trialAlreadyUsed } from "../domain/plans";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
@@ -28,6 +30,7 @@ const validViews: AppView[] = [
   "mapeamento",
   "modulos",
   "ndvi",
+  "analise-solo",
   "caderno",
   "custos",
   "relatorios",
@@ -44,6 +47,7 @@ export function App() {
   const agriculture = useAgriculturalContext(auth.userId);
   const fieldBook = useFieldRecords(auth.userId);
   const ndviHistory = useNdviHistory(auth.userId);
+  const soil = useSoilAnalyses(auth.userId);
   const safety = useMemo(() => evaluateRecommendationReadiness(), []);
 
   useEffect(() => {
@@ -150,11 +154,20 @@ export function App() {
           onNavigate={navigate}
         />
       )}
+      {activeView === "analise-solo" && (
+        <SoilModule
+          agriculture={agriculture}
+          accessToken={auth.session?.access_token ?? ""}
+          soil={soil}
+          onNavigate={navigate}
+        />
+      )}
       {activeView === "relatorios" && (
         <ReportModule
           agriculture={agriculture}
           records={fieldBook.records}
           ndviHistory={ndviHistory.history}
+          soilAnalyses={soil.analyses}
           planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
           trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
           onStartTrial={() => void auth.startTrial()}

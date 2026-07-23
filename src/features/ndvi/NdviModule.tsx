@@ -1145,7 +1145,7 @@ export function NdviModule({
               {zonesDiagnosisText && <p className="ndvi-zones-diagnosis">{zonesDiagnosisText}</p>}
               <p className="ndvi-zones-note">
                 {ZONES_SOIL_NOTE}{" "}
-                <a href="./agryn.html?tab=solo">Vincular análise de solo</a>
+                <button type="button" className="ndvi-inline-link" onClick={() => onNavigate("analise-solo")}>Vincular análise de solo</button>
               </p>
             </article>
           </>

@@ -123,6 +123,36 @@
 .report-priority-baixa { background: var(--success-soft); color: var(--success); }
 .report-priority-sem-dados { background: var(--surface-muted); color: var(--text-soft); }
 
+.report-soil-block {
+  margin: 0.6rem 0 1.2rem;
+}
+
+.report-soil-block h3 {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.report-soil-level {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.report-soil-baixo { background: var(--danger-soft); color: var(--danger); }
+.report-soil-alto { background: var(--warning-soft); color: var(--warning); }
+.report-soil-adequado { background: var(--success-soft); color: var(--success); }
+
+.report-soil-alerts {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--warning);
+}
+
 .report-zones-block {
   margin: 0.6rem 0 1.2rem;
 }

@@ -4,8 +4,10 @@ import type { AppView } from "../../app/navigation";
 import { propertyLocation } from "../../domain/agriculturalContext";
 import type { FieldRecord } from "../../domain/fieldRecords";
 import { resolvePlan, TRIAL_DAYS, type PlanId } from "../../domain/plans";
+import { soilLevelLabel } from "../../domain/soilAnalysis";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import type { NdviResult } from "../ndvi/types";
+import type { SoilAnalysis } from "../soil/soilStore";
 import { buildPropertyReport, priorityLabels, type PropertyReport } from "./buildReport";
 import { BarChart } from "./charts/BarChart";
 import "./report.css";
@@ -14,6 +16,7 @@ type ReportModuleProps = {
   agriculture: AgriculturalController;
   records: FieldRecord[];
   ndviHistory: NdviResult[];
+  soilAnalyses: SoilAnalysis[];
   planId: PlanId;
   trialAvailable: boolean;
   onStartTrial?: () => void;
@@ -56,6 +59,7 @@ export function ReportModule({
   agriculture,
   records,
   ndviHistory,
+  soilAnalyses,
   planId,
   trialAvailable,
   onStartTrial,
@@ -74,8 +78,8 @@ export function ReportModule({
 
   const report = useMemo<PropertyReport | null>(() => {
     if (!property) return null;
-    return buildPropertyReport(property, state.plots, records, ndviHistory);
-  }, [property, state.plots, records, ndviHistory]);
+    return buildPropertyReport(property, state.plots, records, ndviHistory, soilAnalyses);
+  }, [property, state.plots, records, ndviHistory, soilAnalyses]);
 
   return (
     <div className="page-stack platform-page">
@@ -211,6 +215,58 @@ function ReportDocument({ report }: { report: PropertyReport }) {
         <h3>NDVI médio por talhão</h3>
         <BarChart data={ndviChart} formatValue={(value) => value.toFixed(2)} />
       </div>
+
+      {plots.some((row) => row.soil) && (
+        <>
+          <h2>Análise de solo</h2>
+          {plots
+            .filter((row) => row.soil && row.soil.rows.length > 0)
+            .map((row) => (
+              <div className="report-soil-block" key={`soil-${row.plot.id}`}>
+                <h3>
+                  {row.plot.name}
+                  {row.soil?.date
+                    ? ` — ${new Date(row.soil.date).toLocaleDateString("pt-BR")}`
+                    : ""}
+                </h3>
+                <table className="report-data-table">
+                  <thead>
+                    <tr>
+                      <th>Nutriente</th>
+                      <th>Valor</th>
+                      <th>Faixa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(row.soil?.rows ?? []).map((item) => (
+                      <tr key={item.key}>
+                        <td>{item.label}</td>
+                        <td>
+                          {item.value.toLocaleString("pt-BR")}
+                          {item.unit ? ` ${item.unit}` : ""}
+                        </td>
+                        <td>
+                          {item.level === "informativo" ? (
+                            "—"
+                          ) : (
+                            <span className={`report-soil-level report-soil-${item.level}`}>
+                              {soilLevelLabel(item.level)}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {row.soil && row.soil.alerts.length > 0 && (
+                  <p className="report-soil-alerts">
+                    Pontos de atenção: {row.soil.alerts.join(" ")}
+                  </p>
+                )}
+              </div>
+            ))}
+        </>
+      )}
 
       {plots
         .filter((row) => row.zones && row.zones.some((zone) => zone.percentage > 0))

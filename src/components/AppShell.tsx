@@ -48,7 +48,7 @@ function initialsFromName(name: string): string {
 
 const operationLinks = [
   { label: "Diagnóstico", href: "./agryn.html?tab=foto", icon: ScanLine },
-  { label: "Análises", href: "./agryn.html?tab=solo", icon: FlaskConical },
+  { label: "Análises", href: "./?view=analise-solo", icon: FlaskConical },
   { label: "Clima", href: "./clima.html", icon: CloudSun },
   { label: "Recomendações", href: "./agryn.html?tab=adubacao", icon: Sprout },
   { label: "Relatórios", href: "./?view=relatorios", icon: FileText },
@@ -120,14 +120,15 @@ export function AppShell({
           {!collapsed && <span className="nav-section-label">Operação</span>}
           {operationLinks.map((item) => {
             const Icon = item.icon;
-            return <a className="side-nav-item" href={item.href} key={item.label} title={collapsed ? item.label : undefined}><Icon size={20} aria-hidden="true" />{!collapsed && <strong>{item.label}</strong>}</a>;
+            const legacy = item.href.includes("agryn.html");
+            return <a className="side-nav-item" href={item.href} key={item.label} title={collapsed ? item.label : undefined} target={legacy ? "_blank" : undefined} rel={legacy ? "noopener noreferrer" : undefined}><Icon size={20} aria-hidden="true" />{!collapsed && <strong>{item.label}</strong>}</a>;
           })}
         </nav>
 
         {!collapsed && (
           <div className="sidebar-insight">
             <span className="insight-orb"><Bot size={20} aria-hidden="true" /></span>
-            <div><span className="eyebrow">AGRYN IA</span><strong>Transforme dados em decisões.</strong><a href="./agryn.html?tab=ia">Perguntar agora</a></div>
+            <div><span className="eyebrow">AGRYN IA</span><strong>Transforme dados em decisões.</strong><a href="./agryn.html?tab=ia" target="_blank" rel="noopener noreferrer">Perguntar agora</a></div>
           </div>
         )}
 
@@ -186,12 +187,12 @@ export function AppShell({
         </header>
 
         <main id="conteudo-principal" tabIndex={-1}>{children}</main>
-        <a className="ai-floating-button" href="./agryn.html?tab=ia" aria-label="Perguntar à AGRYN IA"><Bot size={22} aria-hidden="true" /><span>AGRYN IA</span></a>
+        <a className="ai-floating-button" href="./agryn.html?tab=ia" target="_blank" rel="noopener noreferrer" aria-label="Perguntar à AGRYN IA (ferramenta clássica, abre em nova aba)"><Bot size={22} aria-hidden="true" /><span>AGRYN IA</span></a>
 
         <nav className="mobile-nav" aria-label="Navegação móvel">
           <button type="button" onClick={() => onNavigate("inicio")} aria-current={activeView === "inicio" ? "page" : undefined} data-active={activeView === "inicio"}><House size={21} /><span>Início</span></button>
           <button type="button" onClick={() => onNavigate("propriedades")} aria-current={activeView === "propriedades" ? "page" : undefined} data-active={activeView === "propriedades"}><Sprout size={21} /><span>Áreas</span></button>
-          <a href="./agryn.html?tab=solo"><FlaskConical size={21} /><span>Análises</span></a>
+          <button type="button" onClick={() => onNavigate("analise-solo")} aria-current={activeView === "analise-solo" ? "page" : undefined} data-active={activeView === "analise-solo"}><FlaskConical size={21} /><span>Análises</span></button>
           <button type="button" onClick={() => onNavigate("mapeamento")} aria-current={activeView === "mapeamento" ? "page" : undefined} data-active={activeView === "mapeamento"}><Map size={21} /><span>Mapas</span></button>
           <button type="button" onClick={() => onNavigate("modulos")} aria-current={activeView === "modulos" ? "page" : undefined} data-active={activeView === "modulos"}><LayoutGrid size={21} /><span>Mais</span></button>
         </nav>

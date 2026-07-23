@@ -174,7 +174,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
           <p>{agriculture.selectedPlot ? `Acompanhe ${agriculture.selectedPlot.crop.toLocaleLowerCase("pt-BR")} no ${agriculture.selectedPlot.name}, safra ${agriculture.selectedPlot.season}.` : "Conecte uma propriedade para transformar análises, clima e manejo em decisões rastreáveis para qualquer cultura."}</p>
           <div className="hero-actions">
             <button className="primary-button" type="button" onClick={() => onNavigate(agriculture.selectedPlot ? "caderno" : "propriedades")}><Plus size={18} /> {agriculture.selectedPlot ? "Registrar atividade" : "Cadastrar propriedade"}</button>
-            <a className="secondary-button" href="./agryn.html?tab=foto"><Camera size={18} /> Diagnosticar planta</a>
+            <a className="secondary-button" href="./agryn.html?tab=foto" target="_blank" rel="noopener noreferrer"><Camera size={18} /> Diagnosticar planta</a>
           </div>
         </div>
         <aside className="agryn-index-card" aria-label="Índice AGRYN">
@@ -186,7 +186,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
             <li data-ready={plotRecords.length > 0}><CheckCircle2 size={15} /> Histórico de campo</li>
             <li data-ready={false}><CheckCircle2 size={15} /> Análises e clima sincronizados</li>
           </ul>
-          <a href="./agryn.html?tab=ia"><Bot size={16} /> Conversar com a AGRYN IA</a>
+          <a href="./agryn.html?tab=ia" target="_blank" rel="noopener noreferrer"><Bot size={16} /> Conversar com a AGRYN IA</a>
         </aside>
       </section>
 
