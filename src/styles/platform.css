@@ -73,13 +73,14 @@
 .data-form select,
 .data-form textarea {
   width: 100%;
-  min-height: 2.75rem;
+  min-height: 3rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.72rem 0.8rem;
   background: var(--surface);
   color: var(--text);
   font: inherit;
+  font-size: 1rem;
   font-weight: 500;
 }
 
@@ -177,8 +178,8 @@
 
 .danger-icon {
   display: grid;
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 0;
   border-radius: 50%;
@@ -437,8 +438,8 @@
 
 .record-status {
   display: grid;
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 50%;

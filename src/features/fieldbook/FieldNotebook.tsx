@@ -3,6 +3,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import type { AppView } from "../../app/navigation";
 import {
   activityTypes,
+  commonUnits,
   type FieldRecord,
   type FieldRecordInput,
 } from "../../domain/fieldRecords";
@@ -89,9 +90,9 @@ export function FieldNotebook({
             <label>Título<input required value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label>
             <label>Data<input required type="date" value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} /></label>
             <label>Status<select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as FieldRecordInput["status"] }))}><option value="planejada">Planejada</option><option value="concluida">Concluída</option></select></label>
-            <label>Custo total (R$)<input min="0" step="0.01" type="number" value={draft.cost || ""} onChange={(event) => setDraft((current) => ({ ...current, cost: Number(event.target.value) }))} /></label>
-            <label>Quantidade<input value={draft.quantity} onChange={(event) => setDraft((current) => ({ ...current, quantity: event.target.value }))} /></label>
-            <label>Unidade<input value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} placeholder="kg, L, h, sacas..." /></label>
+            <label>Custo total (R$)<input min="0" step="0.01" type="number" inputMode="decimal" value={draft.cost || ""} onChange={(event) => setDraft((current) => ({ ...current, cost: Number(event.target.value) }))} /></label>
+            <label>Quantidade<input inputMode="decimal" value={draft.quantity} onChange={(event) => setDraft((current) => ({ ...current, quantity: event.target.value }))} /></label>
+            <label>Unidade<input list="caderno-unidades" value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} placeholder="kg, L, h, sacas..." /><datalist id="caderno-unidades">{commonUnits.map((unit) => <option key={unit} value={unit} />)}</datalist></label>
             <label className="wide-field">Observações<textarea rows={3} value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} /></label>
           </div>
           <div className="form-actions"><button className="secondary-button" type="button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button" type="submit">Salvar atividade</button></div>

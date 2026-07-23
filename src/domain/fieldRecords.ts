@@ -1,3 +1,19 @@
+// Unidades comuns oferecidas como sugestão de toque no caderno de campo.
+// Datalist (não select): o produtor toca numa opção ou digita a própria.
+export const commonUnits = [
+  "kg",
+  "sacas",
+  "L",
+  "mL",
+  "g",
+  "t",
+  "un",
+  "h",
+  "m",
+  "ha",
+  "%",
+] as const;
+
 export const activityTypes = [
   "Plantio",
   "Adubação",

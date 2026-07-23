@@ -13,7 +13,9 @@ import { useState, type FormEvent } from "react";
 import {
   cropOptions,
   parsePlotBoundary,
+  phenologicalStages,
   propertyLocation,
+  recentSeasons,
   type PlotInput,
   type PropertyInput,
 } from "../../domain/agriculturalContext";
@@ -335,7 +337,8 @@ export function PropertyManager({
                     </label>
                     <label>
                       Safra
-                      <input required value={plotDraft.season} onChange={(event) => setPlotDraft((current) => ({ ...current, season: event.target.value }))} placeholder="Ex.: 2026/27" />
+                      <input required list="talhao-safras" value={plotDraft.season} onChange={(event) => setPlotDraft((current) => ({ ...current, season: event.target.value }))} placeholder="Ex.: 2026/27" />
+                      <datalist id="talhao-safras">{recentSeasons(new Date().getFullYear()).map((season) => <option key={season} value={season} />)}</datalist>
                     </label>
                     <label>
                       Data de plantio
@@ -343,11 +346,12 @@ export function PropertyManager({
                     </label>
                     <label>
                       Estágio fenológico
-                      <input value={plotDraft.phenologicalStage} onChange={(event) => setPlotDraft((current) => ({ ...current, phenologicalStage: event.target.value }))} />
+                      <input list="talhao-estagios" value={plotDraft.phenologicalStage} onChange={(event) => setPlotDraft((current) => ({ ...current, phenologicalStage: event.target.value }))} />
+                      <datalist id="talhao-estagios">{phenologicalStages.map((stage) => <option key={stage} value={stage} />)}</datalist>
                     </label>
                     <label>
                       Área (ha)
-                      <input required min="0.01" step="0.01" type="number" value={plotDraft.areaHectares || ""} onChange={(event) => setPlotDraft((current) => ({ ...current, areaHectares: Number(event.target.value) }))} />
+                      <input required min="0.01" step="0.01" type="number" inputMode="decimal" value={plotDraft.areaHectares || ""} onChange={(event) => setPlotDraft((current) => ({ ...current, areaHectares: Number(event.target.value) }))} />
                     </label>
                     <label>
                       Espaçamento entre linhas

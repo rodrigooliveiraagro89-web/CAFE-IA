@@ -15,6 +15,31 @@ export const cropOptions = [
   "Outra cultura",
 ] as const;
 
+// Estágios fenológicos comuns oferecidos como sugestão de toque no cadastro
+// de talhão. Datalist: cobre as culturas mais usadas sem travar a digitação.
+export const phenologicalStages = [
+  "Formação",
+  "Vegetativo",
+  "Florescimento",
+  "Frutificação",
+  "Enchimento de grãos",
+  "Granação",
+  "Maturação",
+  "Colheita",
+  "Pós-colheita / repouso",
+] as const;
+
+// Gera as safras recentes (ex.: "2024/25") a partir de um ano de referência,
+// para sugerir no campo de safra sem impedir outra digitação.
+export function recentSeasons(reference: number, span = 4): string[] {
+  const start = reference - 1;
+  return Array.from({ length: span }, (_, index) => {
+    const first = start + index;
+    const second = String((first + 1) % 100).padStart(2, "0");
+    return `${first}/${second}`;
+  });
+}
+
 export type FarmProperty = {
   id: string;
   name: string;
