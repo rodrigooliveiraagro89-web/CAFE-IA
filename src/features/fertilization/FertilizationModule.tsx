@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { ArrowRight, FlaskConical, Info, Mountain, Sprout, TriangleAlert } from "lucide-react";
+import {
+  ArrowRight,
+  Download,
+  FlaskConical,
+  Info,
+  Layers,
+  Mountain,
+  Sprout,
+  TriangleAlert,
+} from "lucide-react";
 import type { AppView } from "../../app/navigation";
 import {
   CENARIOS,
@@ -9,15 +18,41 @@ import {
   type CenarioId,
 } from "../../domain/fertilization";
 import { gramasPorPlanta } from "../../domain/calculators";
+import {
+  VR_LIMITACAO_GEO,
+  ZONA_EXCLUIDA_NOTA,
+  construirPrescricaoVR,
+  prescricaoParaCsv,
+} from "../../domain/variableRate";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
+import { buildManagementZones } from "../ndvi/managementZones";
+import type { NdviResult } from "../ndvi/types";
 import type { SoilAnalysis } from "../soil/soilStore";
 import "./fertilization.css";
 
 type FertilizationModuleProps = {
   agriculture: AgriculturalController;
   soilAnalyses: SoilAnalysis[];
+  ndviHistory: NdviResult[];
   onNavigate: (view: AppView) => void;
 };
+
+function latestNdviForPlot(history: NdviResult[], plotId: string): NdviResult | null {
+  const matches = history
+    .filter((item) => item.plotId === plotId)
+    .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime());
+  return matches[0] ?? null;
+}
+
+function baixarCsv(conteudo: string, nomeArquivo: string) {
+  const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 const nf = (value: number, digits = 0) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -36,6 +71,7 @@ function latestSoilForPlot(analyses: SoilAnalysis[], plotId: string): SoilAnalys
 export function FertilizationModule({
   agriculture,
   soilAnalyses,
+  ndviHistory,
   onNavigate,
 }: FertilizationModuleProps) {
   const [cenarioId, setCenarioId] = useState<CenarioId>("media");
@@ -248,6 +284,129 @@ export function FertilizationModule({
           </div>
         )}
       </section>
+
+      {(() => {
+        const ndvi = latestNdviForPlot(ndviHistory, plot.id);
+        const zonas = ndvi ? buildManagementZones(ndvi).filter((z) => z.hectares > 0) : [];
+
+        if (!soil || zonas.length === 0) {
+          return (
+            <section className="panel-card">
+              <div className="panel-title">
+                <Layers size={21} />
+                <div>
+                  <span className="eyebrow">Taxa variável</span>
+                  <h2>Prescrição por zona</h2>
+                </div>
+              </div>
+              <p className="fert-empty">
+                Precisa de <strong>laudo de solo</strong> e de um{" "}
+                <strong>processamento de NDVI</strong> neste talhão para modular a dose por
+                zona.{" "}
+                {!ndvi && (
+                  <button
+                    type="button"
+                    className="ndvi-inline-link"
+                    onClick={() => onNavigate("ndvi")}
+                  >
+                    Processar NDVI
+                  </button>
+                )}
+              </p>
+            </section>
+          );
+        }
+
+        const prescricao = construirPrescricaoVR(zonas, {
+          n: adubacao.n,
+          p2o5: adubacao.p2o5,
+          k2o: adubacao.k2o,
+        });
+
+        return (
+          <section className="panel-card">
+            <div className="panel-title">
+              <Layers size={21} />
+              <div>
+                <span className="eyebrow">Taxa variável · zonas do NDVI</span>
+                <h2>Prescrição por zona</h2>
+              </div>
+            </div>
+
+            <div className="vr-table-wrap">
+              <table className="vr-table">
+                <thead>
+                  <tr>
+                    <th>Zona</th>
+                    <th>Área</th>
+                    <th>Fator</th>
+                    <th>N</th>
+                    <th>P₂O₅</th>
+                    <th>K₂O</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prescricao.zonas.map((zona) => (
+                    <tr key={zona.letter} data-excluida={zona.excluida || undefined}>
+                      <td>
+                        <span className="vr-dot" style={{ background: zona.color }} />
+                        {zona.letter} · {zona.label}
+                      </td>
+                      <td>{nf(zona.hectares, 2)} ha</td>
+                      <td>{zona.excluida ? "—" : `${nf(zona.fator, 2)}×`}</td>
+                      <td>{zona.excluida ? "não adubar" : `${nf(zona.dosePorHectare.n)} kg/ha`}</td>
+                      <td>{zona.excluida ? "—" : `${nf(zona.dosePorHectare.p2o5)} kg/ha`}</td>
+                      <td>{zona.excluida ? "—" : `${nf(zona.dosePorHectare.k2o)} kg/ha`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="calc-results">
+              <div>
+                <span>Total a taxa variável</span>
+                <strong>{nf(prescricao.totalVariavel.n)}</strong>
+                <small>kg de N ({nf(prescricao.hectaresAdubados, 2)} ha adubados)</small>
+              </div>
+              <div>
+                <span>Se fosse dose única</span>
+                <strong>{nf(prescricao.totalUniforme.n)}</strong>
+                <small>kg de N em {nf(prescricao.hectaresTotais, 2)} ha</small>
+              </div>
+              <div>
+                <span>{prescricao.economia.n >= 0 ? "Economia de N" : "Acréscimo de N"}</span>
+                <strong>{nf(Math.abs(prescricao.economia.n))}</strong>
+                <small>kg</small>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="secondary-button vr-export"
+              onClick={() =>
+                baixarCsv(
+                  prescricaoParaCsv(prescricao),
+                  `prescricao-vr-${plot.name.replace(/\s+/g, "-").toLowerCase()}.csv`,
+                )
+              }
+            >
+              <Download size={17} /> Baixar CSV da prescrição
+            </button>
+
+            <div className="fert-assumptions">
+              <Info size={16} aria-hidden="true" />
+              <div>
+                <strong>Leia antes de aplicar</strong>
+                <ul>
+                  <li>{ZONA_EXCLUIDA_NOTA}</li>
+                  <li>{VR_LIMITACAO_GEO}</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       <p className="fert-disclaimer">
         Cálculo determinístico a partir das tabelas do Boletim 100 (IAC) e do laudo informado.

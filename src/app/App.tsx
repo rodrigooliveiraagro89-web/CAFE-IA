@@ -172,6 +172,7 @@ export function App() {
         <FertilizationModule
           agriculture={agriculture}
           soilAnalyses={soil.analyses}
+          ndviHistory={ndviHistory.history}
           onNavigate={navigate}
         />
       )}

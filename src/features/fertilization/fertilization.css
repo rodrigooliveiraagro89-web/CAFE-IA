@@ -166,6 +166,50 @@
   line-height: 1.5;
 }
 
+.vr-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.9rem;
+}
+
+.vr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.vr-table th,
+.vr-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.55rem 0.6rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.vr-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+}
+
+.vr-table tr[data-excluida] td {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.vr-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.vr-export {
+  margin-top: 1rem;
+}
+
 .fert-disclaimer {
   margin: 0;
   padding: 0.85rem 1.05rem;
