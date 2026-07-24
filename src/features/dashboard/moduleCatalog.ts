@@ -45,7 +45,7 @@ export type AgrynModule = {
 };
 
 export const moduleCatalog: AgrynModule[] = [
-  { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun, accent: "cyan", group: "Monitoramento", href: "./clima.html", badge: "Ao vivo" },
+  { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun, accent: "cyan", group: "Monitoramento", href: "./?view=clima", badge: "Ao vivo" },
   { id: "solo", label: "Solo", description: "Laudos, nutrientes e interpretação", icon: FlaskConical, accent: "emerald", group: "Análises", href: "./?view=analise-solo", badge: "IA" },
   { id: "foliar", label: "Análise foliar", description: "Estado nutricional da cultura", icon: Leaf, accent: "lime", group: "Análises", href: "./agryn.html?tab=foliar" },
   { id: "ndvi", label: "NDVI por satélite", description: "Vigor espectral, cenas e evolução", icon: Satellite, accent: "lime", group: "Monitoramento", href: "./?view=ndvi", badge: "Fonte pública" },
@@ -60,7 +60,7 @@ export const moduleCatalog: AgrynModule[] = [
   { id: "recomendacoes", label: "Recomendações", description: "Correção e planejamento nutricional", icon: Sprout, accent: "emerald", group: "Manejo", href: "./agryn.html?tab=adubacao" },
   { id: "relatorios", label: "Relatórios", description: "Documentos técnicos e exportação", icon: FileText, accent: "violet", group: "Relatórios", href: "./?view=relatorios", badge: "Novo" },
   { id: "ia", label: "AGRYN IA", description: "Assistente agronômico contextual", icon: Bot, accent: "emerald", group: "Inteligência Artificial", href: "./agryn.html?tab=ia", badge: "IA" },
-  { id: "calc", label: "Calculadoras", description: "Área, aplicação e conversões", icon: Calculator, accent: "amber", group: "Manejo", href: "./agryn.html?tab=calc" },
+  { id: "calc", label: "Calculadoras", description: "Área, aplicação e conversões", icon: Calculator, accent: "amber", group: "Manejo", href: "./?view=calculadoras", badge: "Novo" },
   { id: "produtos", label: "Produtos agrícolas", description: "Catálogo técnico da operação", icon: PackageSearch, accent: "lime", group: "Manejo", href: "./agryn.html?tab=defensivos" },
   { id: "diagnostico", label: "Diagnóstico", description: "Análise guiada de sintomas", icon: BrainCircuit, accent: "violet", group: "Inteligência Artificial", href: "./agryn.html?tab=foto", badge: "IA" },
   { id: "mercado", label: "Mercado agrícola", description: "Cotações e leitura de cenário", icon: TrendingUp, accent: "amber", group: "Monitoramento", href: "./agryn.html?tab=mercado" },

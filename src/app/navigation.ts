@@ -2,7 +2,9 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpenCheck,
   Briefcase,
+  Calculator,
   CircleDollarSign,
+  CloudSun,
   FileText,
   FlaskConical,
   House,
@@ -21,6 +23,8 @@ export type AppView =
   | "modulos"
   | "ndvi"
   | "analise-solo"
+  | "clima"
+  | "calculadoras"
   | "caderno"
   | "custos"
   | "relatorios"
@@ -60,6 +64,13 @@ export const navigationItems: NavigationItem[] = [
     label: "Análise de solo",
     description: "Laudo por IA e interpretação",
     icon: FlaskConical,
+  },
+  { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun },
+  {
+    id: "calculadoras",
+    label: "Calculadoras",
+    description: "Estande, pulverização e conversões",
+    icon: Calculator,
   },
   { id: "caderno", label: "Caderno de campo", description: "Atividades e histórico", icon: BookOpenCheck },
   { id: "custos", label: "Custos", description: "Gestão financeira por área", icon: CircleDollarSign },

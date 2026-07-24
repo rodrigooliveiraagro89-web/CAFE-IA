@@ -49,7 +49,7 @@ function initialsFromName(name: string): string {
 const operationLinks = [
   { label: "Diagnóstico", href: "./agryn.html?tab=foto", icon: ScanLine },
   { label: "Análises", href: "./?view=analise-solo", icon: FlaskConical },
-  { label: "Clima", href: "./clima.html", icon: CloudSun },
+  { label: "Clima", href: "./?view=clima", icon: CloudSun },
   { label: "Recomendações", href: "./agryn.html?tab=adubacao", icon: Sprout },
   { label: "Relatórios", href: "./?view=relatorios", icon: FileText },
 ];

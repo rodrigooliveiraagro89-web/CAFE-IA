@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { AuthScreen } from "../components/AuthScreen";
 import { evaluateRecommendationReadiness } from "../domain/safety";
+import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
 import { CostCenter } from "../features/costs/CostCenter";
+import { WeatherModule } from "../features/weather/WeatherModule";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
 import { ModuleHub } from "../features/modules/ModuleHub";
@@ -31,6 +33,8 @@ const validViews: AppView[] = [
   "modulos",
   "ndvi",
   "analise-solo",
+  "clima",
+  "calculadoras",
   "caderno",
   "custos",
   "relatorios",
@@ -161,6 +165,10 @@ export function App() {
           soil={soil}
           onNavigate={navigate}
         />
+      )}
+      {activeView === "clima" && <WeatherModule onNavigate={navigate} />}
+      {activeView === "calculadoras" && (
+        <CalculatorsModule agriculture={agriculture} onNavigate={navigate} />
       )}
       {activeView === "relatorios" && (
         <ReportModule

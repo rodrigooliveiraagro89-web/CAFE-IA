@@ -1,0 +1,42 @@
+.weather-frame-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.weather-frame {
+  display: block;
+  width: 100%;
+  height: min(78vh, 820px);
+  min-height: 520px;
+  border: 0;
+}
+
+.weather-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
+.weather-note a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--info);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .weather-frame {
+    height: min(70vh, 620px);
+    min-height: 420px;
+  }
+}
