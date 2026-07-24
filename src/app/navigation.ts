@@ -14,6 +14,7 @@ import {
   Mountain,
   Satellite,
   ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 
 export type AppView =
@@ -26,6 +27,7 @@ export type AppView =
   | "analise-solo"
   | "adubacao"
   | "clima"
+  | "mercado"
   | "calculadoras"
   | "caderno"
   | "custos"
@@ -74,6 +76,12 @@ export const navigationItems: NavigationItem[] = [
     icon: Mountain,
   },
   { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun },
+  {
+    id: "mercado",
+    label: "Mercado",
+    description: "Cotações, médias e projeção",
+    icon: TrendingUp,
+  },
   {
     id: "calculadoras",
     label: "Calculadoras",

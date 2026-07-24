@@ -5,6 +5,7 @@ import { evaluateRecommendationReadiness } from "../domain/safety";
 import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
 import { CostCenter } from "../features/costs/CostCenter";
 import { FertilizationModule } from "../features/fertilization/FertilizationModule";
+import { MarketModule } from "../features/market/MarketModule";
 import { WeatherModule } from "../features/weather/WeatherModule";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
@@ -36,6 +37,7 @@ const validViews: AppView[] = [
   "analise-solo",
   "adubacao",
   "clima",
+  "mercado",
   "calculadoras",
   "caderno",
   "custos",
@@ -177,6 +179,13 @@ export function App() {
         />
       )}
       {activeView === "clima" && <WeatherModule onNavigate={navigate} />}
+      {activeView === "mercado" && (
+        <MarketModule
+          agriculture={agriculture}
+          records={fieldBook.records}
+          onNavigate={navigate}
+        />
+      )}
       {activeView === "calculadoras" && (
         <CalculatorsModule agriculture={agriculture} onNavigate={navigate} />
       )}
