@@ -4,6 +4,7 @@ import { AuthScreen } from "../components/AuthScreen";
 import { evaluateRecommendationReadiness } from "../domain/safety";
 import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
 import { CostCenter } from "../features/costs/CostCenter";
+import { FertilizationModule } from "../features/fertilization/FertilizationModule";
 import { WeatherModule } from "../features/weather/WeatherModule";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
@@ -33,6 +34,7 @@ const validViews: AppView[] = [
   "modulos",
   "ndvi",
   "analise-solo",
+  "adubacao",
   "clima",
   "calculadoras",
   "caderno",
@@ -163,6 +165,13 @@ export function App() {
           agriculture={agriculture}
           accessToken={auth.session?.access_token ?? ""}
           soil={soil}
+          onNavigate={navigate}
+        />
+      )}
+      {activeView === "adubacao" && (
+        <FertilizationModule
+          agriculture={agriculture}
+          soilAnalyses={soil.analyses}
           onNavigate={navigate}
         />
       )}

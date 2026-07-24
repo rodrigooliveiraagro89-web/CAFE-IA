@@ -11,6 +11,7 @@ import {
   LandPlot,
   LayoutGrid,
   Map,
+  Mountain,
   Satellite,
   ShieldCheck,
 } from "lucide-react";
@@ -23,6 +24,7 @@ export type AppView =
   | "modulos"
   | "ndvi"
   | "analise-solo"
+  | "adubacao"
   | "clima"
   | "calculadoras"
   | "caderno"
@@ -64,6 +66,12 @@ export const navigationItems: NavigationItem[] = [
     label: "Análise de solo",
     description: "Laudo por IA e interpretação",
     icon: FlaskConical,
+  },
+  {
+    id: "adubacao",
+    label: "Calagem e adubação",
+    description: "Doses pelo Boletim 100",
+    icon: Mountain,
   },
   { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun },
   {

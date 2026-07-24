@@ -1,0 +1,195 @@
+.fert-warning {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.fert-warning strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.fert-warning p {
+  margin: 0.25rem 0 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.fert-warning button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.fert-scenarios {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.fert-scenarios button {
+  display: grid;
+  gap: 0.2rem;
+  min-height: 60px;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.fert-scenarios button[data-active="true"] {
+  border-color: var(--agryn-emerald-deep, #059669);
+  background: var(--success-soft);
+}
+
+.fert-scenarios strong {
+  font-size: 0.92rem;
+}
+
+.fert-scenarios span {
+  font-size: 0.74rem;
+  color: var(--text-soft);
+}
+
+.fert-npk {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+}
+
+.fert-npk div {
+  display: grid;
+  gap: 0.12rem;
+  align-content: start;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.fert-npk span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.fert-npk strong {
+  font-size: 1.3rem;
+  line-height: 1.15;
+}
+
+.fert-npk small {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+}
+
+.fert-npk em {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--info);
+}
+
+.fert-stand {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 320px;
+  margin-top: 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.fert-stand input {
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  color: inherit;
+  font-size: 0.95rem;
+}
+
+.fert-hint,
+.fert-empty,
+.fert-ok {
+  margin: 0.8rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.fert-ok {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.fert-assumptions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-soft);
+}
+
+.fert-assumptions strong {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.fert-assumptions ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.79rem;
+  line-height: 1.5;
+}
+
+.fert-disclaimer {
+  margin: 0;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: 0.77rem;
+  font-style: italic;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+@media (max-width: 780px) {
+  .fert-npk {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .fert-scenarios {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fert-npk {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
