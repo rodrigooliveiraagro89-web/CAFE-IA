@@ -3,6 +3,7 @@ import {
   BookOpenCheck,
   Briefcase,
   Calculator,
+  Cherry,
   CircleDollarSign,
   CloudSun,
   FileText,
@@ -26,6 +27,7 @@ export type AppView =
   | "ndvi"
   | "analise-solo"
   | "adubacao"
+  | "morango"
   | "clima"
   | "mercado"
   | "calculadoras"
@@ -74,6 +76,12 @@ export const navigationItems: NavigationItem[] = [
     label: "Calagem e adubação",
     description: "Doses pelo Boletim 100",
     icon: Mountain,
+  },
+  {
+    id: "morango",
+    label: "Morango",
+    description: "Painel da cultura do morango",
+    icon: Cherry,
   },
   { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun },
   {

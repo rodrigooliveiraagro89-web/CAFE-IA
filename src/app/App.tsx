@@ -6,6 +6,7 @@ import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
 import { CostCenter } from "../features/costs/CostCenter";
 import { FertilizationModule } from "../features/fertilization/FertilizationModule";
 import { MarketModule } from "../features/market/MarketModule";
+import { MorangoModule } from "../features/strawberry/MorangoModule";
 import { WeatherModule } from "../features/weather/WeatherModule";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
@@ -36,6 +37,7 @@ const validViews: AppView[] = [
   "ndvi",
   "analise-solo",
   "adubacao",
+  "morango",
   "clima",
   "mercado",
   "calculadoras",
@@ -175,6 +177,13 @@ export function App() {
           agriculture={agriculture}
           soilAnalyses={soil.analyses}
           ndviHistory={ndviHistory.history}
+          onNavigate={navigate}
+        />
+      )}
+      {activeView === "morango" && (
+        <MorangoModule
+          agriculture={agriculture}
+          records={fieldBook.records}
           onNavigate={navigate}
         />
       )}

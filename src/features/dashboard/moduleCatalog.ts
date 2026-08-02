@@ -4,6 +4,7 @@ import {
   Bug,
   Calculator,
   ChartNoAxesCombined,
+  Cherry,
   CircleDollarSign,
   CloudSun,
   Droplets,
@@ -65,6 +66,7 @@ export const moduleCatalog: AgrynModule[] = [
   { id: "diagnostico", label: "Diagnóstico", description: "Análise guiada de sintomas", icon: BrainCircuit, accent: "violet", group: "Inteligência Artificial", href: "./agryn.html?tab=foto", badge: "IA" },
   { id: "mercado", label: "Mercado agrícola", description: "Cotações e leitura de cenário", icon: TrendingUp, accent: "amber", group: "Monitoramento", href: "./?view=mercado", badge: "Novo" },
   { id: "adubacao", label: "Calagem e adubação", description: "Doses pelo Boletim 100 (IAC)", icon: Mountain, accent: "amber", group: "Manejo", href: "./?view=adubacao", badge: "Novo" },
+  { id: "morango", label: "Morango", description: "Planejamento, operação e financeiro", icon: Cherry, accent: "rose", group: "Gestão", href: "./?view=morango", badge: "Novo" },
   { id: "operacoes", label: "Operações mecanizadas", description: "Registro de intervenções no campo", icon: Tractor, accent: "cyan", group: "Gestão", href: "./?view=caderno" },
   { id: "indicadores", label: "Indicadores", description: "Leitura consolidada da operação", icon: ChartNoAxesCombined, accent: "emerald", group: "Relatórios", href: "./?view=inicio" },
 ];
