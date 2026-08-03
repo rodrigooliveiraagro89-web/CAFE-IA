@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import type { AppView } from "../../app/navigation";
+import { WakeHint } from "../../components/ui/WakeHint";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import {
   interpretSoil,
@@ -190,6 +191,8 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
           <LoaderCircle size={18} className="spin" /> <span>{uploadState.message}</span>
         </div>
       )}
+      <WakeHint active={uploadState.status === "reading"} />
+
       {uploadState.status === "error" && (
         <div className="soil-status" data-error="true" role="alert">
           <TriangleAlert size={18} /> <span>{uploadState.message}</span>

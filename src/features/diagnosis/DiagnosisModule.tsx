@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { ArrowRight, Camera, Info, Leaf, RefreshCw, Upload } from "lucide-react";
 import type { AppView } from "../../app/navigation";
+import { WakeHint } from "../../components/ui/WakeHint";
 import { diagnoseImage, type Confianca, type Diagnosis } from "./visionClient";
 import "./diagnosis.css";
 
@@ -112,6 +113,7 @@ export function DiagnosisModule({ accessToken, onNavigate }: DiagnosisModuleProp
           </div>
 
           {loading && <p className="diag-loading"><Leaf size={17} /> Analisando a foto…</p>}
+          <WakeHint active={loading} />
           {erro && <p className="assistant-error">{erro}</p>}
 
           {diagnosis && (

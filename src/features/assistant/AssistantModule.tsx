@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { ArrowRight, Bot, Info, SendHorizonal, Sprout } from "lucide-react";
 import type { AppView } from "../../app/navigation";
+import { WakeHint } from "../../components/ui/WakeHint";
 import { sendChat, type ChatMessage } from "./chatClient";
 import "./assistant.css";
 
@@ -115,6 +116,7 @@ export function AssistantModule({ accessToken, onNavigate }: AssistantModuleProp
           )}
         </div>
 
+        <WakeHint active={loading} />
         {erro && <p className="assistant-error">{erro}</p>}
 
         <form

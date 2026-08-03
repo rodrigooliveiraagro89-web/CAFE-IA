@@ -111,7 +111,7 @@ async def check_quota(
     if response.status_code != 200:
         raise HTTPException(
             status_code=502,
-            detail=f"Não foi possível checar sua cota de {feature} agora. Tente novamente.",
+            detail=f"Não foi possível checar sua cota para usar {feature} agora. Tente novamente.",
         )
     result = response.json()
     if not result.get("allowed", False):
