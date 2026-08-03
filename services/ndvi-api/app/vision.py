@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 
 import anthropic
 from fastapi import HTTPException
 
 from .config import settings
+
+logger = logging.getLogger("agryn.vision")
 
 # Diagnóstico visual de sintomas em foto (praga, doença, deficiência). A IA
 # sugere um diagnóstico PROVÁVEL com nível de confiança — nunca um laudo
@@ -87,11 +90,9 @@ async def diagnose_image(media_type: str, data: bytes) -> dict:
     try:
         response = await client.messages.create(
             model=MODEL,
-            max_tokens=1024,
+            max_tokens=2048,
             system=SYSTEM_PROMPT,
-            thinking={"type": "adaptive"},
             output_config={
-                "effort": "low",
                 "format": {"type": "json_schema", "schema": DIAGNOSIS_SCHEMA},
             },
             messages=[
@@ -115,6 +116,7 @@ async def diagnose_image(media_type: str, data: bytes) -> dict:
             ],
         )
     except anthropic.APIError as error:
+        logger.error("Falha no diagnóstico por foto pela Claude: %r", error)
         raise HTTPException(
             status_code=502,
             detail="Não foi possível analisar a foto agora. Tente novamente.",

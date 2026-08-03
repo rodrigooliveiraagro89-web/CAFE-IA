@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 
 import anthropic
 from fastapi import HTTPException
 
 from .config import settings
+
+logger = logging.getLogger("agryn.soil")
 
 # A IA SÓ extrai números do laudo — a interpretação agronômica é feita por
 # código determinístico no frontend (faixas CFSEMG/Boletim 100). Isso mantém o
@@ -110,11 +113,9 @@ async def extract_soil_values(media_type: str, data: bytes) -> dict:
     try:
         response = await client.messages.create(
             model=MODEL,
-            max_tokens=1024,
+            max_tokens=2048,
             system=SYSTEM_PROMPT,
-            thinking={"type": "adaptive"},
             output_config={
-                "effort": "low",
                 "format": {"type": "json_schema", "schema": EXTRACTION_SCHEMA},
             },
             messages=[
@@ -128,6 +129,7 @@ async def extract_soil_values(media_type: str, data: bytes) -> dict:
             ],
         )
     except anthropic.APIError as error:
+        logger.error("Falha na extração de solo pela Claude: %r", error)
         raise HTTPException(
             status_code=502,
             detail="Não foi possível ler o laudo agora. Tente novamente em instantes.",
