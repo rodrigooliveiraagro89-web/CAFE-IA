@@ -174,7 +174,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
           <p>{agriculture.selectedPlot ? `Acompanhe ${agriculture.selectedPlot.crop.toLocaleLowerCase("pt-BR")} no ${agriculture.selectedPlot.name}, safra ${agriculture.selectedPlot.season}.` : "Conecte uma propriedade para transformar análises, clima e manejo em decisões rastreáveis para qualquer cultura."}</p>
           <div className="hero-actions">
             <button className="primary-button" type="button" onClick={() => onNavigate(agriculture.selectedPlot ? "caderno" : "propriedades")}><Plus size={18} /> {agriculture.selectedPlot ? "Registrar atividade" : "Cadastrar propriedade"}</button>
-            <a className="secondary-button" href="./agryn.html?tab=foto" target="_blank" rel="noopener noreferrer"><Camera size={18} /> Diagnosticar planta</a>
+            <button className="secondary-button" type="button" onClick={() => onNavigate("diagnostico")}><Camera size={18} /> Diagnosticar planta</button>
           </div>
         </div>
         <aside className="agryn-index-card" aria-label="Índice AGRYN">

@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     soil_quota_pro_monthly: int = 30
     chat_quota_free_monthly: int = 20
     chat_quota_pro_monthly: int = 500
+    vision_quota_free_monthly: int = 2
+    vision_quota_pro_monthly: int = 30
 
     @property
     def origins(self) -> list[str]:

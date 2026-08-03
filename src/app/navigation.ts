@@ -7,6 +7,7 @@ import {
   Cherry,
   CircleDollarSign,
   CloudSun,
+  ScanLine,
   FileText,
   FlaskConical,
   House,
@@ -29,6 +30,7 @@ export type AppView =
   | "analise-solo"
   | "adubacao"
   | "assistente"
+  | "diagnostico"
   | "morango"
   | "clima"
   | "mercado"
@@ -84,6 +86,12 @@ export const navigationItems: NavigationItem[] = [
     label: "AGRYN IA",
     description: "Assistente agronômico por IA",
     icon: Bot,
+  },
+  {
+    id: "diagnostico",
+    label: "Diagnóstico por foto",
+    description: "Triagem de sintomas por IA",
+    icon: ScanLine,
   },
   {
     id: "morango",

@@ -1,0 +1,117 @@
+.diag-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.diag-picker button {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  padding: 1.6rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.diag-picker button:hover {
+  border-color: var(--agryn-emerald-deep, #059669);
+  background: var(--success-soft);
+}
+
+.diag-picker strong {
+  font-size: 0.95rem;
+}
+
+.diag-picker small {
+  font-size: 0.76rem;
+  color: var(--text-soft);
+}
+
+.diag-media {
+  display: grid;
+  gap: 0.7rem;
+  justify-items: start;
+  margin-bottom: 1rem;
+}
+
+.diag-media img {
+  width: 100%;
+  max-width: 360px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.diag-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: var(--text-soft);
+  font-style: italic;
+}
+
+.diag-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.4rem;
+}
+
+.diag-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.diag-confianca {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.diag-confianca[data-nivel="alta"] { background: var(--success-soft); color: var(--success); }
+.diag-confianca[data-nivel="media"] { background: var(--warning-soft); color: var(--warning); }
+.diag-confianca[data-nivel="baixa"] { background: var(--surface-muted); color: var(--text-soft); }
+
+.diag-block {
+  margin-top: 0.9rem;
+}
+
+.diag-block h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+}
+
+.diag-block ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.diag-confirm {
+  margin-top: 1rem;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid var(--info);
+  border-radius: var(--radius-md);
+  background: var(--info-soft);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .diag-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

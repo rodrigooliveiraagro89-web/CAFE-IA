@@ -6,6 +6,7 @@ import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
 import { CostCenter } from "../features/costs/CostCenter";
 import { FertilizationModule } from "../features/fertilization/FertilizationModule";
 import { AssistantModule } from "../features/assistant/AssistantModule";
+import { DiagnosisModule } from "../features/diagnosis/DiagnosisModule";
 import { MarketModule } from "../features/market/MarketModule";
 import { MorangoModule } from "../features/strawberry/MorangoModule";
 import { WeatherModule } from "../features/weather/WeatherModule";
@@ -39,6 +40,7 @@ const validViews: AppView[] = [
   "analise-solo",
   "adubacao",
   "assistente",
+  "diagnostico",
   "morango",
   "clima",
   "mercado",
@@ -184,6 +186,9 @@ export function App() {
       )}
       {activeView === "assistente" && (
         <AssistantModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />
+      )}
+      {activeView === "diagnostico" && (
+        <DiagnosisModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />
       )}
       {activeView === "morango" && (
         <MorangoModule

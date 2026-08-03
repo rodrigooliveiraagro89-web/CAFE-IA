@@ -25,6 +25,7 @@ from .chat import chat_reply
 from .quota import check_quota, get_effective_plan, verify_user
 from .sentinelhub import processor
 from .soil import extract_soil_values
+from .vision import diagnose_image
 
 
 @asynccontextmanager
@@ -181,6 +182,29 @@ async def chat(
 
     reply = await chat_reply(payload.get("messages", []))
     return {"reply": reply}
+
+
+@app.post("/v1/vision/diagnose")
+async def diagnose(
+    file: UploadFile = File(...),
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = await verify_user(authorization)
+    plan = await get_effective_plan(user["id"], user["token"])
+    await check_quota(
+        user["id"],
+        user["token"],
+        plan,
+        rpc="check_and_increment_vision_usage",
+        free_limit=settings.vision_quota_free_monthly,
+        pro_limit=settings.vision_quota_pro_monthly,
+        feature="o diagnóstico por foto",
+    )
+
+    data = await file.read()
+    media_type = (file.content_type or "").split(";")[0].strip().lower()
+    diagnosis = await diagnose_image(media_type, data)
+    return {"diagnosis": diagnosis}
 
 
 async def run_job(job_id: str, request: NdviJobInput) -> None:
