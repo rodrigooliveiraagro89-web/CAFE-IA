@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     soil_quota_free_monthly: int = 2
     soil_quota_pro_monthly: int = 30
+    chat_quota_free_monthly: int = 20
+    chat_quota_pro_monthly: int = 500
 
     @property
     def origins(self) -> list[str]:

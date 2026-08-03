@@ -186,7 +186,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
             <li data-ready={plotRecords.length > 0}><CheckCircle2 size={15} /> Histórico de campo</li>
             <li data-ready={false}><CheckCircle2 size={15} /> Análises e clima sincronizados</li>
           </ul>
-          <a href="./agryn.html?tab=ia" target="_blank" rel="noopener noreferrer"><Bot size={16} /> Conversar com a AGRYN IA</a>
+          <button type="button" className="index-cta" onClick={() => onNavigate("assistente")}><Bot size={16} /> Conversar com a AGRYN IA</button>
         </aside>
       </section>
 

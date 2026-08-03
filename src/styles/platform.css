@@ -322,13 +322,21 @@
   color: var(--success);
 }
 
-.agryn-index-card a {
+.agryn-index-card a,
+.index-cta {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   color: var(--success);
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+.index-cta {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .active-context-strip {

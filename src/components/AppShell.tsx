@@ -128,7 +128,7 @@ export function AppShell({
         {!collapsed && (
           <div className="sidebar-insight">
             <span className="insight-orb"><Bot size={20} aria-hidden="true" /></span>
-            <div><span className="eyebrow">AGRYN IA</span><strong>Transforme dados em decisões.</strong><a href="./agryn.html?tab=ia" target="_blank" rel="noopener noreferrer">Perguntar agora</a></div>
+            <div><span className="eyebrow">AGRYN IA</span><strong>Transforme dados em decisões.</strong><button type="button" className="insight-cta" onClick={() => onNavigate("assistente")}>Perguntar agora</button></div>
           </div>
         )}
 
@@ -187,7 +187,7 @@ export function AppShell({
         </header>
 
         <main id="conteudo-principal" tabIndex={-1}>{children}</main>
-        <a className="ai-floating-button" href="./agryn.html?tab=ia" target="_blank" rel="noopener noreferrer" aria-label="Perguntar à AGRYN IA (ferramenta clássica, abre em nova aba)"><Bot size={22} aria-hidden="true" /><span>AGRYN IA</span></a>
+        <button type="button" className="ai-floating-button" onClick={() => onNavigate("assistente")} aria-label="Perguntar à AGRYN IA"><Bot size={22} aria-hidden="true" /><span>AGRYN IA</span></button>
 
         <nav className="mobile-nav" aria-label="Navegação móvel">
           <button type="button" onClick={() => onNavigate("inicio")} aria-current={activeView === "inicio" ? "page" : undefined} data-active={activeView === "inicio"}><House size={21} /><span>Início</span></button>

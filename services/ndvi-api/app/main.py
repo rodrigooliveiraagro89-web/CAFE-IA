@@ -21,6 +21,7 @@ from fastapi.responses import FileResponse
 
 from .config import settings
 from .models import JobEnvelope, NdviJobInput
+from .chat import chat_reply
 from .quota import check_quota, get_effective_plan, verify_user
 from .sentinelhub import processor
 from .soil import extract_soil_values
@@ -158,6 +159,28 @@ async def extract_soil(
     media_type = (file.content_type or "").split(";")[0].strip().lower()
     values = await extract_soil_values(media_type, data)
     return {"values": values}
+
+
+@app.post("/v1/chat")
+async def chat(
+    payload: dict,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    # Auth + cota própria do assistente antes de gastar uma chamada paga da IA.
+    user = await verify_user(authorization)
+    plan = await get_effective_plan(user["id"], user["token"])
+    await check_quota(
+        user["id"],
+        user["token"],
+        plan,
+        rpc="check_and_increment_chat_usage",
+        free_limit=settings.chat_quota_free_monthly,
+        pro_limit=settings.chat_quota_pro_monthly,
+        feature="o assistente de IA",
+    )
+
+    reply = await chat_reply(payload.get("messages", []))
+    return {"reply": reply}
 
 
 async def run_job(job_id: str, request: NdviJobInput) -> None:

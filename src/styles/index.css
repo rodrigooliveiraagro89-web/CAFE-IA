@@ -339,11 +339,20 @@ a {
   line-height: 1.4;
 }
 
-.sidebar-insight a {
+.sidebar-insight a,
+.insight-cta {
   color: #83e7aa;
   font-size: 0.65rem;
   font-weight: 750;
   text-decoration: none;
+}
+
+.insight-cta {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
 }
 
 .sidebar-footer {
@@ -1310,6 +1319,8 @@ main {
   color: #ffffff;
   box-shadow: 0 18px 38px -18px var(--agryn-emerald-deep);
   text-decoration: none;
+  font: inherit;
+  cursor: pointer;
 }
 
 .ai-floating-button span {

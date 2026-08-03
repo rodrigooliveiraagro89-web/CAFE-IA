@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpenCheck,
+  Bot,
   Briefcase,
   Calculator,
   Cherry,
@@ -27,6 +28,7 @@ export type AppView =
   | "ndvi"
   | "analise-solo"
   | "adubacao"
+  | "assistente"
   | "morango"
   | "clima"
   | "mercado"
@@ -76,6 +78,12 @@ export const navigationItems: NavigationItem[] = [
     label: "Calagem e adubação",
     description: "Doses pelo Boletim 100",
     icon: Mountain,
+  },
+  {
+    id: "assistente",
+    label: "AGRYN IA",
+    description: "Assistente agronômico por IA",
+    icon: Bot,
   },
   {
     id: "morango",
