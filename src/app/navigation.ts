@@ -38,6 +38,7 @@ export type AppView =
   | "caderno"
   | "custos"
   | "relatorios"
+  | "privacidade"
   | "seguranca";
 
 export type NavigationItem = {

@@ -1,0 +1,80 @@
+.privacy-text {
+  margin: 0.9rem 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.privacy-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.privacy-error {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.83rem;
+}
+
+.privacy-danger {
+  border-color: var(--danger);
+}
+
+.privacy-confirm {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 320px;
+  margin: 0.5rem 0 1rem;
+  font-size: 0.83rem;
+  color: var(--text-soft);
+}
+
+.privacy-confirm input {
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  color: inherit;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+}
+
+.privacy-delete-button {
+  min-height: 48px;
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.privacy-delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.privacy-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.privacy-footer a {
+  color: var(--info);
+  font-weight: 700;
+}

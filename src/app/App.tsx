@@ -7,6 +7,7 @@ import { CostCenter } from "../features/costs/CostCenter";
 import { FertilizationModule } from "../features/fertilization/FertilizationModule";
 import { AssistantModule } from "../features/assistant/AssistantModule";
 import { DiagnosisModule } from "../features/diagnosis/DiagnosisModule";
+import { PrivacyModule } from "../features/privacy/PrivacyModule";
 import { MarketModule } from "../features/market/MarketModule";
 import { MorangoModule } from "../features/strawberry/MorangoModule";
 import { WeatherModule } from "../features/weather/WeatherModule";
@@ -48,6 +49,7 @@ const validViews: AppView[] = [
   "caderno",
   "custos",
   "relatorios",
+  "privacidade",
   "seguranca",
 ];
 
@@ -217,6 +219,14 @@ export function App() {
           planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
           trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
           onStartTrial={() => void auth.startTrial()}
+          onNavigate={navigate}
+        />
+      )}
+      {activeView === "privacidade" && auth.userId && (
+        <PrivacyModule
+          userId={auth.userId}
+          accessToken={auth.session?.access_token ?? ""}
+          onSignOut={auth.signOut}
           onNavigate={navigate}
         />
       )}

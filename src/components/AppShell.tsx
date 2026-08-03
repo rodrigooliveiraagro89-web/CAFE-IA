@@ -9,6 +9,7 @@ import {
   House,
   LayoutGrid,
   LogOut,
+  ShieldCheck,
   Map,
   Moon,
   ScanLine,
@@ -152,7 +153,7 @@ export function AppShell({
           </div>
           <div className="topbar-actions">
             <span className="today-label">{today}</span>
-            <a className="weather-pill" href="./clima.html" aria-label="Abrir previsão do tempo"><CloudSun size={18} aria-hidden="true" /><span><small>Clima</small><strong>Sincronizar</strong></span></a>
+            <button className="weather-pill" type="button" onClick={() => onNavigate("clima")} aria-label="Abrir previsão do tempo"><CloudSun size={18} aria-hidden="true" /><span><small>Clima</small><strong>Sincronizar</strong></span></button>
             <button className="icon-button" type="button" aria-label="Notificações"><Bell size={19} /></button>
             <button className="icon-button" onClick={onToggleTheme} type="button" aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}>{theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}</button>
             <div className="profile-menu">
@@ -170,6 +171,16 @@ export function AppShell({
               </button>
               {accountMenuOpen && (
                 <div className="profile-dropdown" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      onNavigate("privacidade");
+                    }}
+                  >
+                    <ShieldCheck size={16} aria-hidden="true" /> Meus dados (LGPD)
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
