@@ -26,6 +26,8 @@ from .quota import check_quota, get_effective_plan, verify_user
 from .sentinelhub import processor
 from .soil import extract_soil_values
 from .vision import diagnose_image
+from .billing import create_checkout, process_webhook, start_trial
+from .security import valid_asset_token
 
 
 @asynccontextmanager
@@ -49,6 +51,7 @@ app.add_middleware(
 )
 
 jobs: dict[str, JobEnvelope] = {}
+job_owners: dict[str, str] = {}
 cache: dict[str, str] = {}
 lock = asyncio.Lock()
 
@@ -75,7 +78,8 @@ async def create_job(
     response: Response,
     authorization: str | None = Header(default=None),
 ) -> JobEnvelope:
-    cache_key = request_hash(request)
+    user = await verify_user(authorization)
+    cache_key = request_hash(request, user["id"])
     async with lock:
         cached_id = cache.get(cache_key)
         cached_job = jobs.get(cached_id) if cached_id else None
@@ -85,7 +89,6 @@ async def create_job(
 
     # Só cobra cota por processamento genuinamente novo — uma cena já
     # processada e em cache (acima) não consome a cota do usuário.
-    user = await verify_user(authorization)
     plan = await get_effective_plan(user["id"], user["token"])
     await check_quota(user["id"], user["token"], plan)
 
@@ -98,23 +101,26 @@ async def create_job(
             message="Análise adicionada à fila.",
         )
         jobs[job_id] = envelope
+        job_owners[job_id] = user["id"]
         cache[cache_key] = job_id
     background_tasks.add_task(run_job, job_id, request)
     return envelope
 
 
 @app.get("/v1/ndvi/jobs/{job_id}", response_model=JobEnvelope)
-async def get_job(job_id: str) -> JobEnvelope:
+async def get_job(job_id: str, authorization: str | None = Header(default=None)) -> JobEnvelope:
+    user = await verify_user(authorization)
     job = jobs.get(job_id)
-    if not job:
+    if not job or job_owners.get(job_id) != user["id"]:
         raise HTTPException(status_code=404, detail="Análise não encontrada.")
     return job
 
 
 @app.delete("/v1/ndvi/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def cancel_job(job_id: str) -> Response:
+async def cancel_job(job_id: str, authorization: str | None = Header(default=None)) -> Response:
+    user = await verify_user(authorization)
     job = jobs.get(job_id)
-    if not job:
+    if not job or job_owners.get(job_id) != user["id"]:
         raise HTTPException(status_code=404, detail="Análise não encontrada.")
     if job.status in ("queued", "processing"):
         jobs[job_id] = job.model_copy(
@@ -127,7 +133,9 @@ async def cancel_job(job_id: str) -> Response:
 
 
 @app.get("/v1/ndvi/assets/{job_id}/{file_name}")
-async def get_asset(job_id: str, file_name: str) -> FileResponse:
+async def get_asset(job_id: str, file_name: str, token: str | None = None) -> FileResponse:
+    if not valid_asset_token(job_id, token):
+        raise HTTPException(status_code=401, detail="Link de imagem inválido ou expirado.")
     if file_name not in {"ndvi.png", "true-color.png", "ndvi.tif"}:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
     path = settings.result_directory / job_id / file_name
@@ -207,6 +215,32 @@ async def diagnose(
     return {"diagnosis": diagnosis}
 
 
+@app.post("/v1/billing/trial")
+async def activate_trial(authorization: str | None = Header(default=None)) -> dict:
+    user = await verify_user(authorization)
+    return {"trial_ate": await start_trial(user["id"])}
+
+
+@app.post("/v1/billing/checkout")
+async def billing_checkout(
+    payload: dict,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = await verify_user(authorization)
+    return {"url": await create_checkout(user, str(payload.get("name", "")))}
+
+
+@app.post("/v1/billing/webhooks/asaas")
+async def asaas_webhook(
+    payload: dict,
+    asaas_access_token: str | None = Header(default=None, alias="asaas-access-token"),
+) -> dict:
+    if not settings.asaas_webhook_token or asaas_access_token != settings.asaas_webhook_token:
+        raise HTTPException(status_code=401, detail="Webhook não autorizado.")
+    await process_webhook(payload)
+    return {"received": True}
+
+
 async def run_job(job_id: str, request: NdviJobInput) -> None:
     current = jobs[job_id]
     if current.status == "cancelled":
@@ -242,11 +276,11 @@ async def run_job(job_id: str, request: NdviJobInput) -> None:
         )
 
 
-def request_hash(request: NdviJobInput) -> str:
+def request_hash(request: NdviJobInput, user_id: str = "") -> str:
     canonical = json.dumps(
         request.model_dump(mode="json"),
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{user_id}:{canonical}".encode("utf-8")).hexdigest()

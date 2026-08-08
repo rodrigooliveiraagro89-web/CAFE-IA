@@ -23,6 +23,7 @@ from .analysis import (
 )
 from .config import settings
 from .models import NdviJobInput
+from .security import asset_token
 
 
 TOKEN_URL = (
@@ -143,6 +144,8 @@ class SentinelHubProcessor:
             else "insuficiente"
         )
         base_url = settings.public_base_url.rstrip("/")
+        token = asset_token(job_id)
+        asset_query = f"?token={token}" if token else ""
         south, west, north, east = bounds[1], bounds[0], bounds[3], bounds[2]
         return {
             "id": job_id,
@@ -174,12 +177,12 @@ class SentinelHubProcessor:
             },
             "ndviLayer": {
                 "kind": "image",
-                "url": f"{base_url}/v1/ndvi/assets/{job_id}/ndvi.png",
+                "url": f"{base_url}/v1/ndvi/assets/{job_id}/ndvi.png{asset_query}",
                 "bounds": [[south, west], [north, east]],
             },
             "trueColorLayer": {
                 "kind": "image",
-                "url": f"{base_url}/v1/ndvi/assets/{job_id}/true-color.png",
+                "url": f"{base_url}/v1/ndvi/assets/{job_id}/true-color.png{asset_query}",
                 "bounds": [[south, west], [north, east]],
             },
             "provenance": {

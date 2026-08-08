@@ -16,8 +16,9 @@ import {
   Sprout,
   Sun,
   UserRound,
+  WifiOff,
 } from "lucide-react";
-import { useState, type PropsWithChildren } from "react";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import { navigationItems, type AppView } from "../app/navigation";
 import { propertyLocation, type FarmPlot, type FarmProperty } from "../domain/agriculturalContext";
 import type { Profile } from "../lib/useAuth";
@@ -68,6 +69,16 @@ export function AppShell({
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
   const today = new Intl.DateTimeFormat("pt-BR", {
     weekday: "short",
     day: "2-digit",
@@ -121,8 +132,7 @@ export function AppShell({
           {!collapsed && <span className="nav-section-label">Operação</span>}
           {operationLinks.map((item) => {
             const Icon = item.icon;
-            const legacy = item.href.includes("agryn.html");
-            return <a className="side-nav-item" href={item.href} key={item.label} title={collapsed ? item.label : undefined} target={legacy ? "_blank" : undefined} rel={legacy ? "noopener noreferrer" : undefined}><Icon size={20} aria-hidden="true" />{!collapsed && <strong>{item.label}</strong>}</a>;
+            return <a className="side-nav-item" href={item.href} key={item.label} title={collapsed ? item.label : undefined}><Icon size={20} aria-hidden="true" />{!collapsed && <strong>{item.label}</strong>}</a>;
           })}
         </nav>
 
@@ -140,6 +150,7 @@ export function AppShell({
       </aside>
 
       <div className="app-column">
+        {!online && <div className="offline-banner" role="status"><WifiOff size={16} /> Modo offline: registros ficam neste aparelho e serão sincronizados quando a conexão voltar.</div>}
         <header className="topbar">
           <div className="mobile-brand"><AgrynBrand compact /></div>
           <div className="property-context" aria-label="Contexto da propriedade">

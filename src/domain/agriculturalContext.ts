@@ -1,32 +1,19 @@
 import { closePolygon, polygonAreaHectares } from "../features/ndvi/domain";
 import type { GeoPolygon, Position } from "../features/ndvi/types";
 
-export const cropOptions = [
-  "Café",
-  "Batata",
-  "Milho",
-  "Soja",
-  "Morango",
-  "Citros",
-  "Feijão",
-  "Trigo",
-  "Cana-de-açúcar",
-  "Hortaliças",
-  "Outra cultura",
-] as const;
+export const cropOptions = ["Café arábica", "Café conilon/robusta"] as const;
 
-// Estágios fenológicos comuns oferecidos como sugestão de toque no cadastro
-// de talhão. Datalist: cobre as culturas mais usadas sem travar a digitação.
+// Estágios fenológicos do cafeeiro oferecidos como sugestão de toque.
 export const phenologicalStages = [
   "Formação",
-  "Vegetativo",
+  "Pós-colheita / repouso",
+  "Indução floral",
   "Florescimento",
-  "Frutificação",
-  "Enchimento de grãos",
+  "Chumbinho",
+  "Expansão dos frutos",
   "Granação",
   "Maturação",
   "Colheita",
-  "Pós-colheita / repouso",
 ] as const;
 
 // Gera as safras recentes (ex.: "2024/25") a partir de um ano de referência,

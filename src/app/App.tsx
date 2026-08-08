@@ -9,7 +9,6 @@ import { AssistantModule } from "../features/assistant/AssistantModule";
 import { DiagnosisModule } from "../features/diagnosis/DiagnosisModule";
 import { PrivacyModule } from "../features/privacy/PrivacyModule";
 import { MarketModule } from "../features/market/MarketModule";
-import { MorangoModule } from "../features/strawberry/MorangoModule";
 import { WeatherModule } from "../features/weather/WeatherModule";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
@@ -30,6 +29,7 @@ import { useAuth } from "../lib/useAuth";
 import { useFieldRecords } from "../lib/useFieldRecords";
 import { loadPreferences, savePreferences, type ThemePreference } from "../lib/preferences";
 import type { AppView } from "./navigation";
+import { createProCheckout } from "../features/billing/billingClient";
 
 const validViews: AppView[] = [
   "inicio",
@@ -42,7 +42,6 @@ const validViews: AppView[] = [
   "adubacao",
   "assistente",
   "diagnostico",
-  "morango",
   "clima",
   "mercado",
   "calculadoras",
@@ -64,7 +63,32 @@ export function App() {
   const fieldBook = useFieldRecords(auth.userId);
   const ndviHistory = useNdviHistory(auth.userId);
   const soil = useSoilAnalyses(auth.userId);
-  const safety = useMemo(() => evaluateRecommendationReadiness(), []);
+  const safety = useMemo(() => {
+    const plot = agriculture.selectedPlot;
+    if (!plot) return evaluateRecommendationReadiness();
+    const analysis = soil.analyses
+      .filter((item) => item.plotId === plot.id)
+      .sort(
+        (a, b) =>
+          new Date(b.analysisDate ?? b.createdAt).getTime() -
+          new Date(a.analysisDate ?? a.createdAt).getTime(),
+      )[0];
+    if (!analysis) return evaluateRecommendationReadiness();
+    return evaluateRecommendationReadiness({
+      propertyId: agriculture.selectedProperty?.id,
+      plotId: plot.id,
+      laboratory: analysis.laboratory ?? undefined,
+      sampledAt: analysis.analysisDate ?? undefined,
+      pH: analysis.values.ph ?? undefined,
+      organicMatter: analysis.values.organicMatter ?? undefined,
+      phosphorus: analysis.values.p ?? undefined,
+      potassium: analysis.values.k ?? undefined,
+      calcium: analysis.values.ca ?? undefined,
+      magnesium: analysis.values.mg ?? undefined,
+      cec: analysis.values.ctc ?? undefined,
+      baseSaturation: analysis.values.vPercent ?? undefined,
+    });
+  }, [agriculture.selectedPlot, agriculture.selectedProperty, soil.analyses]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -81,11 +105,21 @@ export function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function subscribe() {
+    if (!auth.session?.access_token) return;
+    try {
+      const url = await createProCheckout(auth.session.access_token, auth.profile?.nome ?? "");
+      window.location.assign(url);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível abrir o checkout.");
+    }
+  }
+
   if (auth.loading) {
     return <div className="auth-screen" aria-busy="true" />;
   }
 
-  if (!auth.session || !auth.userId) {
+  if (!auth.session || !auth.userId || auth.recovering) {
     return <AuthScreen auth={auth} />;
   }
 
@@ -108,6 +142,7 @@ export function App() {
           agriculture={agriculture}
           records={fieldBook.records}
           ndviHistory={ndviHistory.history}
+          soilAnalyses={soil.analyses}
           name={auth.profile?.nome?.split(" ")[0] ?? ""}
         />
       )}
@@ -124,6 +159,7 @@ export function App() {
           planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
           trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
           onStartTrial={() => void auth.startTrial()}
+          onSubscribe={() => void subscribe()}
         />
       )}
       {activeView === "mapeamento" && (
@@ -132,6 +168,7 @@ export function App() {
           planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
           trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
           onStartTrial={() => void auth.startTrial()}
+          onSubscribe={() => void subscribe()}
           onNavigate={navigate}
         />
       )}
@@ -192,13 +229,6 @@ export function App() {
       {activeView === "diagnostico" && (
         <DiagnosisModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />
       )}
-      {activeView === "morango" && (
-        <MorangoModule
-          agriculture={agriculture}
-          records={fieldBook.records}
-          onNavigate={navigate}
-        />
-      )}
       {activeView === "clima" && <WeatherModule onNavigate={navigate} />}
       {activeView === "mercado" && (
         <MarketModule
@@ -219,6 +249,7 @@ export function App() {
           planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
           trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
           onStartTrial={() => void auth.startTrial()}
+          onSubscribe={() => void subscribe()}
           onNavigate={navigate}
         />
       )}

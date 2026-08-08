@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { TRIAL_DAYS, type PlanId } from "../domain/plans";
+import type { PlanId } from "../domain/plans";
 import { supabase } from "./supabaseClient";
+import { activateTrial } from "../features/billing/billingClient";
 
 export type ProfileTipo = "consultor" | "produtor";
 
@@ -30,9 +31,12 @@ export type AuthController = {
   profile: Profile | null;
   loading: boolean;
   error: string | null;
+  recovering: boolean;
   signUp: (input: SignUpInput) => Promise<void>;
   signIn: (input: SignInInput) => Promise<void>;
   signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   startTrial: () => Promise<void>;
 };
 
@@ -41,6 +45,7 @@ export function useAuth(): AuthController {
   const [fetchedProfile, setFetchedProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(false);
   const userId = session?.user?.id ?? null;
   const profile = userId ? fetchedProfile : null;
 
@@ -51,8 +56,9 @@ export function useAuth(): AuthController {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
+      if (event === "PASSWORD_RECOVERY") setRecovering(true);
     });
     return () => {
       active = false;
@@ -113,20 +119,33 @@ export function useAuth(): AuthController {
     await supabase.auth.signOut();
   }, []);
 
-  const startTrial = useCallback(async () => {
-    if (!userId) return;
-    const trialAte = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const { error: trialError } = await supabase
-      .from("profiles")
-      .update({ trial_ate: trialAte })
-      .eq("id", userId)
-      .is("trial_ate", null);
-    if (trialError) {
-      setError(trialError.message);
-      throw trialError;
+  const requestPasswordReset = useCallback(async (email: string) => {
+    setError(null);
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
+    if (resetError) {
+      setError(resetError.message);
+      throw resetError;
     }
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    setError(null);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) {
+      setError(updateError.message);
+      throw updateError;
+    }
+    setRecovering(false);
+  }, []);
+
+  const startTrial = useCallback(async () => {
+    if (!userId || !session?.access_token) return;
+    const trialAte = await activateTrial(session.access_token);
     setFetchedProfile((current) => (current ? { ...current, trialAte } : current));
-  }, [userId]);
+  }, [session, userId]);
 
   return {
     session,
@@ -134,9 +153,12 @@ export function useAuth(): AuthController {
     profile,
     loading,
     error,
+    recovering,
     signUp,
     signIn,
     signOut,
+    requestPasswordReset,
+    updatePassword,
     startTrial,
   };
 }

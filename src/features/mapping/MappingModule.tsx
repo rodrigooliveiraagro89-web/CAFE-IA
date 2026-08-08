@@ -69,6 +69,7 @@ type MappingModuleProps = {
   planId?: string | null;
   trialAvailable?: boolean;
   onStartTrial?: () => void;
+  onSubscribe?: () => void;
   onNavigate: (view: AppView) => void;
 };
 
@@ -88,6 +89,7 @@ export function MappingModule({
   planId = null,
   trialAvailable = false,
   onStartTrial,
+  onSubscribe,
   onNavigate,
 }: MappingModuleProps) {
   const { state, selectedProperty } = agriculture;
@@ -101,7 +103,7 @@ export function MappingModule({
   const [saveMode, setSaveMode] = useState<"idle" | "existing" | "new">("idle");
   const [targetPlotId, setTargetPlotId] = useState("");
   const [newPlotName, setNewPlotName] = useState("");
-  const [newPlotCrop, setNewPlotCrop] = useState<string>("Café");
+  const [newPlotCrop, setNewPlotCrop] = useState<string>("Café arábica");
   const [newPlotSeason, setNewPlotSeason] = useState("");
   const [feedback, setFeedback] = useState("");
   const [walking, setWalking] = useState(false);
@@ -664,7 +666,7 @@ export function MappingModule({
                   />
                 </label>
                 <label>
-                  Cultura
+                  Espécie de café
                   <select
                     value={newPlotCrop}
                     onChange={(event) => setNewPlotCrop(event.target.value)}
@@ -709,14 +711,9 @@ export function MappingModule({
                     Testar o Pro grátis por {TRIAL_DAYS} dias
                   </button>
                 )}
-                <a
-                  className="primary-button"
-                  href="https://www.asaas.com/c/fw5jokq1e8cfdink"
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <button className="primary-button" type="button" onClick={onSubscribe} disabled={!onSubscribe}>
                   Assinar o Pro — R$ 49,90/mês
-                </a>
+                </button>
               </div>
             ))}
         </aside>

@@ -101,6 +101,54 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const syncPending = async () => {
+      if (!navigator.onLine) return;
+      const properties = state.properties.map((property) => ({
+        id: property.id,
+        user_id: userId,
+        name: property.name,
+        producer: property.producer,
+        responsible: property.responsible,
+        city: property.city,
+        state: property.state,
+        created_at: property.createdAt,
+      }));
+      const plots = state.plots.map((plot) => ({
+        id: plot.id,
+        user_id: userId,
+        property_id: plot.propertyId,
+        name: plot.name,
+        crop: plot.crop,
+        variety: plot.variety,
+        season: plot.season,
+        planting_date: plot.plantingDate,
+        phenological_stage: plot.phenologicalStage,
+        row_spacing: plot.rowSpacing,
+        plant_spacing: plot.plantSpacing,
+        population: plot.population,
+        area_hectares: plot.areaHectares,
+        geometry: plot.geometry,
+        created_at: plot.createdAt,
+      }));
+      if (properties.length) {
+        const { error } = await supabase.from("properties").upsert(properties);
+        logSyncError("propriedades offline", error);
+        if (error) return;
+      }
+      if (plots.length) {
+        const { error } = await supabase.from("plots").upsert(plots);
+        logSyncError("talhões offline", error);
+        if (error) return;
+      }
+      window.dispatchEvent(new Event("agryn:context-synced"));
+    };
+    const onOnline = () => { void syncPending(); };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [state, userId]);
+
   // Ao logar, busca propriedades e talhões reais da conta.
   // Ao deslogar, limpa o cache local para não vazar dado de uma conta pra
   // sessão seguinte no mesmo navegador.
@@ -124,6 +172,7 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
       if (!active) return;
       logSyncError("propriedades", propertiesResult.error);
       logSyncError("talhões", plotsResult.error);
+      if (propertiesResult.error || plotsResult.error) return;
       const properties = ((propertiesResult.data as PropertyRow[] | null) ?? []).map(propertyFromRow);
       const plots = ((plotsResult.data as PlotRow[] | null) ?? []).map(plotFromRow);
       setState((current) => {
@@ -257,6 +306,10 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
         });
       },
       removeProperty(propertyId) {
+        if (userId && !navigator.onLine) {
+          window.alert("Conecte-se para excluir uma propriedade com segurança da nuvem.");
+          return;
+        }
         setState((current) => {
           const properties = current.properties.filter((property) => property.id !== propertyId);
           const plots = current.plots.filter((plot) => plot.propertyId !== propertyId);
@@ -281,6 +334,10 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
         }
       },
       removePlot(plotId) {
+        if (userId && !navigator.onLine) {
+          window.alert("Conecte-se para excluir um talhão com segurança da nuvem.");
+          return;
+        }
         setState((current) => {
           const plots = current.plots.filter((plot) => plot.id !== plotId);
           return {

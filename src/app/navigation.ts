@@ -4,7 +4,6 @@ import {
   Bot,
   Briefcase,
   Calculator,
-  Cherry,
   CircleDollarSign,
   CloudSun,
   ScanLine,
@@ -31,7 +30,6 @@ export type AppView =
   | "adubacao"
   | "assistente"
   | "diagnostico"
-  | "morango"
   | "clima"
   | "mercado"
   | "calculadoras"
@@ -93,12 +91,6 @@ export const navigationItems: NavigationItem[] = [
     label: "Diagnóstico por foto",
     description: "Triagem de sintomas por IA",
     icon: ScanLine,
-  },
-  {
-    id: "morango",
-    label: "Morango",
-    description: "Painel da cultura do morango",
-    icon: Cherry,
   },
   { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun },
   {

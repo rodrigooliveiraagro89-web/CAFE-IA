@@ -11,9 +11,12 @@ function makeAuth(): AuthController {
     profile: null,
     loading: false,
     error: null,
+    recovering: false,
     signUp: vi.fn().mockResolvedValue(undefined),
     signIn: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn().mockResolvedValue(undefined),
+    requestPasswordReset: vi.fn().mockResolvedValue(undefined),
+    updatePassword: vi.fn().mockResolvedValue(undefined),
     startTrial: vi.fn().mockResolvedValue(undefined),
   };
 }

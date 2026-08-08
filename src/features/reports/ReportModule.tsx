@@ -20,15 +20,18 @@ type ReportModuleProps = {
   planId: PlanId;
   trialAvailable: boolean;
   onStartTrial?: () => void;
+  onSubscribe?: () => void;
   onNavigate: (view: AppView) => void;
 };
 
 function UpgradeNotice({
   trialAvailable,
   onStartTrial,
+  onSubscribe,
 }: {
   trialAvailable: boolean;
   onStartTrial?: () => void;
+  onSubscribe?: () => void;
 }) {
   return (
     <div className="upgrade-notice" role="status">
@@ -45,9 +48,9 @@ function UpgradeNotice({
           Testar o Pro grátis por {TRIAL_DAYS} dias
         </button>
       )}
-      <a className="primary-button" href="https://www.asaas.com/c/fw5jokq1e8cfdink" target="_blank" rel="noreferrer">
+      <button className="primary-button" type="button" onClick={onSubscribe} disabled={!onSubscribe}>
         Assinar o Pro — R$ 49,90/mês
-      </a>
+      </button>
       <a className="secondary-button" href="./landing.html#planos" target="_blank" rel="noreferrer">
         Ver planos
       </a>
@@ -63,6 +66,7 @@ export function ReportModule({
   planId,
   trialAvailable,
   onStartTrial,
+  onSubscribe,
   onNavigate,
 }: ReportModuleProps) {
   const { state } = agriculture;
@@ -119,7 +123,7 @@ export function ReportModule({
           </button>
         </section>
       ) : !isPro ? (
-        <UpgradeNotice trialAvailable={trialAvailable} onStartTrial={onStartTrial} />
+        <UpgradeNotice trialAvailable={trialAvailable} onStartTrial={onStartTrial} onSubscribe={onSubscribe} />
       ) : report ? (
         <>
           <div className="no-print report-actions">

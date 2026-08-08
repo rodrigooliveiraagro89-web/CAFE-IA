@@ -1,62 +1,52 @@
-# Resumo técnico — plataforma AGRYN
+# Resumo técnico — AGRYN Café
 
-Data: 18 de julho de 2026
+Data: 8 de agosto de 2026
 
 ## Resultado
 
-A AGRYN evoluiu de um hub visual para uma plataforma multicultura com contexto operacional persistente. A entrega preserva os módulos existentes, o clima e o NDVI e adiciona os fluxos fundamentais de propriedade, talhão, caderno de campo e custos.
-
-## Identidade aplicada
-
-- Paleta `#10B981`, `#059669`, `#22C55E`, `#0F172A`, `#FFFFFF` e `#FBBF24`.
-- Orbitron para títulos e Inter para textos.
-- Temas claro e escuro, foco visível e preferência persistida.
-- Interface escura premium com cartões contidos, brilho sutil e ícones lineares.
-- Símbolo AGRYN centralizado em um único ativo substituível.
-- Capa social própria em `public/brand/agryn-social.png`.
+A AGRYN foi consolidada como uma plataforma exclusiva para cafeicultura. O fluxo reúne a propriedade, os talhões de café, o histórico de campo e os sinais de clima, solo, satélite e mercado em uma única base operacional.
 
 ## Experiência entregue
 
-- Dashboard com contexto real, indicadores vazios honestos e Índice AGRYN protegido.
-- Cadastro de propriedades com produtor, responsável técnico e localização.
-- Cadastro de talhões com cultura, variedade, safra, plantio, fenologia, espaçamento, população e área.
-- Importação de limites GeoJSON/KML e cálculo geodésico em hectares.
-- Seleção ativa de propriedade/talhão refletida no cabeçalho e nas telas.
-- NDVI por satélite conectado ao limite geográfico do talhão.
-- Caderno de campo com tipos de atividade, data, status, quantidade, unidade, notas e custo.
-- Centro de custos derivado somente dos lançamentos do usuário.
-- Hub com 22 acessos em Monitoramento, Análises, Manejo, Gestão, Inteligência Artificial e Relatórios.
-- Navegação móvel com Início, Áreas, Análises, Mapas e Mais.
+- Página pública e tela de entrada com proposta de valor, planos e transparência técnica.
+- Cadastro, login, recuperação de senha e teste Pro seguro por função de servidor.
+- Centro de ações priorizado por pendências reais: atividade atrasada, análise de solo, limite geográfico e atualização do NDVI.
+- Cadastro de café arábica e conilon/robusta com safra e estágio fenológico.
+- Mapeamento GeoJSON/KML, contexto ativo por propriedade/talhão e NDVI Sentinel-2.
+- Análise de solo, calagem e nutrição com critérios mínimos antes de liberar recomendações.
+- Caderno de campo com fotos, notas de voz, custos e sincronização.
+- Assistente e diagnóstico visual especializados em café, apresentados como triagem.
+- Mercado do café, clima, calculadoras, custos e relatórios consolidados.
+- Aplicação instalável (PWA), aviso offline e sincronização posterior dos registros compatíveis.
+- Rotas legadas convertidas em redirecionamentos para evitar duplicação de regras e bases antigas.
 
 ## Segurança e integridade
 
-- Nenhum índice, custo, produtividade ou número agrícola é inventado.
-- O Índice AGRYN permanece “Não calculado” até os requisitos serem atendidos.
-- Recomendações continuam bloqueadas sem dados mínimos e plausíveis.
-- O catálogo Sentinel-2 consulta uma fonte pública real.
-- Sem uma API de processamento configurada, o NDVI não fabrica raster ou estatística.
-- Nesta etapa, os dados operacionais ficam somente no navegador do usuário.
+- Row Level Security por usuário e por relação propriedade/talhão.
+- Campos de plano e teste protegidos contra alteração pelo navegador.
+- Anexos em bucket privado, com acesso restrito ao proprietário.
+- Webhook Asaas autenticado e idempotente, com trilha de eventos.
+- Jobs NDVI isolados por usuário e imagens protegidas por URL assinada.
+- Nenhum índice, custo, produtividade ou dado agronômico é inventado.
+- Recomendações permanecem bloqueadas sem contexto e dados mínimos plausíveis.
+- Diagnóstico por IA não substitui vistoria, bula, receituário ou responsável técnico.
 
 ## Arquitetura
 
-- React 19, TypeScript, Vite e CSS baseado em tokens.
-- Domínios separados para contexto agrícola, registros de campo, segurança e NDVI.
-- Hooks persistentes para propriedades/talhões e caderno de campo.
-- Catálogo central de módulos e shell responsivo.
-- Páginas legadas preservadas durante a migração gradual.
+- React 19, TypeScript e Vite no frontend.
+- Supabase Auth, Postgres, Row Level Security, Storage e Edge Functions.
+- FastAPI para processamento Sentinel-2, chat e visão computacional.
+- Persistência local como contingência durante períodos sem conexão.
 
-## Validação executada
+## Operação
 
-- ESLint aprovado sem avisos.
-- TypeScript aprovado em modo estrito.
-- Vitest: 6 arquivos e 17 testes aprovados.
-- Build de produção aprovado.
-- Parser GeoJSON/KML e consolidação de custos cobertos por testes.
-- Fluxos responsivos sujeitos à verificação final no navegador antes da publicação.
+- O plano Free limita propriedades e talhões; o Pro remove esses limites conforme as regras do produto.
+- O teste de 14 dias e as mudanças de assinatura só podem ser ativados pelo servidor.
+- A página `landing.html` é a apresentação pública; rotas antigas redirecionam para o app moderno.
+- O segredo próprio para assinatura de imagens NDVI é recomendado; enquanto ele é implantado, o serviço usa um segredo de servidor já existente como contingência segura.
 
 ## Limites conhecidos
 
 - Shapefile precisa ser convertido para GeoJSON nesta versão.
-- Sincronização multiusuário, autenticação e banco de dados ainda não fazem parte desta etapa local.
-- O símbolo atual deve ser substituído pelo arquivo vetorial oficial assim que o ativo original estiver disponível.
-- O processamento espectral completo exige o serviço descrito em `docs/ndvi-integration.md`.
+- O bloqueio de senhas vazadas deve ser ativado manualmente no painel de autenticação do Supabase.
+- Recomendações agronômicas exigem validação do responsável técnico antes da execução no campo.

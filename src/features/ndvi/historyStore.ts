@@ -49,6 +49,7 @@ export function useNdviHistory(userId: string | null = null) {
       .then(({ data, error }) => {
         if (!active) return;
         logSyncError("histórico de NDVI", error);
+        if (error) return;
         const rows = (data as NdviResultRow[] | null) ?? [];
         if (rows.length > 0) {
           setHistory(rows.map((row) => row.result));
