@@ -278,7 +278,7 @@ export function NdviModule({
         ? jobState.jobId
         : null;
     processingAbortController.current?.abort();
-    if (jobId) await cancelNdviJob(jobId);
+    if (jobId) await cancelNdviJob(jobId, accessToken);
     setJobState({ status: "cancelled", message: "Processamento cancelado." });
   }
 

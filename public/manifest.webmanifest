@@ -1,0 +1,14 @@
+{
+  "name": "AGRYN — Inteligência para Cafeicultura",
+  "short_name": "AGRYN",
+  "description": "Gestão e inteligência agronômica especializada em café.",
+  "start_url": "/CAFE-IA/",
+  "scope": "/CAFE-IA/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "brand/agryn-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

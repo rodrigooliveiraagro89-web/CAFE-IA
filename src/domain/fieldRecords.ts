@@ -42,10 +42,20 @@ export type FieldRecord = {
   cost: number;
   quantity: string;
   unit: string;
+  attachments: FieldAttachment[];
   createdAt: string;
 };
 
-export type FieldRecordInput = Omit<FieldRecord, "id" | "propertyId" | "plotId" | "createdAt">;
+export type FieldAttachment = {
+  path: string;
+  name: string;
+  mimeType: string;
+  size: number;
+};
+
+export type FieldRecordInput = Omit<FieldRecord, "id" | "propertyId" | "plotId" | "createdAt" | "attachments"> & {
+  attachments?: FieldAttachment[];
+};
 
 export function summarizeCosts(records: FieldRecord[]) {
   const withCosts = records.filter((record) => Number.isFinite(record.cost) && record.cost > 0);

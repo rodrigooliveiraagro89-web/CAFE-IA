@@ -71,6 +71,7 @@ export function useSoilAnalyses(userId: string | null = null) {
       .then(({ data, error }) => {
         if (!active) return;
         logSyncError("análises de solo", error);
+        if (error) return;
         const rows = (data as SoilAnalysisRow[] | null) ?? [];
         if (rows.length > 0) {
           setAnalyses(rows.map(analysisFromRow));

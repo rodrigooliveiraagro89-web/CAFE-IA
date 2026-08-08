@@ -1,5 +1,5 @@
-import { CalendarCheck, CheckCircle2, ClipboardList, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { CalendarCheck, Camera, CheckCircle2, ClipboardList, Download, Mic, MicOff, Paperclip, Plus, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import type { AppView } from "../../app/navigation";
 import {
   activityTypes,
@@ -8,11 +8,12 @@ import {
   type FieldRecordInput,
 } from "../../domain/fieldRecords";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
+import { supabase } from "../../lib/supabaseClient";
 
 type FieldNotebookProps = {
   agriculture: AgriculturalController;
   records: FieldRecord[];
-  onAdd: (propertyId: string, plotId: string, input: FieldRecordInput) => void;
+  onAdd: (propertyId: string, plotId: string, input: FieldRecordInput, files?: File[]) => Promise<void>;
   onToggle: (recordId: string) => void;
   onRemove: (recordId: string) => void;
   onNavigate: (view: AppView) => void;
@@ -28,6 +29,7 @@ function blankRecord(): FieldRecordInput {
     cost: 0,
     quantity: "",
     unit: "",
+    attachments: [],
   };
 }
 
@@ -42,6 +44,10 @@ export function FieldNotebook({
   const [formOpen, setFormOpen] = useState(false);
   const [draft, setDraft] = useState(blankRecord);
   const [filter, setFilter] = useState<"todas" | "planejada" | "concluida">("todas");
+  const [files, setFiles] = useState<File[]>([]);
+  const [recording, setRecording] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const contextualRecords = useMemo(
     () =>
       records
@@ -50,12 +56,58 @@ export function FieldNotebook({
     [agriculture.selectedPlot?.id, filter, records],
   );
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     if (!agriculture.selectedProperty || !agriculture.selectedPlot) return;
-    onAdd(agriculture.selectedProperty.id, agriculture.selectedPlot.id, draft);
-    setDraft(blankRecord());
-    setFormOpen(false);
+    if (files.length > 0 && !navigator.onLine) {
+      window.alert("Conecte-se para enviar fotos ou áudio, ou remova os anexos para salvar somente o registro offline.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onAdd(agriculture.selectedProperty.id, agriculture.selectedPlot.id, draft, files);
+      setDraft(blankRecord());
+      setFiles([]);
+      setFormOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleRecording() {
+    if (recording) {
+      recorderRef.current?.stop();
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      window.alert("A gravação de áudio não está disponível neste navegador.");
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      window.alert("Não foi possível acessar o microfone. Revise a permissão do navegador.");
+      return;
+    }
+    const chunks: Blob[] = [];
+    const preferredType = ["audio/webm", "audio/mp4"].find((type) => MediaRecorder.isTypeSupported(type));
+    const recorder = new MediaRecorder(stream, preferredType ? { mimeType: preferredType } : undefined);
+    recorderRef.current = recorder;
+    recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      setFiles((current) => [...current, new File([blob], `nota-voz-${Date.now()}.webm`, { type: blob.type })].slice(0, 4));
+      stream.getTracks().forEach((track) => track.stop());
+      setRecording(false);
+    };
+    recorder.start();
+    setRecording(true);
+  }
+
+  async function openAttachment(path: string) {
+    const { data } = await supabase.storage.from("field-attachments").createSignedUrl(path, 60);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
   if (!agriculture.selectedPlot) {
@@ -94,8 +146,17 @@ export function FieldNotebook({
             <label>Quantidade<input inputMode="decimal" value={draft.quantity} onChange={(event) => setDraft((current) => ({ ...current, quantity: event.target.value }))} /></label>
             <label>Unidade<input list="caderno-unidades" value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} placeholder="kg, L, h, sacas..." /><datalist id="caderno-unidades">{commonUnits.map((unit) => <option key={unit} value={unit} />)}</datalist></label>
             <label className="wide-field">Observações<textarea rows={3} value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} /></label>
+            <div className="wide-field field-attachments-input">
+              <strong>Fotos e notas de voz</strong>
+              <div>
+                <label className="secondary-button"><Camera size={16} /> Adicionar foto<input hidden type="file" accept="image/*" capture="environment" multiple onChange={(event) => setFiles((current) => [...current, ...Array.from(event.target.files ?? [])].slice(0, 4))} /></label>
+                <button className="secondary-button" type="button" onClick={() => void toggleRecording()}>{recording ? <MicOff size={16} /> : <Mic size={16} />}{recording ? "Parar gravação" : "Gravar nota"}</button>
+              </div>
+              {files.length > 0 && <ul>{files.map((file, index) => <li key={`${file.name}-${index}`}><Paperclip size={14} /> {file.name}<button type="button" onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}>remover</button></li>)}</ul>}
+              {!navigator.onLine && files.length > 0 && <small>Conecte-se para enviar os anexos, ou remova-os para salvar o texto offline.</small>}
+            </div>
           </div>
-          <div className="form-actions"><button className="secondary-button" type="button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button" type="submit">Salvar atividade</button></div>
+          <div className="form-actions"><button className="secondary-button" type="button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar atividade"}</button></div>
         </form>
       )}
 
@@ -113,7 +174,7 @@ export function FieldNotebook({
           {contextualRecords.map((record) => (
             <article className="record-card" data-completed={record.status === "concluida"} key={record.id}>
               <button className="record-status" type="button" onClick={() => onToggle(record.id)} aria-label={record.status === "concluida" ? "Reabrir atividade" : "Concluir atividade"}><CheckCircle2 size={22} /></button>
-              <div className="record-main"><div><span className="record-type">{record.type}</span><strong>{record.title}</strong></div><small>{new Date(`${record.date}T12:00:00`).toLocaleDateString("pt-BR")}{record.quantity ? ` · ${record.quantity} ${record.unit}` : ""}</small>{record.notes && <p>{record.notes}</p>}</div>
+              <div className="record-main"><div><span className="record-type">{record.type}</span><strong>{record.title}</strong></div><small>{new Date(`${record.date}T12:00:00`).toLocaleDateString("pt-BR")}{record.quantity ? ` · ${record.quantity} ${record.unit}` : ""}</small>{record.notes && <p>{record.notes}</p>}{record.attachments.length > 0 && <div className="record-attachments">{record.attachments.map((attachment) => <button type="button" key={attachment.path} onClick={() => void openAttachment(attachment.path)}><Download size={14} /> {attachment.name}</button>)}</div>}</div>
               {record.cost > 0 && <strong className="record-cost">{record.cost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>}
               <button className="danger-icon" type="button" title="Excluir atividade" onClick={() => { if (window.confirm(`Excluir a atividade ${record.title}?`)) onRemove(record.id); }}><Trash2 size={17} /></button>
             </article>

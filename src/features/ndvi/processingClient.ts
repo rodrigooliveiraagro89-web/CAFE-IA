@@ -64,7 +64,7 @@ export async function processNdvi(
   for (let attempt = 0; attempt < MAX_POLLS; attempt += 1) {
     await abortableDelay(POLL_INTERVAL_MS, signal);
     const response = await fetch(`${apiUrl}/v1/ndvi/jobs/${encodeURIComponent(initial.id)}`, {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
       signal,
     });
 
@@ -85,13 +85,13 @@ export async function processNdvi(
   throw new Error("O processamento excedeu o tempo de espera. O trabalho pode continuar na fila.");
 }
 
-export async function cancelNdviJob(jobId: string): Promise<void> {
+export async function cancelNdviJob(jobId: string, accessToken: string): Promise<void> {
   const apiUrl = getProcessingApiUrl();
   if (!apiUrl) return;
 
   await fetch(`${apiUrl}/v1/ndvi/jobs/${encodeURIComponent(jobId)}`, {
     method: "DELETE",
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
   });
 }
 

@@ -1,38 +1,33 @@
-# AGRYN Enterprise
+# AGRYN Café
 
-Plataforma multicultura de inteligência agrícola que integra propriedades, talhões, monitoramento, análises, atividades, custos e conhecimento agronômico. A evolução preserva os módulos operacionais existentes e adiciona uma base moderna, responsiva e rastreável.
+Plataforma especializada em cafeicultura para organizar propriedades e talhões, acompanhar clima e NDVI, interpretar análises de solo, registrar atividades e custos e apoiar decisões agronômicas com rastreabilidade.
 
-## Plataforma atual
+## Produto atual
 
-- Identidade AGRYN com paleta oficial, Orbitron nos títulos e Inter nos textos.
-- Dashboard SaaS/AgTech responsivo, com temas claro e escuro.
-- Contexto persistente de propriedade, talhão, cultura, variedade, safra e estágio fenológico.
-- Cadastro de propriedades e talhões sem dados de demonstração.
-- Importação de limites em GeoJSON e KML, com cálculo da área em hectares.
-- NDVI Sentinel-2 conectado ao talhão e ao polígono cadastrado.
-- Processador FastAPI Sentinel‑2 L2A em `services/ndvi-api`, com B04/B08/SCL,
-  estatísticas profissionais, qualidade por pixel e zonas de atenção.
-- Caderno de campo com atividades planejadas/concluídas, quantidades, unidades e custos.
-- Centro de custos consolidado por talhão e categoria.
-- Hub pesquisável com 22 acessos agrícolas organizados por finalidade.
-- AGRYN IA e módulos operacionais existentes preservados durante a migração.
-- Índice AGRYN em estado “Não calculado” até existirem dados suficientes.
-- Governança que bloqueia recomendações sem contexto e dados mínimos.
-- Testes, lint, tipos e build integrados ao fluxo de publicação.
+- Entrada pública, cadastro, login e recuperação de senha.
+- Perfis Free e Pro, teste de 14 dias e checkout Asaas.
+- Propriedades e talhões de café arábica ou conilon/robusta.
+- Importação de limites GeoJSON/KML e cálculo de área.
+- NDVI Sentinel-2 por talhão, com histórico, qualidade de cena e zonas de atenção.
+- Análise de solo, calagem e planejamento nutricional com bloqueios de segurança.
+- Diagnóstico por foto e assistente de IA orientados à triagem, sem prescrição automática.
+- Caderno de campo com fotos, áudio, custos e sincronização em nuvem.
+- Centro de ações, mercado do café, clima, calculadoras e relatórios.
+- PWA instalável com preservação dos registros locais durante períodos offline.
+- Supabase Auth, Row Level Security, Storage privado e trilha de eventos de cobrança.
 
-Os arquivos `agryn.html`, `clima.html` e `landing.html` permanecem disponíveis no pacote final. A rota antiga continua apenas como compatibilidade.
+As páginas antigas `agryn.html`, `cafe-real-ia.html` e `clima.html` permanecem somente como redirecionamentos de compatibilidade. A apresentação pública está em `landing.html`.
 
-## Persistência e privacidade
+## Arquitetura
 
-Nesta etapa, propriedades, talhões, atividades, custos, tema e última tela ficam no armazenamento local do navegador. Não há sincronização multiusuário nem envio automático desses dados para uma nuvem. O processamento espectral completo do NDVI continua condicionado à configuração da API documentada em `docs/ndvi-integration.md`.
-
-## Identidade oficial
-
-O símbolo centralizado em `public/brand/agryn-mark.svg` é o ativo utilizado pela interface atual. Para a produção definitiva, recomenda-se substituir esse arquivo pela versão vetorial oficial exportada do projeto de marca, mantendo o mesmo nome e proporção.
+- Frontend: React 19, TypeScript, Vite e CSS baseado em tokens.
+- Dados e autenticação: Supabase.
+- Processamento NDVI e recursos de IA: FastAPI em `services/ndvi-api`.
+- Pagamentos: Asaas, com webhook idempotente e atualização de plano no servidor.
 
 ## Desenvolvimento
 
-Requisitos: Node.js 22 ou superior e pnpm 11.
+Requisitos: Node.js 22 ou superior, pnpm 11 e Python 3.12 para a API.
 
 ```bash
 pnpm install
@@ -47,4 +42,11 @@ pnpm test
 pnpm build
 ```
 
-As decisões arquiteturais estão em `docs/architecture`. O relatório consolidado da experiência está em `docs/agryn-redesign-summary.md`.
+Para a API:
+
+```bash
+cd services/ndvi-api
+python -m pytest
+```
+
+As decisões arquiteturais ficam em `docs/architecture` e o resumo da entrega em `docs/agryn-redesign-summary.md`.

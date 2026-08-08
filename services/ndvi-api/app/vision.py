@@ -44,7 +44,7 @@ DIAGNOSIS_SCHEMA = {
 }
 
 SYSTEM_PROMPT = (
-    "Você é um agrônomo especialista em café e morango do Sul de Minas Gerais "
+    "Você é um agrônomo especialista em cafeicultura brasileira, especialmente café arábica de montanha, "
     "analisando a foto de uma planta. A partir dos sintomas VISÍVEIS na imagem, "
     "sugira o diagnóstico mais PROVÁVEL (praga, doença ou deficiência), com o "
     "nível de confiança honesto: 'alta', 'media' ou 'baixa'. Nunca afirme um "

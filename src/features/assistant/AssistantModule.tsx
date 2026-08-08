@@ -14,7 +14,7 @@ const SUGESTOES = [
   "Quando devo fazer a calagem do café?",
   "O que o NDVI me diz sobre o talhão?",
   "Como interpretar V% e saturação por alumínio?",
-  "Qual cultivar de morango rende mais no Sul de Minas?",
+  "Como interpretar a carga pendente do cafeeiro nesta safra?",
 ];
 
 const BOAS_VINDAS =
@@ -64,7 +64,7 @@ export function AssistantModule({ accessToken, onNavigate }: AssistantModuleProp
         <div>
           <span className="eyebrow">Inteligência artificial</span>
           <h1>AGRYN IA</h1>
-          <p>Assistente agronômico contextual para café e morango do Sul de Minas.</p>
+          <p>Assistente agronômico especializado em cafeicultura brasileira.</p>
         </div>
         <button className="secondary-button" type="button" onClick={() => onNavigate("modulos")}>
           Ver módulos <ArrowRight size={17} />

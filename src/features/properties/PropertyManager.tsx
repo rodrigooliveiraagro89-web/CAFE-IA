@@ -27,16 +27,19 @@ type PropertyManagerProps = {
   planId?: string | null;
   trialAvailable?: boolean;
   onStartTrial?: () => void;
+  onSubscribe?: () => void;
 };
 
 function UpgradeNotice({
   message,
   trialAvailable,
   onStartTrial,
+  onSubscribe,
 }: {
   message: string;
   trialAvailable?: boolean;
   onStartTrial?: () => void;
+  onSubscribe?: () => void;
 }) {
   return (
     <div className="upgrade-notice" role="status">
@@ -50,14 +53,9 @@ function UpgradeNotice({
           Testar o Pro grátis por {TRIAL_DAYS} dias
         </button>
       )}
-      <a
-        className="primary-button"
-        href="https://www.asaas.com/c/fw5jokq1e8cfdink"
-        target="_blank"
-        rel="noreferrer"
-      >
+      <button className="primary-button" type="button" onClick={onSubscribe} disabled={!onSubscribe}>
         Assinar o Pro — R$ 49,90/mês
-      </a>
+      </button>
       <a
         className="secondary-button"
         href="./landing.html#planos"
@@ -80,7 +78,7 @@ const blankProperty: PropertyInput = {
 
 const blankPlot: PlotInput = {
   name: "",
-  crop: "Café",
+  crop: "Café arábica",
   variety: "",
   season: "",
   plantingDate: "",
@@ -97,6 +95,7 @@ export function PropertyManager({
   planId = null,
   trialAvailable = false,
   onStartTrial,
+  onSubscribe,
 }: PropertyManagerProps) {
   const { state, selectedProperty, selectedPlot } = agriculture;
   const [propertyDraft, setPropertyDraft] = useState(blankProperty);
@@ -173,6 +172,7 @@ export function PropertyManager({
           message={`O plano ${plan.label} permite ${plan.maxProperties} propriedade. Para gerenciar mais propriedades — ideal para consultores com carteira de clientes — assine o Pro.`}
           trialAvailable={trialAvailable}
           onStartTrial={onStartTrial}
+          onSubscribe={onSubscribe}
         />
       )}
 
@@ -315,6 +315,7 @@ export function PropertyManager({
                   message={`O plano ${plan.label} permite ${plan.maxPlotsPerProperty} talhões por propriedade. Assine o Pro para talhões ilimitados.`}
                   trialAvailable={trialAvailable}
                   onStartTrial={onStartTrial}
+                  onSubscribe={onSubscribe}
                 />
               )}
 
@@ -326,7 +327,7 @@ export function PropertyManager({
                       <input required value={plotDraft.name} onChange={(event) => setPlotDraft((current) => ({ ...current, name: event.target.value }))} />
                     </label>
                     <label>
-                      Cultura
+                      Espécie de café
                       <select value={plotDraft.crop} onChange={(event) => setPlotDraft((current) => ({ ...current, crop: event.target.value }))}>
                         {cropOptions.map((crop) => <option key={crop}>{crop}</option>)}
                       </select>

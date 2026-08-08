@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink, KeyRound, LockKeyhole, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, KeyRound, LockKeyhole, ShieldCheck, XCircle } from "lucide-react";
 import type { SafetyCheck } from "../../domain/safety";
 
 type SafetyCenterProps = {
@@ -17,8 +17,8 @@ const protections = [
     icon: KeyRound,
   },
   {
-    title: "Legado isolado",
-    detail: "Os módulos atuais seguem disponíveis enquanto cada domínio é migrado e validado.",
+    title: "Dados isolados por usuário",
+    detail: "Propriedades, talhões, registros, anexos e jobs de NDVI só podem ser acessados pelo titular.",
     icon: LockKeyhole,
   },
 ];
@@ -92,13 +92,11 @@ export function SafetyCenter({ safety }: SafetyCenterProps) {
 
       <section className="legacy-notice">
         <div>
-          <span className="eyebrow">Continuidade operacional</span>
-          <h2>Funcionalidades preservadas durante a evolução</h2>
-          <p>Os cálculos, históricos e integrações atuais continuam disponíveis.</p>
+          <span className="eyebrow">Plataforma consolidada</span>
+          <h2>Uma única base técnica para a cafeicultura</h2>
+          <p>Regras, históricos e integrações estão concentrados no app atual, sem módulos paralelos desatualizados.</p>
         </div>
-        <a href="./agryn.html" target="_blank" rel="noopener noreferrer">
-          Abrir central técnica <ExternalLink size={15} aria-hidden="true" />
-        </a>
+        <ShieldCheck size={28} aria-hidden="true" />
       </section>
     </div>
   );

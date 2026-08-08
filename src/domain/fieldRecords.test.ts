@@ -14,6 +14,7 @@ function record(type: string, cost: number): FieldRecord {
     cost,
     quantity: "",
     unit: "",
+    attachments: [],
     createdAt: "2026-07-18T12:00:00.000Z",
   };
 }

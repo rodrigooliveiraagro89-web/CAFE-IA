@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) — não são segredo novo.
     supabase_url: str = ""
     supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
     ndvi_quota_free_monthly: int = 2
     ndvi_quota_pro_monthly: int = 100
 
@@ -39,6 +40,13 @@ class Settings(BaseSettings):
     chat_quota_pro_monthly: int = 500
     vision_quota_free_monthly: int = 2
     vision_quota_pro_monthly: int = 30
+
+    # Cobrança: chaves exclusivamente no backend. Use sandbox antes da produção.
+    asaas_api_key: str = ""
+    asaas_api_url: str = "https://api.asaas.com/v3"
+    asaas_webhook_token: str = ""
+    agryn_app_url: str = "https://rodrigooliveiraagro89-web.github.io/CAFE-IA/"
+    asset_signing_secret: str = ""
 
     @property
     def origins(self) -> list[str]:
