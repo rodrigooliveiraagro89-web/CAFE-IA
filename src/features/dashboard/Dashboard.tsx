@@ -19,6 +19,7 @@ import type { AppView } from "../../app/navigation";
 import { MetricCard } from "../../components/ui/MetricCard";
 import { ModuleCard } from "../../components/ui/ModuleCard";
 import { AlertsPanel } from "../alerts/AlertsPanel";
+import { NotificationsToggle } from "../alerts/NotificationsToggle";
 import { buildAlerts } from "../../domain/alerts";
 import { computeSoilIndices, indexLabel } from "../../domain/soilHealth";
 import { propertyLocation } from "../../domain/agriculturalContext";
@@ -258,6 +259,8 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
       {agriculture.selectedProperty && !isNewAccount && (
         <AlertsPanel alerts={alerts} onNavigate={onNavigate} />
       )}
+
+      {agriculture.selectedProperty && !isNewAccount && <NotificationsToggle />}
 
       {agriculture.selectedProperty && (
         <section className="active-context-strip">

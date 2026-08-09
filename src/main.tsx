@@ -5,12 +5,15 @@ import "@fontsource-variable/inter/index.css";
 import "@fontsource-variable/orbitron/index.css";
 import "leaflet/dist/leaflet.css";
 import { App } from "./app/App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles/index.css";
 import "./styles/platform.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary label="o AGRYN">
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );
 

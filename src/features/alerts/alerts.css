@@ -142,3 +142,51 @@
     justify-content: center;
   }
 }
+
+/* Toggle de notificações (Web Push) */
+.notify-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.notify-icon {
+  flex-shrink: 0;
+  color: var(--info);
+}
+.notify-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.notify-copy strong {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.notify-copy p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+.notify-message {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--info);
+}
+.notify-toggle button {
+  flex-shrink: 0;
+}
+@media (max-width: 560px) {
+  .notify-toggle {
+    flex-wrap: wrap;
+  }
+  .notify-toggle button {
+    width: 100%;
+    justify-content: center;
+  }
+}

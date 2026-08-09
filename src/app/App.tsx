@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { AuthScreen } from "../components/AuthScreen";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { evaluateRecommendationReadiness } from "../domain/safety";
 import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
 import { CostCenter } from "../features/costs/CostCenter";
@@ -137,6 +138,7 @@ export function App() {
       onSignOut={auth.signOut}
     >
       <ImportLocalDataDialog userId={auth.userId} onDone={() => window.location.reload()} />
+      <ErrorBoundary resetKey={activeView} label="esta tela">
       {activeView === "inicio" && (
         <Dashboard
           safety={safety}
@@ -273,6 +275,7 @@ export function App() {
         />
       )}
       {activeView === "seguranca" && <SafetyCenter safety={safety} />}
+      </ErrorBoundary>
     </AppShell>
   );
 }

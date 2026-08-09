@@ -797,3 +797,52 @@
   font-size: 0.64rem;
   color: var(--text-faint);
 }
+
+/* Fronteira de erro — rede de segurança de UI (nunca tela branca) */
+.error-boundary {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 1.5rem 1.6rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--danger, #dc2626);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.error-boundary-icon {
+  color: var(--danger, #dc2626);
+  flex-shrink: 0;
+}
+.error-boundary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.error-boundary-body h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+.error-boundary-body p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+.error-boundary-detail {
+  display: block;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm, 8px);
+  background: color-mix(in srgb, var(--danger, #dc2626) 8%, transparent);
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+.error-boundary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
