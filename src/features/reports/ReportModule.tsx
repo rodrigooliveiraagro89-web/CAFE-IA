@@ -1,4 +1,4 @@
-import { Crown, Download, MapPinned } from "lucide-react";
+import { Crown, Download, MapPinned, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { AppView } from "../../app/navigation";
 import { propertyLocation } from "../../domain/agriculturalContext";
@@ -8,7 +8,12 @@ import { soilLevelLabel } from "../../domain/soilAnalysis";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import type { NdviResult } from "../ndvi/types";
 import type { SoilAnalysis } from "../soil/soilStore";
-import { buildPropertyReport, priorityLabels, type PropertyReport } from "./buildReport";
+import {
+  buildPropertyReport,
+  priorityLabels,
+  whatsappShareUrl,
+  type PropertyReport,
+} from "./buildReport";
 import { BarChart } from "./charts/BarChart";
 import "./report.css";
 
@@ -130,6 +135,14 @@ export function ReportModule({
             <button className="primary-button" type="button" onClick={() => window.print()}>
               <Download size={16} aria-hidden="true" /> Baixar PDF
             </button>
+            <a
+              className="secondary-button"
+              href={whatsappShareUrl(report)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Share2 size={16} aria-hidden="true" /> Enviar por WhatsApp
+            </a>
           </div>
           <ReportDocument report={report} />
         </>
@@ -384,6 +397,23 @@ function ReportDocument({ report }: { report: PropertyReport }) {
 
       <h2>Conclusão</h2>
       <p>{conclusion}</p>
+
+      <div className="report-signature">
+        <div className="report-signature-line">
+          <span>{property.responsible || "Responsável técnico"}</span>
+          <small>Responsável técnico</small>
+        </div>
+        <div className="report-signature-meta">
+          {location ? <span>{location}</span> : null}
+          <span>
+            {new Date(generatedAt).toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+          </span>
+        </div>
+      </div>
 
       <div className="report-disclaimer">
         Relatório gerado automaticamente pela AGRYN com base nos dados registrados na conta. As

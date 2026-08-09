@@ -1,4 +1,8 @@
-import type { FarmPlot, FarmProperty } from "../../domain/agriculturalContext";
+import {
+  propertyLocation,
+  type FarmPlot,
+  type FarmProperty,
+} from "../../domain/agriculturalContext";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
 import {
   interpretSoil,
@@ -184,4 +188,44 @@ function buildConclusion(rows: PlotReportRow[]): string {
 
   const names = critical.map((row) => row.plot.name).join(", ");
   return `${critical.length === 1 ? "O talhão" : "Os talhões"} ${names} ${critical.length === 1 ? "requer" : "requerem"} atenção prioritária pelo vigor vegetativo reduzido. Recomenda-se inspeção de campo e revisão do manejo nutricional e hídrico dessas áreas.`;
+}
+
+/**
+ * Resumo curto do relatório para compartilhar por WhatsApp. O consultor manda
+ * ao produtor um panorama; o PDF completo vai anexado à parte.
+ */
+export function whatsappSummary(report: PropertyReport): string {
+  const { property, plots, totalCost, generatedAt } = report;
+  const location = propertyLocation(property);
+  const comNdvi = plots.filter((row) => row.ndviMean !== null);
+  const ndviMedio =
+    comNdvi.length > 0
+      ? (comNdvi.reduce((sum, row) => sum + (row.ndviMean as number), 0) / comNdvi.length).toFixed(2)
+      : null;
+  const data = new Date(generatedAt).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const brl = (value: number) =>
+    value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const linhas = [
+    "*Relatório técnico AGRYN*",
+    `Propriedade: ${property.name}${location ? ` (${location})` : ""}`,
+    property.producer ? `Produtor: ${property.producer}` : null,
+    `Talhões avaliados: ${plots.length}`,
+    ndviMedio ? `NDVI médio: ${ndviMedio}` : "NDVI: sem processamento",
+    `Custo total registrado: ${brl(totalCost)}`,
+    `Emitido em ${data}`,
+    property.responsible ? `Responsável técnico: ${property.responsible}` : null,
+    "",
+    "O relatório completo em PDF segue em anexo.",
+  ];
+  return linhas.filter((linha): linha is string => linha !== null).join("\n");
+}
+
+/** Link wa.me com o resumo já codificado. O usuário escolhe o contato. */
+export function whatsappShareUrl(report: PropertyReport): string {
+  return `https://wa.me/?text=${encodeURIComponent(whatsappSummary(report))}`;
 }
