@@ -54,8 +54,25 @@ SYSTEM_PROMPT = (
     "produto comercial nem dose de defensivo/adubo — isso é responsabilidade do "
     "agrônomo em campo. No campo 'recomenda_confirmar', diga o que fazer para "
     "confirmar (inspeção, análise, foto de outra parte da planta). Se a imagem "
-    "não for de planta ou estiver ilegível, use confiança 'baixa' e explique."
+    "não for de planta ou estiver ilegível, use confiança 'baixa' e explique.\n\n"
+    "Responda APENAS com um objeto JSON válido (sem texto antes ou depois, sem "
+    "markdown) com exatamente estas chaves: provavel (string), confianca "
+    "('alta'|'media'|'baixa'), sinais_observados (array de strings), "
+    "possiveis_causas (array de strings), manejo_geral (array de strings), "
+    "recomenda_confirmar (string)."
 )
+
+
+def _strip_fences(text: str) -> str:
+    """Remove cercas de markdown que o modelo às vezes adiciona ao JSON."""
+    limpo = text.strip()
+    if limpo.startswith("```"):
+        limpo = limpo.split("\n", 1)[-1] if "\n" in limpo else limpo
+        if limpo.endswith("```"):
+            limpo = limpo[: limpo.rfind("```")]
+    inicio = limpo.find("{")
+    fim = limpo.rfind("}")
+    return limpo[inicio : fim + 1] if inicio >= 0 and fim > inicio else limpo
 
 
 def _require_anthropic_config() -> None:
@@ -92,9 +109,6 @@ async def diagnose_image(media_type: str, data: bytes) -> dict:
             model=MODEL,
             max_tokens=2048,
             system=SYSTEM_PROMPT,
-            output_config={
-                "format": {"type": "json_schema", "schema": DIAGNOSIS_SCHEMA},
-            },
             messages=[
                 {
                     "role": "user",
@@ -134,8 +148,9 @@ async def diagnose_image(media_type: str, data: bytes) -> dict:
             status_code=502, detail="A análise não retornou resultado. Tente outra foto."
         )
     try:
-        result = json.loads(text)
+        result = json.loads(_strip_fences(text))
     except json.JSONDecodeError as error:
+        logger.error("JSON inesperado no diagnóstico: %r", text[:400])
         raise HTTPException(
             status_code=502,
             detail="A análise veio em formato inesperado. Tente novamente.",

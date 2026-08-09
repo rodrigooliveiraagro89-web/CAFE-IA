@@ -61,8 +61,25 @@ SYSTEM_PROMPT = (
     "(Zn, B, Fe, Mn, Cu) em mg/dm³; Ca, Mg e CTC em cmolc/dm³; V% e m% em "
     "porcentagem; matéria orgânica (M.O.) em dag/kg ou %. Use null para qualquer "
     "valor que não estiver claramente legível no laudo — nunca invente ou estime. "
-    "Se o laudo tiver várias amostras/áreas, extraia a primeira."
+    "Se o laudo tiver várias amostras/áreas, extraia a primeira.\n\n"
+    "Responda APENAS com um objeto JSON válido (sem texto antes ou depois, sem "
+    "blocos de markdown) contendo exatamente estas chaves: "
+    "ph, p, k, ca, mg, s, ctc, v_percent, m_percent, organic_matter, zn, b, fe, "
+    "mn, cu, analysis_date (ISO YYYY-MM-DD ou null), laboratory (string ou null). "
+    "Os valores numéricos devem ser número ou null."
 )
+
+
+def _strip_fences(text: str) -> str:
+    """Remove cercas de markdown (```json ... ```) que o modelo às vezes adiciona."""
+    limpo = text.strip()
+    if limpo.startswith("```"):
+        limpo = limpo.split("\n", 1)[-1] if "\n" in limpo else limpo
+        if limpo.endswith("```"):
+            limpo = limpo[: limpo.rfind("```")]
+    inicio = limpo.find("{")
+    fim = limpo.rfind("}")
+    return limpo[inicio : fim + 1] if inicio >= 0 and fim > inicio else limpo
 
 
 def _require_anthropic_config() -> None:
@@ -115,9 +132,6 @@ async def extract_soil_values(media_type: str, data: bytes) -> dict:
             model=MODEL,
             max_tokens=2048,
             system=SYSTEM_PROMPT,
-            output_config={
-                "format": {"type": "json_schema", "schema": EXTRACTION_SCHEMA},
-            },
             messages=[
                 {
                     "role": "user",
@@ -148,8 +162,9 @@ async def extract_soil_values(media_type: str, data: bytes) -> dict:
             detail="A leitura do laudo não retornou dados. Tente outra foto.",
         )
     try:
-        values = json.loads(text)
+        values = json.loads(_strip_fences(text))
     except json.JSONDecodeError as error:
+        logger.error("JSON inesperado na extração de solo: %r", text[:400])
         raise HTTPException(
             status_code=502,
             detail="A leitura do laudo veio em formato inesperado. Tente novamente.",
