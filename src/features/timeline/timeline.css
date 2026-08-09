@@ -1,0 +1,117 @@
+.timeline-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.timeline-summary article {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.timeline-summary span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.timeline-summary strong {
+  font-size: 1.05rem;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.timeline-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.9rem;
+  padding: 0.2rem 0 1.1rem;
+}
+
+/* Fio vertical ligando os pontos. */
+.timeline-event::before {
+  content: "";
+  position: absolute;
+  left: 0.95rem;
+  top: 2rem;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-event:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-event:last-child::before {
+  display: none;
+}
+
+.timeline-dot {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: 0 0 0 4px var(--surface);
+}
+
+.timeline-body {
+  padding-top: 0.15rem;
+}
+
+.timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.timeline-head strong {
+  font-size: 0.92rem;
+}
+
+.timeline-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.timeline-head time {
+  margin-left: auto;
+  font-size: 0.76rem;
+  color: var(--text-faint);
+}
+
+.timeline-body p {
+  margin: 0.25rem 0 0;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .timeline-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .timeline-head time {
+    margin-left: 0;
+    width: 100%;
+  }
+}

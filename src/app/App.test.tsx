@@ -31,13 +31,12 @@ describe("App AGRYN", () => {
     expect(screen.queryByRole("link", { name: /Solo:/i })).not.toBeInTheDocument();
   });
 
-  it("abre os critérios de governança pela navegação", async () => {
+  it("abre a linha do tempo pela navegação", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(
-      await screen.findByRole("button", { name: /GovernançaSegurança técnica e validações/i }),
+      await screen.findByRole("button", { name: /Linha do tempoA história do talhão num fio só/i }),
     );
-    expect(screen.getByRole("heading", { name: "Confiança técnica em cada decisão" })).toBeInTheDocument();
-    expect(screen.getByText("Bloqueado com segurança")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Linha do tempo" })).toBeInTheDocument();
   });
 });

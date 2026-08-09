@@ -22,6 +22,8 @@ import { useState } from "react";
 import type { AppView } from "../../app/navigation";
 import { MetricCard } from "../../components/ui/MetricCard";
 import { ModuleCard } from "../../components/ui/ModuleCard";
+import { AlertsPanel } from "../alerts/AlertsPanel";
+import { buildAlerts } from "../../domain/alerts";
 import { propertyLocation } from "../../domain/agriculturalContext";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
 import type { SafetyCheck } from "../../domain/safety";
@@ -173,6 +175,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
   const propertyPlots = agriculture.state.plots.filter(
     (plot) => plot.propertyId === agriculture.selectedProperty?.id,
   );
+  const alerts = buildAlerts(propertyPlots, records, ndviHistory, soilAnalyses);
   const metrics = [
     { label: "Área selecionada", value: agriculture.selectedPlot ? `${agriculture.selectedPlot.areaHectares.toLocaleString("pt-BR")} ha` : "—", detail: agriculture.selectedPlot?.name ?? "Selecione um talhão", icon: LandPlot },
     { label: "Atividades abertas", value: agriculture.selectedPlot ? String(plannedActivities) : "—", detail: completed ? `${completed} concluídas` : "Caderno de campo", icon: ClipboardCheck },
@@ -205,6 +208,10 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
           <button type="button" className="index-cta" onClick={() => onNavigate("assistente")}><Bot size={16} /> Conversar com a AGRYN IA</button>
         </aside>
       </section>
+
+      {agriculture.selectedProperty && !isNewAccount && (
+        <AlertsPanel alerts={alerts} onNavigate={onNavigate} />
+      )}
 
       {agriculture.selectedProperty && (
         <section className="active-context-strip">

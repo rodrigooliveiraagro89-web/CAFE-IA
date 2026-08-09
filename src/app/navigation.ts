@@ -1,26 +1,20 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpenCheck,
-  Bot,
   Briefcase,
-  Calculator,
-  CircleDollarSign,
-  CloudSun,
-  ScanLine,
   FileText,
   FlaskConical,
+  History,
   House,
   LandPlot,
   LayoutGrid,
-  Map,
   Mountain,
   Satellite,
-  ShieldCheck,
-  TrendingUp,
 } from "lucide-react";
 
 export type AppView =
   | "inicio"
+  | "linha-do-tempo"
   | "carteira"
   | "propriedades"
   | "mapeamento"
@@ -46,8 +40,17 @@ export type NavigationItem = {
   icon: LucideIcon;
 };
 
+// Sidebar enxuta: só o essencial do dia a dia. Todo o resto (mapeamento,
+// adubação, IA, diagnóstico, clima, mercado, calculadoras, custos, governança)
+// fica a um toque em "Módulos", sem poluir a navegação principal.
 export const navigationItems: NavigationItem[] = [
-  { id: "inicio", label: "Início", description: "Visão geral da operação", icon: House },
+  { id: "inicio", label: "Início", description: "Visão geral e alertas", icon: House },
+  {
+    id: "linha-do-tempo",
+    label: "Linha do tempo",
+    description: "A história do talhão num fio só",
+    icon: History,
+  },
   {
     id: "carteira",
     label: "Carteira",
@@ -60,13 +63,7 @@ export const navigationItems: NavigationItem[] = [
     description: "Culturas, safras e áreas",
     icon: LandPlot,
   },
-  {
-    id: "mapeamento",
-    label: "Mapeamento",
-    description: "Medição de talhões por satélite",
-    icon: Map,
-  },
-  { id: "modulos", label: "Módulos", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
+  { id: "caderno", label: "Caderno de campo", description: "Atividades e histórico", icon: BookOpenCheck },
   { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },
   {
     id: "analise-solo",
@@ -81,42 +78,10 @@ export const navigationItems: NavigationItem[] = [
     icon: Mountain,
   },
   {
-    id: "assistente",
-    label: "AGRYN IA",
-    description: "Assistente agronômico por IA",
-    icon: Bot,
-  },
-  {
-    id: "diagnostico",
-    label: "Diagnóstico por foto",
-    description: "Triagem de sintomas por IA",
-    icon: ScanLine,
-  },
-  { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun },
-  {
-    id: "mercado",
-    label: "Mercado",
-    description: "Cotações, médias e projeção",
-    icon: TrendingUp,
-  },
-  {
-    id: "calculadoras",
-    label: "Calculadoras",
-    description: "Estande, pulverização e conversões",
-    icon: Calculator,
-  },
-  { id: "caderno", label: "Caderno de campo", description: "Atividades e histórico", icon: BookOpenCheck },
-  { id: "custos", label: "Custos", description: "Gestão financeira por área", icon: CircleDollarSign },
-  {
     id: "relatorios",
     label: "Relatórios",
     description: "Documento técnico por propriedade",
     icon: FileText,
   },
-  {
-    id: "seguranca",
-    label: "Governança",
-    description: "Segurança técnica e validações",
-    icon: ShieldCheck,
-  },
+  { id: "modulos", label: "Módulos", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
 ];

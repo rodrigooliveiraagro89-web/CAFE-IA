@@ -5,11 +5,13 @@ import {
   CloudSun,
   FileText,
   FlaskConical,
+  History,
   MapPinned,
   Mountain,
   NotebookPen,
   ScanLine,
   Satellite,
+  ShieldCheck,
   Sprout,
   TrendingUp,
   type LucideIcon,
@@ -36,6 +38,7 @@ export type AgrynModule = {
 };
 
 export const moduleCatalog: AgrynModule[] = [
+  { id: "linha-do-tempo", label: "Linha do tempo", description: "Rastreabilidade completa do talhão", icon: History, accent: "emerald", group: "Gestão", href: "./?view=linha-do-tempo", badge: "Novo" },
   { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun, accent: "cyan", group: "Monitoramento", href: "./?view=clima", badge: "Ao vivo" },
   { id: "solo", label: "Solo", description: "Laudos, nutrientes e interpretação", icon: FlaskConical, accent: "emerald", group: "Análises", href: "./?view=analise-solo", badge: "IA" },
   { id: "ndvi", label: "NDVI por satélite", description: "Vigor espectral, cenas e evolução", icon: Satellite, accent: "lime", group: "Monitoramento", href: "./?view=ndvi", badge: "Fonte pública" },
@@ -49,4 +52,5 @@ export const moduleCatalog: AgrynModule[] = [
   { id: "calc", label: "Calculadoras", description: "Área, aplicação e conversões", icon: Calculator, accent: "amber", group: "Manejo", href: "./?view=calculadoras", badge: "Novo" },
   { id: "mercado", label: "Mercado agrícola", description: "Cotações e leitura de cenário", icon: TrendingUp, accent: "amber", group: "Monitoramento", href: "./?view=mercado", badge: "Novo" },
   { id: "adubacao", label: "Calagem e adubação", description: "Doses pelo Boletim 100 (IAC)", icon: Mountain, accent: "amber", group: "Manejo", href: "./?view=adubacao", badge: "Novo" },
+  { id: "governanca", label: "Governança", description: "Segurança técnica e validações", icon: ShieldCheck, accent: "violet", group: "Relatórios", href: "./?view=seguranca" },
 ];

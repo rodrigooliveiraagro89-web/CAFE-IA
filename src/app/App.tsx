@@ -22,6 +22,7 @@ import { PropertyManager } from "../features/properties/PropertyManager";
 import { ReportModule } from "../features/reports/ReportModule";
 import { SoilModule } from "../features/soil/SoilModule";
 import { useSoilAnalyses } from "../features/soil/soilStore";
+import { TimelineModule } from "../features/timeline/TimelineModule";
 import { SafetyCenter } from "../features/safety/SafetyCenter";
 import { effectivePlanId, trialAlreadyUsed } from "../domain/plans";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
@@ -33,6 +34,7 @@ import { createProCheckout } from "../features/billing/billingClient";
 
 const validViews: AppView[] = [
   "inicio",
+  "linha-do-tempo",
   "carteira",
   "propriedades",
   "mapeamento",
@@ -144,6 +146,15 @@ export function App() {
           ndviHistory={ndviHistory.history}
           soilAnalyses={soil.analyses}
           name={auth.profile?.nome?.split(" ")[0] ?? ""}
+        />
+      )}
+      {activeView === "linha-do-tempo" && (
+        <TimelineModule
+          agriculture={agriculture}
+          records={fieldBook.records}
+          ndviHistory={ndviHistory.history}
+          soilAnalyses={soil.analyses}
+          onNavigate={navigate}
         />
       )}
       {activeView === "carteira" && (
