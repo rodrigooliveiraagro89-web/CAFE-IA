@@ -266,3 +266,92 @@
   font-size: 0.8rem;
   color: var(--text-soft, #64748b);
 }
+
+.report-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.report-photo {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.report-photo img {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.report-photo figcaption {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.74rem;
+  color: var(--text-soft, #64748b);
+  background: var(--surface-muted, #f1f5f9);
+}
+
+@media print {
+  .report-photo img {
+    height: 150px;
+  }
+}
+
+.report-share-error {
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+.report-share-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted, #f1f5f9);
+}
+
+.report-share-link input {
+  flex: 1;
+  min-width: 200px;
+  min-height: 2.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem;
+  background: var(--surface);
+  color: inherit;
+  font-size: 0.82rem;
+}
+
+.report-share-link button,
+.report-share-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--success);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.report-share-link small {
+  width: 100%;
+  color: var(--text-faint);
+  font-size: 0.74rem;
+}

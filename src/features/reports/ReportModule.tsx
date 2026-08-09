@@ -1,11 +1,12 @@
-import { Crown, Download, MapPinned, Share2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, Copy, Crown, Download, Link2, MapPinned, Share2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppView } from "../../app/navigation";
 import { propertyLocation } from "../../domain/agriculturalContext";
 import type { FieldRecord } from "../../domain/fieldRecords";
 import { resolvePlan, TRIAL_DAYS, type PlanId } from "../../domain/plans";
 import { soilLevelLabel } from "../../domain/soilAnalysis";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
+import { supabase } from "../../lib/supabaseClient";
 import type { NdviResult } from "../ndvi/types";
 import type { SoilAnalysis } from "../soil/soilStore";
 import {
@@ -15,6 +16,7 @@ import {
   type PropertyReport,
 } from "./buildReport";
 import { BarChart } from "./charts/BarChart";
+import { renderSharedReportHtml } from "./sharedReport";
 import "./report.css";
 
 type ReportModuleProps = {
@@ -28,6 +30,8 @@ type ReportModuleProps = {
   onSubscribe?: () => void;
   onNavigate: (view: AppView) => void;
 };
+
+type ReportPhoto = { plotName: string; url: string; caption: string };
 
 function UpgradeNotice({
   trialAvailable,
@@ -90,6 +94,88 @@ export function ReportModule({
     return buildPropertyReport(property, state.plots, records, ndviHistory, soilAnalyses);
   }, [property, state.plots, records, ndviHistory, soilAnalyses]);
 
+  // Fotos dos registros (anexos de imagem) para ilustrar o relatório. Os anexos
+  // ficam num bucket privado; buscamos URLs assinadas com validade folgada para
+  // aguentar o tempo de impressão do PDF.
+  const photoAttachments = useMemo(() => {
+    if (!property) return [];
+    const nomePorTalhao = new Map(state.plots.map((plot) => [plot.id, plot.name]));
+    const talhoesDaPropriedade = new Set(
+      state.plots.filter((plot) => plot.propertyId === property.id).map((plot) => plot.id),
+    );
+    const itens: { plotName: string; path: string; caption: string }[] = [];
+    for (const record of records) {
+      if (!talhoesDaPropriedade.has(record.plotId)) continue;
+      for (const attachment of record.attachments) {
+        if (!attachment.mimeType.startsWith("image/")) continue;
+        itens.push({
+          plotName: nomePorTalhao.get(record.plotId) ?? "",
+          path: attachment.path,
+          caption: record.title || attachment.name,
+        });
+      }
+    }
+    return itens.slice(0, 12);
+  }, [property, state.plots, records]);
+
+  const [photos, setPhotos] = useState<ReportPhoto[]>([]);
+  useEffect(() => {
+    let active = true;
+    // Promise.all([]) já resolve para [] de forma assíncrona — sem setState
+    // síncrono no efeito, e ainda limpa as fotos quando não há anexos.
+    void Promise.all(
+      photoAttachments.map(async (item) => {
+        const { data } = await supabase.storage
+          .from("field-attachments")
+          .createSignedUrl(item.path, 3600);
+        return data?.signedUrl
+          ? { plotName: item.plotName, url: data.signedUrl, caption: item.caption }
+          : null;
+      }),
+    ).then((resultados) => {
+      if (active) setPhotos(resultados.filter((item): item is ReportPhoto => item !== null));
+    });
+    return () => {
+      active = false;
+    };
+  }, [photoAttachments]);
+
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  const [shareErro, setShareErro] = useState<string | null>(null);
+
+  // Gera um link público protegido por token: salva um HTML autocontido do
+  // relatório em shared_reports (o dono, via RLS) e devolve a URL da Edge
+  // Function que serve esse HTML por 30 dias, sem exigir login de quem abre.
+  async function gerarLink() {
+    if (!report || !property) return;
+    setSharing(true);
+    setShareErro(null);
+    setShareLink(null);
+    try {
+      const token = crypto.randomUUID();
+      const html = renderSharedReportHtml(report);
+      const { error } = await supabase
+        .from("shared_reports")
+        .insert({ id: token, property_name: property.name, html });
+      if (error) throw new Error(error.message);
+      const base = import.meta.env.VITE_SUPABASE_URL as string;
+      setShareLink(`${base}/functions/v1/shared-report?t=${token}`);
+    } catch (error) {
+      setShareErro(error instanceof Error ? error.message : "Não foi possível gerar o link.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function copiarLink() {
+    if (!shareLink) return;
+    await navigator.clipboard.writeText(shareLink);
+    setCopiado(true);
+    window.setTimeout(() => setCopiado(false), 2000);
+  }
+
   return (
     <div className="page-stack platform-page">
       <header className="page-header context-page-header no-print">
@@ -143,15 +229,38 @@ export function ReportModule({
             >
               <Share2 size={16} aria-hidden="true" /> Enviar por WhatsApp
             </a>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => void gerarLink()}
+              disabled={sharing}
+            >
+              <Link2 size={16} aria-hidden="true" />{" "}
+              {sharing ? "Gerando…" : "Gerar link protegido"}
+            </button>
           </div>
-          <ReportDocument report={report} />
+          {shareErro && <p className="report-share-error no-print">{shareErro}</p>}
+          {shareLink && (
+            <div className="report-share-link no-print">
+              <input type="text" value={shareLink} readOnly aria-label="Link do relatório" />
+              <button type="button" onClick={() => void copiarLink()}>
+                {copiado ? <Check size={16} /> : <Copy size={16} />}
+                {copiado ? "Copiado" : "Copiar"}
+              </button>
+              <a href={shareLink} target="_blank" rel="noopener noreferrer">
+                Abrir
+              </a>
+              <small>Válido por 30 dias. Quem tiver o link vê o relatório, sem precisar de conta.</small>
+            </div>
+          )}
+          <ReportDocument report={report} photos={photos} />
         </>
       ) : null}
     </div>
   );
 }
 
-function ReportDocument({ report }: { report: PropertyReport }) {
+function ReportDocument({ report, photos }: { report: PropertyReport; photos: ReportPhoto[] }) {
   const { property, plots, executiveSummary, conclusion, ndviChart, costByPlotChart, costByCategoryChart, totalCost, generatedAt } =
     report;
   const location = propertyLocation(property);
@@ -394,6 +503,23 @@ function ReportDocument({ report }: { report: PropertyReport }) {
           ))}
         </tbody>
       </table>
+
+      {photos.length > 0 && (
+        <>
+          <h2>Registros fotográficos</h2>
+          <div className="report-photo-grid">
+            {photos.map((photo, index) => (
+              <figure key={`${photo.url}-${index}`} className="report-photo">
+                <img src={photo.url} alt={photo.caption} />
+                <figcaption>
+                  {photo.caption}
+                  {photo.plotName ? ` — ${photo.plotName}` : ""}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2>Conclusão</h2>
       <p>{conclusion}</p>
