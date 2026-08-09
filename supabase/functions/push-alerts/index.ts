@@ -3,8 +3,9 @@ import webpush from "npm:web-push@3.6.7";
 
 // Entrega de alertas por Web Push. Roda agendada (pg_cron -> HTTP) e calcula os
 // alertas NO SERVIDOR a partir das tabelas do Supabase, para chegar no celular
-// do produtor mesmo com o app fechado. Autenticada por um segredo compartilhado
-// (x-cron-secret) — verify_jwt fica desligado de propósito.
+// do produtor mesmo com o app fechado. A trava de acesso (x-cron-secret) segue
+// ativa: o segredo esperado é lido da tabela function_secrets (gerado dentro do
+// banco, sem segredo humano em env). verify_jwt fica desligado de propósito.
 
 type Severity = "alta" | "media" | "info";
 type Alert = { key: string; severity: Severity; title: string; body: string; view: string };
@@ -12,7 +13,7 @@ type Alert = { key: string; severity: Severity; title: string; body: string; vie
 const NDVI_DIAS_DESATUALIZADO = 45;
 const NDVI_QUEDA_RELEVANTE = 0.08;
 const SOLO_DIAS_VALIDADE = 365;
-const REENVIO_DIAS = 7; // não repete o mesmo alerta antes disso
+const REENVIO_DIAS = 7;
 
 function diasEntre(deISO: string, ateISO: string): number {
   const de = new Date(`${deISO.slice(0, 10)}T00:00:00Z`).getTime();
@@ -106,8 +107,19 @@ function groupBy<T>(rows: T[], key: (r: T) => string): Map<string, T[]> {
 }
 
 Deno.serve(async (req) => {
-  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
-  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // Trava de acesso: segredo esperado vem da tabela (gerado no banco).
+  const { data: secretRow } = await supabase
+    .from("function_secrets")
+    .select("value")
+    .eq("name", "push_cron")
+    .single();
+  const expected = secretRow?.value ?? "";
+  if (!expected || req.headers.get("x-cron-secret") !== expected) {
     return new Response(JSON.stringify({ error: "não autorizado" }), { status: 401 });
   }
 
@@ -120,10 +132,6 @@ Deno.serve(async (req) => {
   webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
 
   const appUrl = Deno.env.get("APP_URL") ?? "https://rodrigooliveiraagro89-web.github.io/CAFE-IA/";
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
 
   const { data: subs } = await supabase.from("push_subscriptions").select("*");
   if (!subs || subs.length === 0) {

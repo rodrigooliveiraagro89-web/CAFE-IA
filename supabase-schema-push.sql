@@ -37,28 +37,43 @@ drop policy if exists "alert_deliveries_own_read" on public.alert_deliveries;
 create policy "alert_deliveries_own_read" on public.alert_deliveries
   for select using (auth.uid() = user_id);
 
+-- Segredo do cron gerado DENTRO do banco (ninguém digita/coloca segredo). A
+-- Edge Function push-alerts lê o mesmo valor via service role e compara com o
+-- header x-cron-secret — a trava de acesso continua ativa, sem segredo humano
+-- em env. Tabela sem policies de RLS: anon/authenticated não leem.
+create table if not exists public.function_secrets (
+  name text primary key,
+  value text not null default replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')
+);
+alter table public.function_secrets enable row level security;
+insert into public.function_secrets (name) values ('push_cron') on conflict (name) do nothing;
+
 -- ---------------------------------------------------------------------------
--- AGENDAMENTO (rodar no SQL Editor DEPOIS de configurar os secrets da função).
--- Substitua <CRON_SECRET> pelo mesmo valor definido no secret CRON_SECRET da
--- Edge Function push-alerts. Dispara todo dia às 11:00 UTC (~08:00 BRT).
+-- AGENDAMENTO — dispara todo dia às 11:00 UTC (~08:00 BRT). O segredo vem da
+-- tabela acima (nenhum literal na query).
 -- ---------------------------------------------------------------------------
--- create extension if not exists pg_cron with schema pg_catalog;
--- create extension if not exists pg_net with schema extensions;
---
--- select cron.unschedule('agryn-push-alerts')
--- where exists (select 1 from cron.job where jobname = 'agryn-push-alerts');
---
--- select cron.schedule(
---   'agryn-push-alerts',
---   '0 11 * * *',
---   $$
---   select net.http_post(
---     url := 'https://eqtacmanqmdcjvxezuah.supabase.co/functions/v1/push-alerts',
---     headers := jsonb_build_object(
---       'Content-Type', 'application/json',
---       'x-cron-secret', '<CRON_SECRET>'
---     ),
---     body := '{}'::jsonb
---   );
---   $$
--- );
+create extension if not exists pg_cron with schema pg_catalog;
+create extension if not exists pg_net with schema extensions;
+
+select cron.schedule(
+  'agryn-push-alerts',
+  '0 11 * * *',
+  $$
+  select net.http_post(
+    url := 'https://eqtacmanqmdcjvxezuah.supabase.co/functions/v1/push-alerts',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-cron-secret', (select value from public.function_secrets where name = 'push_cron')
+    ),
+    body := '{}'::jsonb
+  )
+  $$
+);
+
+-- Disparo manual para testar na hora (mesma query do cron):
+-- select net.http_post(
+--   url := 'https://eqtacmanqmdcjvxezuah.supabase.co/functions/v1/push-alerts',
+--   headers := jsonb_build_object('Content-Type','application/json',
+--     'x-cron-secret', (select value from public.function_secrets where name = 'push_cron')),
+--   body := '{}'::jsonb
+-- );  -- depois: select status_code, content from net._http_response order by id desc limit 1;
