@@ -2,7 +2,6 @@ import {
   ArrowRight,
   Building2,
   Camera,
-  CalendarCheck,
   Circle,
   CheckCircle2,
   CircleDollarSign,
@@ -16,7 +15,6 @@ import {
   ShieldCheck,
   Sprout,
 } from "lucide-react";
-import { useState } from "react";
 import type { AppView } from "../../app/navigation";
 import { MetricCard } from "../../components/ui/MetricCard";
 import { ModuleCard } from "../../components/ui/ModuleCard";
@@ -154,7 +152,6 @@ function HealthGauge({ label, value }: { label: string; value: number | null }) 
 }
 
 export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistory, soilAnalyses, name }: DashboardProps) {
-  const [dashboardOpenedAt] = useState(() => Date.now());
   const hour = new Date().getHours();
   const salutation = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const isNewAccount = agriculture.state.properties.length === 0 || agriculture.state.plots.length === 0;
@@ -196,17 +193,6 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
   const plannedActivities = plotRecords.filter((record) => record.status === "planejada").length;
   const costSummary = summarizeCosts(plotRecords);
   const completed = plotRecords.filter((record) => record.status === "concluida").length;
-  const today = new Date().toISOString().slice(0, 10);
-  const overdue = plotRecords.filter(
-    (record) => record.status === "planejada" && record.date && record.date < today,
-  ).length;
-  const plotSoil = soilAnalyses.some((analysis) => analysis.plotId === agriculture.selectedPlot?.id);
-  const latestNdvi = ndviHistory
-    .filter((result) => result.plotId === agriculture.selectedPlot?.id)
-    .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())[0];
-  const ndviAgeDays = latestNdvi
-    ? Math.floor((dashboardOpenedAt - new Date(latestNdvi.acquiredAt).getTime()) / 86_400_000)
-    : null;
   const propertyPlots = agriculture.state.plots.filter(
     (plot) => plot.propertyId === agriculture.selectedProperty?.id,
   );
@@ -279,39 +265,6 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
           <div><small>Talhão ativo</small><strong>{agriculture.selectedPlot?.name ?? "Selecione uma área"}</strong><em>{propertyPlots.length} cadastrados</em></div>
           <div><small>Cultura e safra</small><strong>{agriculture.selectedPlot?.crop ?? "Não informada"}</strong><em>{agriculture.selectedPlot?.season ?? "Safra não informada"}</em></div>
           <button type="button" onClick={() => onNavigate("propriedades")}>Alterar contexto <ArrowRight size={15} /></button>
-        </section>
-      )}
-
-      {agriculture.selectedPlot && (
-        <section className="panel-card action-center" aria-labelledby="action-center-title">
-          <div className="section-heading compact-heading">
-            <div>
-              <span className="eyebrow">Prioridades do cafezal</span>
-              <h2 id="action-center-title">O que merece atenção agora</h2>
-            </div>
-          </div>
-          <div className="action-center-grid">
-            <button type="button" data-ready={overdue === 0} onClick={() => onNavigate("caderno")}>
-              <CalendarCheck size={20} />
-              <span><strong>{overdue ? `${overdue} atividade(s) atrasada(s)` : "Atividades em dia"}</strong><small>Revisar agenda do talhão</small></span>
-              <ArrowRight size={16} />
-            </button>
-            <button type="button" data-ready={plotSoil} onClick={() => onNavigate("analise-solo")}>
-              <FlaskConical size={20} />
-              <span><strong>{plotSoil ? "Laudo de solo disponível" : "Laudo de solo pendente"}</strong><small>{plotSoil ? "Revisar nutrientes e alertas" : "Enviar foto, PDF ou digitar valores"}</small></span>
-              <ArrowRight size={16} />
-            </button>
-            <button type="button" data-ready={Boolean(agriculture.selectedPlot.geometry)} onClick={() => onNavigate("mapeamento")}>
-              <LandPlot size={20} />
-              <span><strong>{agriculture.selectedPlot.geometry ? "Talhão delimitado" : "Limite geográfico pendente"}</strong><small>Área necessária para NDVI e custo/ha</small></span>
-              <ArrowRight size={16} />
-            </button>
-            <button type="button" data-ready={ndviAgeDays !== null && ndviAgeDays <= 45} onClick={() => onNavigate("ndvi")}>
-              <Satellite size={20} />
-              <span><strong>{ndviAgeDays === null ? "NDVI ainda não processado" : ndviAgeDays > 45 ? `NDVI desatualizado há ${ndviAgeDays} dias` : "NDVI recente"}</strong><small>Monitorar vigor e zonas de atenção</small></span>
-              <ArrowRight size={16} />
-            </button>
-          </div>
         </section>
       )}
 
