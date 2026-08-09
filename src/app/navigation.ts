@@ -1,15 +1,13 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BookOpenCheck,
-  Briefcase,
+  Bot,
   FileText,
   FlaskConical,
-  History,
   House,
-  LandPlot,
   LayoutGrid,
   Mountain,
   Satellite,
+  TrendingUp,
 } from "lucide-react";
 
 export type AppView =
@@ -40,31 +38,12 @@ export type NavigationItem = {
   icon: LucideIcon;
 };
 
-// Sidebar enxuta: só o essencial do dia a dia. Todo o resto (mapeamento,
-// adubação, IA, diagnóstico, clima, mercado, calculadoras, custos, governança)
-// fica a um toque em "Módulos", sem poluir a navegação principal.
+// Sidebar enxuta e café-first: só o que o cafeicultor toca no dia a dia. Todo
+// o resto (mapeamento, diagnóstico, clima, calculadoras, caderno, custos,
+// linha do tempo, propriedades, carteira, governança) fica a um toque em
+// "Mais ferramentas" (view "modulos"), sem poluir a navegação principal.
 export const navigationItems: NavigationItem[] = [
   { id: "inicio", label: "Início", description: "Visão geral e alertas", icon: House },
-  {
-    id: "linha-do-tempo",
-    label: "Linha do tempo",
-    description: "A história do talhão num fio só",
-    icon: History,
-  },
-  {
-    id: "carteira",
-    label: "Carteira",
-    description: "Todas as propriedades num só lugar",
-    icon: Briefcase,
-  },
-  {
-    id: "propriedades",
-    label: "Propriedades e talhões",
-    description: "Culturas, safras e áreas",
-    icon: LandPlot,
-  },
-  { id: "caderno", label: "Caderno de campo", description: "Atividades e histórico", icon: BookOpenCheck },
-  { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },
   {
     id: "analise-solo",
     label: "Análise de solo",
@@ -77,11 +56,19 @@ export const navigationItems: NavigationItem[] = [
     description: "Doses pelo Boletim 100",
     icon: Mountain,
   },
+  { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },
+  { id: "mercado", label: "Mercado", description: "Cotações, médias e projeção", icon: TrendingUp },
+  {
+    id: "assistente",
+    label: "AGRYN IA",
+    description: "Assistente agronômico por IA",
+    icon: Bot,
+  },
   {
     id: "relatorios",
     label: "Relatórios",
     description: "Documento técnico por propriedade",
     icon: FileText,
   },
-  { id: "modulos", label: "Módulos", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
+  { id: "modulos", label: "Mais ferramentas", description: "Todas as ferramentas AGRYN", icon: LayoutGrid },
 ];

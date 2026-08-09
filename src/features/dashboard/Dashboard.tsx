@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  Bot,
   Building2,
   Camera,
   CalendarCheck,
@@ -13,7 +12,6 @@ import {
   FlaskConical,
   LandPlot,
   type LucideIcon,
-  Plus,
   Satellite,
   ShieldCheck,
   Sprout,
@@ -24,6 +22,7 @@ import { MetricCard } from "../../components/ui/MetricCard";
 import { ModuleCard } from "../../components/ui/ModuleCard";
 import { AlertsPanel } from "../alerts/AlertsPanel";
 import { buildAlerts } from "../../domain/alerts";
+import { computeSoilIndices, indexLabel } from "../../domain/soilHealth";
 import { propertyLocation } from "../../domain/agriculturalContext";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
 import type { SafetyCheck } from "../../domain/safety";
@@ -118,6 +117,42 @@ const featuredModules = featuredModuleIds
   .map((id) => moduleCatalog.find((module) => module.id === id))
   .filter((module): module is NonNullable<typeof module> => Boolean(module));
 
+function gaugeColor(value: number): string {
+  if (value >= 80) return "#059669";
+  if (value >= 60) return "#65a30d";
+  if (value >= 40) return "#d97706";
+  return "#dc2626";
+}
+
+// Medidor semicircular (0–100) — a leitura "de bater o olho" da saúde do solo.
+function HealthGauge({ label, value }: { label: string; value: number | null }) {
+  const arco = Math.PI * 34; // comprimento do semicírculo (raio 34)
+  const preenchido = value === null ? 0 : arco * (value / 100);
+  const cor = value === null ? "var(--border)" : gaugeColor(value);
+  return (
+    <div className="health-gauge">
+      <svg viewBox="0 0 80 46" className="gauge-svg" role="img" aria-label={`${label}: ${value ?? "sem dados"}`}>
+        <path d="M6 42 A34 34 0 0 1 74 42" fill="none" stroke="var(--border)" strokeWidth="7" strokeLinecap="round" />
+        {value !== null && (
+          <path
+            d="M6 42 A34 34 0 0 1 74 42"
+            fill="none"
+            stroke={cor}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={`${preenchido} ${arco}`}
+          />
+        )}
+        <text x="40" y="40" textAnchor="middle" className="gauge-value" style={{ fill: cor }}>
+          {value ?? "—"}
+        </text>
+      </svg>
+      <span className="gauge-label">{label}</span>
+      <small>{indexLabel(value)}</small>
+    </div>
+  );
+}
+
 export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistory, soilAnalyses, name }: DashboardProps) {
   const [dashboardOpenedAt] = useState(() => Date.now());
   const hour = new Date().getHours();
@@ -176,6 +211,14 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
     (plot) => plot.propertyId === agriculture.selectedProperty?.id,
   );
   const alerts = buildAlerts(propertyPlots, records, ndviHistory, soilAnalyses);
+  const latestSoil = soilAnalyses
+    .filter((analysis) => analysis.plotId === agriculture.selectedPlot?.id)
+    .sort(
+      (a, b) =>
+        new Date(b.analysisDate ?? b.createdAt).getTime() -
+        new Date(a.analysisDate ?? a.createdAt).getTime(),
+    )[0];
+  const soilIndices = latestSoil ? computeSoilIndices(latestSoil.values) : null;
   const metrics = [
     { label: "Área selecionada", value: agriculture.selectedPlot ? `${agriculture.selectedPlot.areaHectares.toLocaleString("pt-BR")} ha` : "—", detail: agriculture.selectedPlot?.name ?? "Selecione um talhão", icon: LandPlot },
     { label: "Atividades abertas", value: agriculture.selectedPlot ? String(plannedActivities) : "—", detail: completed ? `${completed} concluídas` : "Caderno de campo", icon: ClipboardCheck },
@@ -192,20 +235,37 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
           <h1 id="welcome-title">{salutation}{name ? `, ${name}` : ""}.</h1>
           <p>{agriculture.selectedPlot ? `Acompanhe o cafezal no ${agriculture.selectedPlot.name}, safra ${agriculture.selectedPlot.season}.` : "Conecte uma propriedade para transformar análises, clima e manejo em decisões rastreáveis para o café."}</p>
           <div className="hero-actions">
-            <button className="primary-button" type="button" onClick={() => onNavigate(agriculture.selectedPlot ? "caderno" : "propriedades")}><Plus size={18} /> {agriculture.selectedPlot ? "Registrar atividade" : "Cadastrar propriedade"}</button>
+            <button className="primary-button" type="button" onClick={() => onNavigate(agriculture.selectedPlot ? "analise-solo" : "propriedades")}><FlaskConical size={18} /> {agriculture.selectedPlot ? "Ler análise de solo" : "Cadastrar propriedade"}</button>
             <button className="secondary-button" type="button" onClick={() => onNavigate("diagnostico")}><Camera size={18} /> Diagnosticar planta</button>
           </div>
         </div>
-        <aside className="agryn-index-card" aria-label="Índice AGRYN">
-          <div className="index-heading"><span className="index-orb"><Sprout size={22} /></span><div><span className="eyebrow">Índice AGRYN</span><strong>Não calculado</strong></div></div>
-          <p>O índice só será exibido quando houver dados suficientes e rastreáveis para o talhão.</p>
-          <ul>
-            <li data-ready={Boolean(agriculture.selectedPlot)}><CheckCircle2 size={15} /> Talhão e cultura</li>
-            <li data-ready={Boolean(agriculture.selectedPlot?.geometry)}><CheckCircle2 size={15} /> Limite geográfico</li>
-            <li data-ready={plotRecords.length > 0}><CheckCircle2 size={15} /> Histórico de campo</li>
-            <li data-ready={false}><CheckCircle2 size={15} /> Análises e clima sincronizados</li>
-          </ul>
-          <button type="button" className="index-cta" onClick={() => onNavigate("assistente")}><Bot size={16} /> Conversar com a AGRYN IA</button>
+        <aside className="agryn-index-card soil-health-card" aria-label="Saúde do solo">
+          <div className="index-heading">
+            <span className="index-orb"><FlaskConical size={22} /></span>
+            <div>
+              <span className="eyebrow">Saúde do solo</span>
+              <strong>{latestSoil ? "Do seu último laudo" : "Sem laudo ainda"}</strong>
+            </div>
+          </div>
+          {soilIndices ? (
+            <>
+              <div className="soil-gauges">
+                <HealthGauge label="Fertilidade" value={soilIndices.fertilidade} />
+                <HealthGauge label="Nutricional" value={soilIndices.nutricional} />
+                <HealthGauge label="Sustentab." value={soilIndices.sustentabilidade} />
+              </div>
+              <button type="button" className="index-cta" onClick={() => onNavigate("adubacao")}>
+                <FlaskConical size={16} /> Ver calagem e adubação
+              </button>
+            </>
+          ) : (
+            <>
+              <p>Envie o laudo do talhão e o painel se preenche sozinho — fertilidade, nutrição e sustentabilidade, mais a recomendação de calagem e adubação.</p>
+              <button type="button" className="index-cta" onClick={() => onNavigate("analise-solo")}>
+                <FlaskConical size={16} /> Ler análise de solo
+              </button>
+            </>
+          )}
         </aside>
       </section>
 

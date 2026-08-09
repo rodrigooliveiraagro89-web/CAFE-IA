@@ -22,7 +22,7 @@ describe("App AGRYN", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(
-      await screen.findByRole("button", { name: /MódulosTodas as ferramentas AGRYN/i }),
+      await screen.findByRole("button", { name: /Mais ferramentasTodas as ferramentas AGRYN/i }),
     );
     expect(screen.getByRole("heading", { name: "Todos os módulos AGRYN" })).toBeInTheDocument();
 
@@ -31,12 +31,12 @@ describe("App AGRYN", () => {
     expect(screen.queryByRole("link", { name: /Solo:/i })).not.toBeInTheDocument();
   });
 
-  it("abre a linha do tempo pela navegação", async () => {
-    const user = userEvent.setup();
+  it("abre a linha do tempo pela URL (agora fora da sidebar, no hub)", async () => {
+    window.history.replaceState({}, "", "/?view=linha-do-tempo");
     render(<App />);
-    await user.click(
-      await screen.findByRole("button", { name: /Linha do tempoA história do talhão num fio só/i }),
-    );
-    expect(screen.getByRole("heading", { name: "Linha do tempo" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Linha do tempo" }),
+    ).toBeInTheDocument();
+    window.history.replaceState({}, "", "/");
   });
 });
