@@ -240,7 +240,7 @@ export function App() {
       {activeView === "diagnostico" && (
         <DiagnosisModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />
       )}
-      {activeView === "clima" && <WeatherModule onNavigate={navigate} />}
+      {activeView === "clima" && <WeatherModule agriculture={agriculture} onNavigate={navigate} />}
       {activeView === "mercado" && (
         <MarketModule
           agriculture={agriculture}

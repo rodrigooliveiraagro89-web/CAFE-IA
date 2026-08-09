@@ -1,42 +1,266 @@
-.weather-frame-card {
+.weather-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.weather-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.weather-location em {
+  font-style: normal;
+  color: var(--text-soft);
+  font-weight: 500;
+}
+
+.weather-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.weather-status {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.weather-status--error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.weather-status--error p {
+  margin: 0;
+  color: var(--text);
+}
+
+/* Condição atual --------------------------------------------------------- */
+.weather-now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.3rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
 }
 
-.weather-frame {
+.weather-now-main {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.weather-now-icon {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.weather-now-temp {
   display: block;
-  width: 100%;
-  height: min(78vh, 820px);
-  min-height: 520px;
-  border: 0;
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.weather-now-desc {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.weather-now-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.weather-now-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Blocos ----------------------------------------------------------------- */
+.weather-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.weather-block h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.weather-block-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+/* Previsão 7 dias -------------------------------------------------------- */
+.weather-days {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 0.6rem;
+}
+
+.weather-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.8rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: center;
+}
+
+.weather-day-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.weather-day-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.weather-day-temp {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.weather-day-temp strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.weather-day-rain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--info);
+}
+
+/* Janela de pulverização ------------------------------------------------- */
+.spray-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.7rem;
+}
+
+.spray-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.spray-card--ideal {
+  border-left-color: var(--success, #16a34a);
+}
+.spray-card--atencao {
+  border-left-color: var(--warning, #d97706);
+}
+.spray-card--evitar {
+  border-left-color: var(--danger, #dc2626);
+}
+
+.spray-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spray-card-hour {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.spray-card-day {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+}
+
+.spray-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.spray-badge--ideal {
+  background: color-mix(in srgb, var(--success, #16a34a) 16%, transparent);
+  color: var(--success, #16a34a);
+}
+.spray-badge--atencao {
+  background: color-mix(in srgb, var(--warning, #d97706) 18%, transparent);
+  color: var(--warning, #d97706);
+}
+.spray-badge--evitar {
+  background: color-mix(in srgb, var(--danger, #dc2626) 16%, transparent);
+  color: var(--danger, #dc2626);
+}
+
+.spray-card-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.76rem;
+  color: var(--text-soft);
+}
+
+.spray-card-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.spray-card-reason {
+  font-size: 0.78rem;
+  color: var(--text);
 }
 
 .weather-note {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 0.6rem;
   margin: 0;
   font-size: 0.78rem;
   color: var(--text-soft);
-}
-
-.weather-note a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--info);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .weather-frame {
-    height: min(70vh, 620px);
-    min-height: 420px;
-  }
 }
