@@ -16,6 +16,7 @@ export default tseslint.config(
       "termos.html",
       "privacidade.html",
       "services/ndvi-api",
+      "supabase/functions",
     ],
   },
   js.configs.recommended,
