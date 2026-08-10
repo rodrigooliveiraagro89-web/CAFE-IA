@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { AuthScreen } from "../components/AuthScreen";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { logEvent } from "../lib/telemetry";
 import { evaluateRecommendationReadiness } from "../domain/safety";
 import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
 import { CostCenter } from "../features/costs/CostCenter";
@@ -106,6 +107,8 @@ export function App() {
     else url.searchParams.set("view", view);
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    // Telemetria de uso: quais módulos o produtor realmente abre.
+    logEvent("view", view);
   }
 
   async function subscribe() {

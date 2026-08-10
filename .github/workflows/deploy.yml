@@ -41,6 +41,7 @@ jobs:
           VITE_SUPABASE_URL: https://eqtacmanqmdcjvxezuah.supabase.co
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_VAPID_PUBLIC_KEY: BJQpXxGTYNTu8i0GcAELqTpkjLOjpI2jXzngNH61VoGtTA2_6-LqYrfZ4mM93NcxZnnataIgTgA6-eRoqLXDPKg
+          VITE_APP_VERSION: ${{ github.sha }}
         run: pnpm lint && pnpm test && pnpm build
       - name: Configure Pages
         uses: actions/configure-pages@v5

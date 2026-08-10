@@ -6,8 +6,11 @@ import "@fontsource-variable/orbitron/index.css";
 import "leaflet/dist/leaflet.css";
 import { App } from "./app/App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { initTelemetry } from "./lib/telemetry";
 import "./styles/index.css";
 import "./styles/platform.css";
+
+initTelemetry();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

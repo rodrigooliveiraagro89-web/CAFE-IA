@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertOctagon, RefreshCw } from "lucide-react";
+import { logError } from "../lib/telemetry";
 
 type ErrorBoundaryProps = {
   children: ReactNode;
@@ -42,8 +43,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Ponto único para plugar telemetria (Sentry) no futuro.
     console.error("[AGRYN] Falha de render capturada:", error, info.componentStack);
+    // Telemetria first-party: registra a falha para sabermos o que quebra no campo.
+    logError(error.message || "Falha de render", {
+      label: this.props.label ?? "",
+      componentStack: (info.componentStack ?? "").slice(0, 1000),
+    });
   }
 
   private handleReset = () => {
