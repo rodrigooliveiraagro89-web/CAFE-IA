@@ -1,4 +1,5 @@
 import { getProcessingApiUrl } from "../ndvi/processingClient";
+import { AI_TIMEOUT_MS, fetchWithTimeout } from "../../lib/http";
 import type { SoilValues } from "../../domain/soilAnalysis";
 
 // Mapeia o JSON do backend (snake_case) para o SoilValues do domínio (camelCase).
@@ -75,11 +76,15 @@ export async function extractSoilFromFile(
   const body = new FormData();
   body.append("file", file);
 
-  const response = await fetch(`${apiUrl}/v1/soil/extract`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body,
-  });
+  const response = await fetchWithTimeout(
+    `${apiUrl}/v1/soil/extract`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body,
+    },
+    AI_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     throw new Error(await responseMessage(response, "Não foi possível ler o laudo."));

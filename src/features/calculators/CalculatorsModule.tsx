@@ -6,6 +6,7 @@ import {
   calcularPulverizacao,
   converterArea,
 } from "../../domain/calculators";
+import { parseNumberBR } from "../../domain/parseNumber";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import "./calculators.css";
 
@@ -17,28 +18,78 @@ type CalculatorsModuleProps = {
 const nf = (value: number, digits = 2) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
+// Campo numérico tolerante ao formato brasileiro: aceita vírgula ou ponto e
+// avisa quando o texto não é um número — em vez de virar 0 silencioso e sair
+// numa dose errada.
+function NumField({
+  label,
+  value,
+  onChange,
+  step,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (raw: string) => void;
+  step?: string;
+  hint?: string;
+}) {
+  const invalido = value.trim() !== "" && parseNumberBR(value) === null;
+  return (
+    <label>
+      {label}
+      <input
+        type="text"
+        inputMode="decimal"
+        step={step}
+        value={value}
+        aria-invalid={invalido}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {invalido ? (
+        <small className="field-invalid">Use apenas números (ex.: 3,5)</small>
+      ) : hint ? (
+        <small>{hint}</small>
+      ) : null}
+    </label>
+  );
+}
+
 export function CalculatorsModule({ agriculture, onNavigate }: CalculatorsModuleProps) {
   // A área do talhão selecionado entra como padrão: menos digitação no campo e
   // resultado já contextualizado na área real do produtor.
   const areaTalhao = agriculture.selectedPlot?.areaHectares ?? 1;
+  const areaPadrao = String(areaTalhao);
 
   const [espac, setEspac] = useState({
-    entreLinhas: 3.5,
-    entrePlantas: 0.7,
-    area: areaTalhao,
-    dose: 400,
+    entreLinhas: "3,5",
+    entrePlantas: "0,7",
+    area: areaPadrao,
+    dose: "400",
   });
   const [spray, setSpray] = useState({
-    volumeCalda: 400,
-    tanque: 2000,
-    dose: 2,
-    area: areaTalhao,
+    volumeCalda: "400",
+    tanque: "2000",
+    dose: "2",
+    area: areaPadrao,
   });
-  const [areaHa, setAreaHa] = useState(areaTalhao);
+  const [areaHa, setAreaHa] = useState(areaPadrao);
 
-  const espacResult = calcularEspacamento(espac);
-  const sprayResult = calcularPulverizacao(spray);
-  const convResult = converterArea(areaHa);
+  // Parse tolerante; null (vazio/inválido) vira 0 no cálculo e os resultados já
+  // exibem "—" nesse caso — nunca um número enganoso.
+  const espacResult = calcularEspacamento({
+    entreLinhas: parseNumberBR(espac.entreLinhas) ?? 0,
+    entrePlantas: parseNumberBR(espac.entrePlantas) ?? 0,
+    area: parseNumberBR(espac.area) ?? 0,
+    dose: parseNumberBR(espac.dose) ?? 0,
+  });
+  const sprayResult = calcularPulverizacao({
+    volumeCalda: parseNumberBR(spray.volumeCalda) ?? 0,
+    tanque: parseNumberBR(spray.tanque) ?? 0,
+    dose: parseNumberBR(spray.dose) ?? 0,
+    area: parseNumberBR(spray.area) ?? 0,
+  });
+  const convResult = converterArea(parseNumberBR(areaHa) ?? 0);
 
   return (
     <div className="page-stack platform-page">
@@ -73,45 +124,29 @@ export function CalculatorsModule({ agriculture, onNavigate }: CalculatorsModule
         </div>
 
         <div className="calc-grid">
-          <label>
-            Entre linhas (m)
-            <input
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              value={espac.entreLinhas}
-              onChange={(event) => setEspac({ ...espac, entreLinhas: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            Entre plantas (m)
-            <input
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              value={espac.entrePlantas}
-              onChange={(event) => setEspac({ ...espac, entrePlantas: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            Área (ha)
-            <input
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              value={espac.area}
-              onChange={(event) => setEspac({ ...espac, area: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            Dose (g ou mL por ha)
-            <input
-              type="number"
-              inputMode="decimal"
-              value={espac.dose}
-              onChange={(event) => setEspac({ ...espac, dose: Number(event.target.value) })}
-            />
-          </label>
+          <NumField
+            label="Entre linhas (m)"
+            step="0.1"
+            value={espac.entreLinhas}
+            onChange={(raw) => setEspac({ ...espac, entreLinhas: raw })}
+          />
+          <NumField
+            label="Entre plantas (m)"
+            step="0.1"
+            value={espac.entrePlantas}
+            onChange={(raw) => setEspac({ ...espac, entrePlantas: raw })}
+          />
+          <NumField
+            label="Área (ha)"
+            step="0.1"
+            value={espac.area}
+            onChange={(raw) => setEspac({ ...espac, area: raw })}
+          />
+          <NumField
+            label="Dose (g ou mL por ha)"
+            value={espac.dose}
+            onChange={(raw) => setEspac({ ...espac, dose: raw })}
+          />
         </div>
 
         <div className="calc-results">
@@ -128,7 +163,7 @@ export function CalculatorsModule({ agriculture, onNavigate }: CalculatorsModule
           </div>
           <div>
             <span>Total na área</span>
-            <strong>{nf(espacResult.totalProduto, 2)}</strong>
+            <strong>{espacResult.totalProduto > 0 ? nf(espacResult.totalProduto, 2) : "—"}</strong>
             <small>kg ou L</small>
           </div>
         </div>
@@ -144,55 +179,39 @@ export function CalculatorsModule({ agriculture, onNavigate }: CalculatorsModule
         </div>
 
         <div className="calc-grid">
-          <label>
-            Volume de calda (L/ha)
-            <input
-              type="number"
-              inputMode="decimal"
-              value={spray.volumeCalda}
-              onChange={(event) => setSpray({ ...spray, volumeCalda: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            Capacidade do tanque (L)
-            <input
-              type="number"
-              inputMode="decimal"
-              value={spray.tanque}
-              onChange={(event) => setSpray({ ...spray, tanque: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            Dose (mL ou g por L de calda)
-            <input
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              value={spray.dose}
-              onChange={(event) => setSpray({ ...spray, dose: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            Área (ha)
-            <input
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              value={spray.area}
-              onChange={(event) => setSpray({ ...spray, area: Number(event.target.value) })}
-            />
-          </label>
+          <NumField
+            label="Volume de calda (L/ha)"
+            value={spray.volumeCalda}
+            onChange={(raw) => setSpray({ ...spray, volumeCalda: raw })}
+          />
+          <NumField
+            label="Capacidade do tanque (L)"
+            value={spray.tanque}
+            onChange={(raw) => setSpray({ ...spray, tanque: raw })}
+          />
+          <NumField
+            label="Dose (mL ou g por L de calda)"
+            step="0.1"
+            value={spray.dose}
+            onChange={(raw) => setSpray({ ...spray, dose: raw })}
+          />
+          <NumField
+            label="Área (ha)"
+            step="0.1"
+            value={spray.area}
+            onChange={(raw) => setSpray({ ...spray, area: raw })}
+          />
         </div>
 
         <div className="calc-results">
           <div>
             <span>Água total</span>
-            <strong>{nf(sprayResult.litrosAguaTotal, 0)}</strong>
+            <strong>{sprayResult.litrosAguaTotal > 0 ? nf(sprayResult.litrosAguaTotal, 0) : "—"}</strong>
             <small>litros</small>
           </div>
           <div>
             <span>Produto total</span>
-            <strong>{nf(sprayResult.produtoTotal, 2)}</strong>
+            <strong>{sprayResult.produtoTotal > 0 ? nf(sprayResult.produtoTotal, 2) : "—"}</strong>
             <small>kg ou L</small>
           </div>
           <div>
@@ -213,32 +232,23 @@ export function CalculatorsModule({ agriculture, onNavigate }: CalculatorsModule
         </div>
 
         <div className="calc-grid calc-grid-single">
-          <label>
-            Área (ha)
-            <input
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              value={areaHa}
-              onChange={(event) => setAreaHa(Number(event.target.value))}
-            />
-          </label>
+          <NumField label="Área (ha)" step="0.1" value={areaHa} onChange={setAreaHa} />
         </div>
 
         <div className="calc-results">
           <div>
             <span>Metros quadrados</span>
-            <strong>{nf(convResult.metrosQuadrados, 0)}</strong>
+            <strong>{convResult.metrosQuadrados > 0 ? nf(convResult.metrosQuadrados, 0) : "—"}</strong>
             <small>m²</small>
           </div>
           <div>
             <span>Alqueire paulista</span>
-            <strong>{nf(convResult.alqueirePaulista, 3)}</strong>
+            <strong>{convResult.alqueirePaulista > 0 ? nf(convResult.alqueirePaulista, 3) : "—"}</strong>
             <small>2,42 ha cada</small>
           </div>
           <div>
             <span>Alqueire mineiro</span>
-            <strong>{nf(convResult.alqueireMineiro, 3)}</strong>
+            <strong>{convResult.alqueireMineiro > 0 ? nf(convResult.alqueireMineiro, 3) : "—"}</strong>
             <small>4,84 ha cada</small>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { getProcessingApiUrl } from "../ndvi/processingClient";
+import { AI_TIMEOUT_MS, fetchWithTimeout } from "../../lib/http";
 
 export type Confianca = "baixa" | "media" | "alta";
 
@@ -49,11 +50,15 @@ export async function diagnoseImage(file: File, accessToken: string): Promise<Di
   const body = new FormData();
   body.append("file", file);
 
-  const response = await fetch(`${apiUrl}/v1/vision/diagnose`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body,
-  });
+  const response = await fetchWithTimeout(
+    `${apiUrl}/v1/vision/diagnose`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body,
+    },
+    AI_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     throw new Error(await responseMessage(response, "Não foi possível analisar a foto."));

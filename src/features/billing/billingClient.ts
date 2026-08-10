@@ -1,5 +1,6 @@
 import { getProcessingApiUrl } from "../ndvi/processingClient";
 import { supabase } from "../../lib/supabaseClient";
+import { fetchWithTimeout } from "../../lib/http";
 
 const fallbackCheckout = import.meta.env.VITE_ASAAS_CHECKOUT_URL?.trim()
   || "https://www.asaas.com/c/fw5jokq1e8cfdink";
@@ -24,7 +25,7 @@ export async function activateTrial(accessToken: string): Promise<string> {
 export async function createProCheckout(accessToken: string, name: string): Promise<string> {
   const apiUrl = getProcessingApiUrl();
   if (!apiUrl) return fallbackCheckout;
-  const response = await fetch(`${apiUrl}/v1/billing/checkout`, {
+  const response = await fetchWithTimeout(`${apiUrl}/v1/billing/checkout`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name }),

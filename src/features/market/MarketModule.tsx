@@ -21,6 +21,7 @@ import {
   variacaoCampo,
 } from "../../domain/marketQuotes";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
+import { fetchWithTimeout } from "../../lib/http";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { useMarketQuotes } from "./marketStore";
 import "./market.css";
@@ -69,7 +70,7 @@ export function MarketModule({ agriculture, records, onNavigate }: MarketModuleP
   // Câmbio USD/BRL de API pública — é o único dado que dá para buscar sozinho.
   useEffect(() => {
     let ativo = true;
-    fetch(CAMBIO_API)
+    fetchWithTimeout(CAMBIO_API, {}, 15_000)
       .then((resposta) => resposta.json())
       .then((json) => {
         if (!ativo) return;

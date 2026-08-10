@@ -1,4 +1,5 @@
 import { getProcessingApiUrl } from "../ndvi/processingClient";
+import { AI_TIMEOUT_MS, fetchWithTimeout } from "../../lib/http";
 
 export type ChatRole = "user" | "assistant";
 
@@ -29,14 +30,18 @@ export async function sendChat(
     throw new Error("O assistente de IA não está configurado no momento.");
   }
 
-  const response = await fetch(`${apiUrl}/v1/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+  const response = await fetchWithTimeout(
+    `${apiUrl}/v1/chat`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ messages }),
     },
-    body: JSON.stringify({ messages }),
-  });
+    AI_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     throw new Error(await responseMessage(response, "O assistente não respondeu agora."));

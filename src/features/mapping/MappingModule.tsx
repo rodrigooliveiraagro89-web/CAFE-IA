@@ -27,6 +27,7 @@ import {
 } from "../../domain/agriculturalContext";
 import { canAddPlot, resolvePlan, TRIAL_DAYS } from "../../domain/plans";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
+import { fetchWithTimeout } from "../../lib/http";
 import {
   closePolygon,
   polygonAreaHectares,
@@ -160,9 +161,10 @@ export function MappingModule({
     setSearchMessage("Buscando local…");
     setSearchResults([]);
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=br`,
         { headers: { Accept: "application/json" } },
+        15_000,
       );
       if (!response.ok) throw new Error();
       const results = (await response.json()) as SearchResult[];

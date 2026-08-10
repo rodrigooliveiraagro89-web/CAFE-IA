@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { fetchWithTimeout } from "../../lib/http";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import {
   buildSprayWindows,
@@ -51,7 +52,7 @@ async function geocodeCity(city: string, state: string): Promise<LatLon | null> 
   url.searchParams.set("count", "5");
   url.searchParams.set("language", "pt");
   url.searchParams.set("country", "BR");
-  const response = await fetch(url.toString());
+  const response = await fetchWithTimeout(url.toString(), {}, 15_000);
   if (!response.ok) return null;
   const data = (await response.json()) as {
     results?: Array<{ latitude: number; longitude: number; admin1?: string }>;
@@ -84,7 +85,7 @@ async function fetchForecast(location: LatLon): Promise<OpenMeteoResponse> {
     "hourly",
     "temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,weather_code",
   );
-  const response = await fetch(url.toString());
+  const response = await fetchWithTimeout(url.toString(), {}, 15_000);
   if (!response.ok) throw new Error("Não foi possível obter a previsão do tempo agora.");
   return (await response.json()) as OpenMeteoResponse;
 }

@@ -19,6 +19,7 @@ import {
   SOIL_REFERENCES,
   type SoilValues,
 } from "../../domain/soilAnalysis";
+import { parseNumberBR } from "../../domain/parseNumber";
 import { extractSoilFromFile } from "./soilClient";
 import { useSoilAnalyses, type SoilAnalysis, type SoilSource } from "./soilStore";
 import "./soil.css";
@@ -98,10 +99,11 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
   function updateValue(key: keyof SoilValues, raw: string) {
     setDraft((current) => {
       if (!current) return current;
-      const parsed = raw.trim() === "" ? null : Number(raw.replace(",", "."));
+      // parseNumberBR aceita vírgula/ponto e milhar, e devolve null para
+      // vazio/inválido — nunca um número enganoso no laudo.
       return {
         ...current,
-        values: { ...current.values, [key]: Number.isFinite(parsed) ? parsed : null },
+        values: { ...current.values, [key]: parseNumberBR(raw) },
       };
     });
   }

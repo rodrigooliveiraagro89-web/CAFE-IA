@@ -18,6 +18,7 @@ import {
   type CenarioId,
 } from "../../domain/fertilization";
 import { gramasPorPlanta } from "../../domain/calculators";
+import { parseNumberBR } from "../../domain/parseNumber";
 import {
   VR_LIMITACAO_GEO,
   ZONA_EXCLUIDA_NOTA,
@@ -75,7 +76,9 @@ export function FertilizationModule({
   onNavigate,
 }: FertilizationModuleProps) {
   const [cenarioId, setCenarioId] = useState<CenarioId>("media");
-  const [plantasPorHa, setPlantasPorHa] = useState(4082);
+  const [plantasPorHaRaw, setPlantasPorHaRaw] = useState("4082");
+  const plantasPorHa = parseNumberBR(plantasPorHaRaw) ?? 0;
+  const plantasPorHaInvalido = plantasPorHaRaw.trim() !== "" && parseNumberBR(plantasPorHaRaw) === null;
 
   const plot = agriculture.selectedPlot;
   const soil = plot ? latestSoilForPlot(soilAnalyses, plot.id) : null;
@@ -258,11 +261,15 @@ export function FertilizationModule({
         <label className="fert-stand">
           Plantas por hectare (para o cálculo de g/planta)
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            value={plantasPorHa}
-            onChange={(event) => setPlantasPorHa(Number(event.target.value))}
+            value={plantasPorHaRaw}
+            aria-invalid={plantasPorHaInvalido}
+            onChange={(event) => setPlantasPorHaRaw(event.target.value)}
           />
+          {plantasPorHaInvalido && (
+            <small className="field-invalid">Use apenas números (ex.: 4082)</small>
+          )}
         </label>
 
         <p className="fert-hint">

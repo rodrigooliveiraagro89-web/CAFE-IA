@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabaseClient";
+import { fetchWithTimeout, DEFAULT_TIMEOUT_MS } from "../../lib/http";
 
 // Tabelas do usuário no Supabase (escopadas por RLS ao próprio dono).
 const USER_TABLES: { table: string; column: string }[] = [
@@ -74,14 +75,18 @@ export async function deleteAccount(accessToken: string): Promise<void> {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  const response = await fetch(`${url}/functions/v1/delete-account`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      apikey: anonKey,
-      "Content-Type": "application/json",
+  const response = await fetchWithTimeout(
+    `${url}/functions/v1/delete-account`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+        "Content-Type": "application/json",
+      },
     },
-  });
+    DEFAULT_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     let mensagem = "Não foi possível excluir a conta agora. Tente novamente.";

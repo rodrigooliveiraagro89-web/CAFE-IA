@@ -846,3 +846,13 @@
   gap: 0.6rem;
   margin-top: 0.3rem;
 }
+
+/* Validação de campo numérico (evita dose errada por vírgula/entrada inválida) */
+.field-invalid {
+  color: var(--danger, #dc2626);
+  font-weight: 600;
+}
+input[aria-invalid="true"] {
+  border-color: var(--danger, #dc2626);
+  outline-color: var(--danger, #dc2626);
+}
