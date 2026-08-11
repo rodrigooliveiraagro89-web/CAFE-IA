@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Beaker,
+  CircleDollarSign,
   Download,
   FlaskConical,
   Info,
@@ -22,9 +23,12 @@ import {
   FONTES_K,
   FONTES_P,
   FORMULAS_COBERTURA,
+  PRECO_PADRAO_KG,
+  custoPorHectare,
   montarPrograma,
 } from "../../domain/fertilizerProgram";
 import { gramasPorPlanta } from "../../domain/calculators";
+import { BarChart } from "../reports/charts/BarChart";
 import { parseNumberBR } from "../../domain/parseNumber";
 import {
   VR_LIMITACAO_GEO,
@@ -62,6 +66,29 @@ function loadFertPrefs(plotId?: string | null): FertPrefs | null {
   } catch {
     return null;
   }
+}
+
+const brl0 = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const brl2 = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const PRECOS_KEY = "agryn.fert.precos";
+
+// Preços por kg (R$), editáveis e guardados globais — não dependem do talhão.
+function loadPrecos(): Record<string, string> {
+  const base: Record<string, string> = {};
+  for (const [id, valor] of Object.entries(PRECO_PADRAO_KG)) {
+    base[id] = String(valor).replace(".", ",");
+  }
+  if (typeof localStorage === "undefined") return base;
+  try {
+    const raw = localStorage.getItem(PRECOS_KEY);
+    if (raw) Object.assign(base, JSON.parse(raw) as Record<string, string>);
+  } catch {
+    // usa os padrões
+  }
+  return base;
 }
 
 function latestNdviForPlot(history: NdviResult[], plotId: string): NdviResult | null {
@@ -110,6 +137,7 @@ export function FertilizationModule({
   const [fonteP, setFonteP] = useState(savedPrefs?.fonteP ?? "map");
   const [cobertura, setCobertura] = useState(savedPrefs?.cobertura ?? "270010");
   const [fonteK, setFonteK] = useState(savedPrefs?.fonteK ?? "kcl");
+  const [precos, setPrecos] = useState<Record<string, string>>(loadPrecos);
   const plantasPorHa = parseNumberBR(plantasPorHaRaw) ?? 0;
   const plantasPorHaInvalido = plantasPorHaRaw.trim() !== "" && parseNumberBR(plantasPorHaRaw) === null;
 
@@ -127,6 +155,15 @@ export function FertilizationModule({
       // Sem espaço/modo privativo: segue só em memória nesta sessão.
     }
   }, [plot, cenarioId, plantasPorHaRaw, vAlvo, fonteP, cobertura, fonteK]);
+
+  // Preços são globais (não do talhão) — guardados à parte.
+  useEffect(() => {
+    try {
+      localStorage.setItem(PRECOS_KEY, JSON.stringify(precos));
+    } catch {
+      // sem persistência: segue em memória
+    }
+  }, [precos]);
   const soil = plot ? latestSoilForPlot(soilAnalyses, plot.id) : null;
   const cenario = CENARIOS.find((item) => item.id === cenarioId) ?? CENARIOS[1];
 
@@ -171,6 +208,33 @@ export function FertilizationModule({
     { n: adubacao.n, p2o5: adubacao.p2o5, k2o: adubacao.k2o },
     { fonteP, cobertura, fonteK },
   );
+
+  const precosNum: Record<string, number> = {};
+  for (const [id, raw] of Object.entries(precos)) {
+    precosNum[id] = parseNumberBR(raw) ?? 0;
+  }
+
+  // Custo do programa em cada cenário (a fórmula é a mesma; as doses mudam).
+  const custoPorCenario = CENARIOS.map((item) => {
+    const adub = recomendarAdubacao({
+      produtividadeKgHa: sacasParaKgHa(item.sacasPorHectare),
+      pResina: values.p,
+      kMgPorDm3: values.k,
+      sMgPorDm3: values.s,
+    });
+    const prog = montarPrograma(
+      { n: adub.n, p2o5: adub.p2o5, k2o: adub.k2o },
+      { fonteP, cobertura, fonteK },
+    );
+    const custoHa = custoPorHectare(prog, precosNum);
+    return {
+      id: item.id,
+      label: item.label,
+      sacas: item.sacasPorHectare,
+      custoHa,
+      custoSaca: item.sacasPorHectare > 0 ? custoHa / item.sacasPorHectare : 0,
+    };
+  });
 
   const totalCalcario = calagem ? calagem.toneladasPorHectare * plot.areaHectares : 0;
 
@@ -329,6 +393,20 @@ export function FertilizationModule({
           ))}
         </div>
 
+        <div className="fert-chart fert-chart--npk">
+          <h3>N-P₂O₅-K₂O — cenário {cenario.label} ({cenario.sacasPorHectare} sc/ha)</h3>
+          <BarChart
+            data={[
+              { label: "N", value: adubacao.n },
+              { label: "P₂O₅", value: adubacao.p2o5 },
+              { label: "K₂O", value: adubacao.k2o },
+              { label: "S", value: adubacao.s },
+            ]}
+            formatValue={(value) => `${nf(value)} kg/ha`}
+            color="var(--success)"
+          />
+        </div>
+
         <label className="fert-stand">
           Plantas por hectare (para o cálculo de g/planta)
           <input
@@ -464,6 +542,82 @@ export function FertilizationModule({
           ✓ Recomendação salva neste talhão — fórmula, V% e plantas/ha ficam guardados neste
           aparelho.
         </p>
+      </section>
+
+      <section className="panel-card">
+        <div className="panel-title">
+          <CircleDollarSign size={21} />
+          <div>
+            <span className="eyebrow">Custo estimado</span>
+            <h2>Quanto custa a adubação</h2>
+          </div>
+        </div>
+        <p className="fert-hint">
+          Preço por kg de cada insumo (editável, guardado neste aparelho). O custo por saca usa a
+          produtividade-alvo de cada cenário.
+        </p>
+
+        {programa.itens.length > 0 && (
+          <div className="fert-price-grid">
+            {programa.itens.map((item) => (
+              <label key={item.id}>
+                {item.nome} <small>{item.formula}</small>
+                <span className="fert-price-input">
+                  <span>R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={precos[item.id] ?? ""}
+                    onChange={(event) =>
+                      setPrecos((prev) => ({ ...prev, [item.id]: event.target.value }))
+                    }
+                  />
+                  <span>/kg</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className="fert-prog-wrap">
+          <table className="fert-prog-table">
+            <thead>
+              <tr>
+                <th>Cenário</th>
+                <th>R$/ha</th>
+                <th>R$/saca</th>
+              </tr>
+            </thead>
+            <tbody>
+              {custoPorCenario.map((item) => (
+                <tr key={item.id} data-active={item.id === cenarioId || undefined}>
+                  <td>{item.label} · {item.sacas} sc/ha</td>
+                  <td>{brl0(item.custoHa)}</td>
+                  <td>{brl2(item.custoSaca)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="fert-charts">
+          <div className="fert-chart">
+            <h3>Custo por saca</h3>
+            <BarChart
+              data={custoPorCenario.map((item) => ({ label: item.label, value: item.custoSaca }))}
+              formatValue={(value) => brl2(value)}
+              color="var(--warning)"
+            />
+          </div>
+          <div className="fert-chart">
+            <h3>Custo por hectare</h3>
+            <BarChart
+              data={custoPorCenario.map((item) => ({ label: item.label, value: item.custoHa }))}
+              formatValue={(value) => brl0(value)}
+              color="var(--info)"
+            />
+          </div>
+        </div>
       </section>
 
       {(() => {

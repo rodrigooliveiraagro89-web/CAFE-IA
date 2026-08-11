@@ -264,3 +264,22 @@
 .fert-prog-table td small { color: var(--text-faint); font-size: .74rem; }
 .fert-prog-total td { background: var(--success-soft); font-weight: 700; border-top: 2px solid var(--success); border-bottom: none; }
 .fert-saved { font-size: .8rem; color: var(--success); font-weight: 600; margin-top: .8rem; }
+
+/* --- Cost + charts --- */
+.fert-price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .8rem; margin-bottom: 1.1rem; }
+.fert-price-grid label { display: flex; flex-direction: column; gap: .35rem; font-size: .82rem; font-weight: 600; color: var(--text-soft); }
+.fert-price-grid label small { color: var(--text-faint); font-weight: 500; font-family: ui-monospace, monospace; }
+.fert-price-input { display: flex; align-items: center; gap: .35rem; background: var(--surface-muted); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .1rem .55rem; }
+.fert-price-input span { color: var(--text-faint); font-size: .8rem; }
+.fert-price-input input { flex: 1; border: none; background: transparent; padding: .5rem 0; font-size: .95rem; color: var(--text); font-variant-numeric: tabular-nums; min-width: 0; }
+.fert-price-input input:focus { outline: none; }
+.fert-price-input:focus-within { border-color: var(--info); box-shadow: 0 0 0 3px color-mix(in srgb, var(--info) 18%, transparent); }
+.fert-prog-table tr[data-active] td { background: color-mix(in srgb, var(--info) 8%, transparent); }
+
+.fert-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; margin-top: 1.3rem; }
+@media (max-width: 640px) { .fert-charts { grid-template-columns: 1fr; } }
+.fert-chart h3 { margin: 0 0 .5rem; font-size: .9rem; font-weight: 600; color: var(--text); }
+.fert-chart--npk { margin: 1.1rem 0; }
+.fert-chart .report-bar-chart { width: 100%; height: auto; }
+.fert-chart .report-chart-label, .fert-chart .report-chart-value { font-size: 11px; fill: var(--text); }
+.fert-chart .report-chart-empty { color: var(--text-soft); font-size: .85rem; font-style: italic; }

@@ -45,9 +45,18 @@ export const FONTES_K: Fertilizer[] = [
 ];
 
 export type ProgramaItem = {
+  id: string;
   nome: string;
   formula: string;
   kgPorHectare: number;
+};
+
+/** Preço padrão por kg de cada insumo (R$/kg). Editável pelo usuário. */
+export const PRECO_PADRAO_KG: Record<string, number> = {
+  map: 4.2, sft: 4.0, sfs: 2.2, fnr: 1.8,
+  "270010": 3.6, "300010": 3.7, "200020": 3.4, "200520": 3.5,
+  "250025": 3.6, "190419": 3.6, sulfam: 2.8, ureia: 4.2,
+  kcl: 3.9, sop: 6.5,
 };
 
 export type ProgramaAlvo = { n: number; p2o5: number; k2o: number };
@@ -81,21 +90,21 @@ export function montarPrograma(alvo: ProgramaAlvo, sel: ProgramaSelecao): Progra
   // 1) Fósforo
   if (alvo.p2o5 > 0 && P.p > 0) {
     const kg = (alvo.p2o5 / P.p) * 100;
-    itens.push({ nome: P.nome, formula: P.formula, kgPorHectare: kg });
+    itens.push({ id: P.id, nome: P.nome, formula: P.formula, kgPorHectare: kg });
     soma(kg, P);
   }
   // 2) Nitrogênio (fórmula de cobertura), descontando o N já entregue
   const nRestante = Math.max(0, alvo.n - entregue.n);
   if (M.n > 0 && nRestante > 0) {
     const kg = (nRestante / M.n) * 100;
-    itens.push({ nome: M.nome.replace(/\s*\(.*\)/, ""), formula: M.formula, kgPorHectare: kg });
+    itens.push({ id: M.id, nome: M.nome.replace(/\s*\(.*\)/, ""), formula: M.formula, kgPorHectare: kg });
     soma(kg, M);
   }
   // 3) Complemento de potássio
   const kRestante = alvo.k2o - entregue.k2o;
   if (kRestante > 0 && K.k > 0) {
     const kg = (kRestante / K.k) * 100;
-    itens.push({ nome: K.nome, formula: K.formula, kgPorHectare: kg });
+    itens.push({ id: K.id, nome: K.nome, formula: K.formula, kgPorHectare: kg });
     soma(kg, K);
   }
 
@@ -106,4 +115,15 @@ export function montarPrograma(alvo: ProgramaAlvo, sel: ProgramaSelecao): Progra
 export function gramasPorPlanta(kgPorHectare: number, plantasPorHectare: number): number | null {
   if (!plantasPorHectare || plantasPorHectare <= 0) return null;
   return (kgPorHectare * 1000) / plantasPorHectare;
+}
+
+/** Custo do programa por hectare (R$), somando kg × preço de cada insumo. */
+export function custoPorHectare(
+  programa: ProgramaResult,
+  precos: Record<string, number>,
+): number {
+  return programa.itens.reduce(
+    (total, item) => total + item.kgPorHectare * (precos[item.id] ?? 0),
+    0,
+  );
 }

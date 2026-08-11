@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gramasPorPlanta, montarPrograma } from "./fertilizerProgram";
+import { PRECO_PADRAO_KG, custoPorHectare, gramasPorPlanta, montarPrograma } from "./fertilizerProgram";
 
 describe("montarPrograma", () => {
   it("fecha N, P e K com MAP + 27-00-10 + KCl (K alto)", () => {
@@ -36,6 +36,21 @@ describe("montarPrograma", () => {
   it("sulfato de amônio entrega enxofre", () => {
     const r = montarPrograma({ n: 200, p2o5: 0, k2o: 40 }, { fonteP: "none", cobertura: "sulfam", fonteK: "kcl" });
     expect(r.entregue.s).toBeGreaterThan(100);
+  });
+});
+
+describe("custoPorHectare", () => {
+  it("soma kg × preço de cada insumo", () => {
+    const prog = montarPrograma({ n: 200, p2o5: 60, k2o: 80 }, { fonteP: "map", cobertura: "270010", fonteK: "kcl" });
+    const custo = custoPorHectare(prog, PRECO_PADRAO_KG);
+    // ~115kg MAP*4,2 + ~694kg 27-00-10*3,6 + ~18kg KCl*3,9 -> alguns milhares de R$
+    expect(custo).toBeGreaterThan(2000);
+    expect(custo).toBeLessThan(4000);
+  });
+
+  it("preço ausente conta como zero (não quebra)", () => {
+    const prog = montarPrograma({ n: 100, p2o5: 0, k2o: 40 }, { fonteP: "none", cobertura: "270010", fonteK: "kcl" });
+    expect(custoPorHectare(prog, {})).toBe(0);
   });
 });
 
