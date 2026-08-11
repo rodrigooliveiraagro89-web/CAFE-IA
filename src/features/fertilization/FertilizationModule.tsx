@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
+  Beaker,
   Download,
   FlaskConical,
   Info,
@@ -17,6 +18,12 @@ import {
   sacasParaKgHa,
   type CenarioId,
 } from "../../domain/fertilization";
+import {
+  FONTES_K,
+  FONTES_P,
+  FORMULAS_COBERTURA,
+  montarPrograma,
+} from "../../domain/fertilizerProgram";
 import { gramasPorPlanta } from "../../domain/calculators";
 import { parseNumberBR } from "../../domain/parseNumber";
 import {
@@ -37,6 +44,25 @@ type FertilizationModuleProps = {
   ndviHistory: NdviResult[];
   onNavigate: (view: AppView) => void;
 };
+
+type FertPrefs = {
+  cenarioId?: CenarioId;
+  plantas?: string;
+  vAlvo?: number;
+  fonteP?: string;
+  cobertura?: string;
+  fonteK?: string;
+};
+
+function loadFertPrefs(plotId?: string | null): FertPrefs | null {
+  if (!plotId || typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(`agryn.fert.${plotId}`);
+    return raw ? (JSON.parse(raw) as FertPrefs) : null;
+  } catch {
+    return null;
+  }
+}
 
 function latestNdviForPlot(history: NdviResult[], plotId: string): NdviResult | null {
   const matches = history
@@ -75,12 +101,32 @@ export function FertilizationModule({
   ndviHistory,
   onNavigate,
 }: FertilizationModuleProps) {
-  const [cenarioId, setCenarioId] = useState<CenarioId>("media");
-  const [plantasPorHaRaw, setPlantasPorHaRaw] = useState("4082");
+  // Preferências salvas por talhão (localStorage). Lidas no init; o componente
+  // remonta ao trocar de talhão (key no App), então o init reflete o talhão atual.
+  const savedPrefs = loadFertPrefs(agriculture.selectedPlot?.id);
+  const [cenarioId, setCenarioId] = useState<CenarioId>(savedPrefs?.cenarioId ?? "media");
+  const [plantasPorHaRaw, setPlantasPorHaRaw] = useState(savedPrefs?.plantas ?? "4082");
+  const [vAlvo, setVAlvo] = useState<number>(savedPrefs?.vAlvo ?? 60);
+  const [fonteP, setFonteP] = useState(savedPrefs?.fonteP ?? "map");
+  const [cobertura, setCobertura] = useState(savedPrefs?.cobertura ?? "270010");
+  const [fonteK, setFonteK] = useState(savedPrefs?.fonteK ?? "kcl");
   const plantasPorHa = parseNumberBR(plantasPorHaRaw) ?? 0;
   const plantasPorHaInvalido = plantasPorHaRaw.trim() !== "" && parseNumberBR(plantasPorHaRaw) === null;
 
   const plot = agriculture.selectedPlot;
+
+  // Salva a recomendação escolhida deste talhão (persiste entre acessos).
+  useEffect(() => {
+    if (!plot) return;
+    try {
+      localStorage.setItem(
+        `agryn.fert.${plot.id}`,
+        JSON.stringify({ cenarioId, plantas: plantasPorHaRaw, vAlvo, fonteP, cobertura, fonteK }),
+      );
+    } catch {
+      // Sem espaço/modo privativo: segue só em memória nesta sessão.
+    }
+  }, [plot, cenarioId, plantasPorHaRaw, vAlvo, fonteP, cobertura, fonteK]);
   const soil = plot ? latestSoilForPlot(soilAnalyses, plot.id) : null;
   const cenario = CENARIOS.find((item) => item.id === cenarioId) ?? CENARIOS[1];
 
@@ -111,7 +157,7 @@ export function FertilizationModule({
   const calagem =
     values.ctc !== null && values.ctc !== undefined &&
     values.vPercent !== null && values.vPercent !== undefined
-      ? calcularCalagem({ ctcCmolc: values.ctc, vAtual: values.vPercent })
+      ? calcularCalagem({ ctcCmolc: values.ctc, vAtual: values.vPercent, vAlvo })
       : null;
 
   const adubacao = recomendarAdubacao({
@@ -120,6 +166,11 @@ export function FertilizationModule({
     kMgPorDm3: values.k,
     sMgPorDm3: values.s,
   });
+
+  const programa = montarPrograma(
+    { n: adubacao.n, p2o5: adubacao.p2o5, k2o: adubacao.k2o },
+    { fonteP, cobertura, fonteK },
+  );
 
   const totalCalcario = calagem ? calagem.toneladasPorHectare * plot.areaHectares : 0;
 
@@ -198,6 +249,26 @@ export function FertilizationModule({
             <h2>Calagem</h2>
           </div>
         </div>
+
+        {calagem && (
+          <div className="fert-slider">
+            <div className="fert-slider-head">
+              <span>Saturação por bases desejada (V₂)</span>
+              <strong>{vAlvo}%</strong>
+            </div>
+            <input
+              type="range"
+              min={40}
+              max={80}
+              step={1}
+              value={vAlvo}
+              aria-label="Alvo de V%"
+              onChange={(event) => setVAlvo(Number(event.target.value))}
+              style={{ ["--pct" as string]: `${((vAlvo - 40) / 40) * 100}%` }}
+            />
+            <small>Café: alvo usual 60%. Mova para simular a dose de calcário.</small>
+          </div>
+        )}
 
         {!calagem ? (
           <p className="fert-empty">
@@ -290,6 +361,109 @@ export function FertilizationModule({
             </div>
           </div>
         )}
+      </section>
+
+      <section className="panel-card">
+        <div className="panel-title">
+          <Beaker size={21} />
+          <div>
+            <span className="eyebrow">Programa · fórmulas de mercado</span>
+            <h2>Escolha a fórmula</h2>
+          </div>
+        </div>
+
+        <div className="fert-formula-grid">
+          <label>
+            Fonte de fósforo (P₂O₅)
+            <select value={fonteP} onChange={(event) => setFonteP(event.target.value)}>
+              {FONTES_P.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}{f.formula !== "—" ? ` (${f.formula})` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Fórmula de cobertura (N-K)
+            <select value={cobertura} onChange={(event) => setCobertura(event.target.value)}>
+              {FORMULAS_COBERTURA.map((f) => (
+                <option key={f.id} value={f.id}>{f.nome}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Complemento de potássio
+            <select value={fonteK} onChange={(event) => setFonteK(event.target.value)}>
+              {FONTES_K.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}{f.formula !== "—" ? ` (${f.formula})` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {programa.itens.length === 0 ? (
+          <p className="fert-empty">Ajuste o cenário ou envie o laudo para gerar o programa.</p>
+        ) : (
+          <div className="fert-prog-wrap">
+            <table className="fert-prog-table">
+              <thead>
+                <tr>
+                  <th>Insumo</th>
+                  <th>kg/ha</th>
+                  {plantasPorHa > 0 && <th>g/planta</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {programa.itens.map((item) => (
+                  <tr key={item.formula + item.nome}>
+                    <td>
+                      <span className="fert-prog-name">{item.nome}</span>
+                      <small>{item.formula}</small>
+                    </td>
+                    <td>{nf(item.kgPorHectare)}</td>
+                    {plantasPorHa > 0 && (
+                      <td>{nf(gramasPorPlanta(item.kgPorHectare, plantasPorHa) ?? 0)}</td>
+                    )}
+                  </tr>
+                ))}
+                <tr className="fert-prog-total">
+                  <td>Total de adubo</td>
+                  <td>{nf(programa.totalKgPorHectare)}</td>
+                  {plantasPorHa > 0 && <td />}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <p className="fert-hint">
+          Entrega: N {nf(programa.entregue.n)} · P₂O₅ {nf(programa.entregue.p2o5)} · K₂O{" "}
+          {nf(programa.entregue.k2o)} · S {nf(programa.entregue.s)} kg/ha — alvo N {nf(adubacao.n)} ·
+          P₂O₅ {nf(adubacao.p2o5)} · K₂O {nf(adubacao.k2o)}.
+        </p>
+
+        {programa.entregue.k2o > adubacao.k2o * 1.3 + 1 && (
+          <div className="fert-assumptions">
+            <Info size={16} aria-hidden="true" />
+            <div>
+              <strong>Potássio em excesso</strong>
+              <ul>
+                <li>
+                  A cobertura escolhida entrega bem mais K₂O do que o necessário. Com K alto no
+                  solo, uma fórmula como <strong>27-00-10</strong> ou <strong>30-00-10</strong>{" "}
+                  fecha melhor e economiza adubo.
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        <p className="fert-saved">
+          ✓ Recomendação salva neste talhão — fórmula, V% e plantas/ha ficam guardados neste
+          aparelho.
+        </p>
       </section>
 
       {(() => {

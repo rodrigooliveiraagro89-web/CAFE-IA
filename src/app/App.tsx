@@ -233,6 +233,7 @@ export function App() {
       )}
       {activeView === "adubacao" && (
         <FertilizationModule
+          key={agriculture.selectedPlot?.id ?? "sem-talhao"}
           agriculture={agriculture}
           soilAnalyses={soil.analyses}
           ndviHistory={ndviHistory.history}

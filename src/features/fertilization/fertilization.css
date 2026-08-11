@@ -237,3 +237,30 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* --- V% slider --- */
+.fert-slider { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1.1rem; }
+.fert-slider-head { display: flex; justify-content: space-between; align-items: baseline; font-size: .85rem; font-weight: 600; color: var(--text-soft); }
+.fert-slider-head strong { font-size: 1.25rem; color: var(--info); }
+.fert-slider input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--info) var(--pct, 50%), var(--line) var(--pct, 50%)); cursor: pointer; }
+.fert-slider input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--info); border: 3px solid var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.fert-slider input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--info); border: 3px solid var(--surface); }
+.fert-slider small { color: var(--text-faint); font-size: .78rem; }
+
+/* --- Formula selectors --- */
+.fert-formula-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .85rem; margin-bottom: 1.1rem; }
+.fert-formula-grid label { display: flex; flex-direction: column; gap: .35rem; font-size: .8rem; font-weight: 600; color: var(--text-soft); }
+.fert-formula-grid select { font-size: .92rem; font-weight: 600; color: var(--text); background: var(--surface-muted); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .6rem .65rem; min-height: 44px; }
+.fert-formula-grid select:focus { outline: none; border-color: var(--info); box-shadow: 0 0 0 3px color-mix(in srgb, var(--info) 20%, transparent); }
+
+/* --- Program table --- */
+.fert-prog-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
+.fert-prog-table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.fert-prog-table th, .fert-prog-table td { padding: .6rem .8rem; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.fert-prog-table th:first-child, .fert-prog-table td:first-child { text-align: left; }
+.fert-prog-table thead th { background: var(--surface-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); }
+.fert-prog-table tbody td { font-variant-numeric: tabular-nums; }
+.fert-prog-name { font-weight: 600; display: block; }
+.fert-prog-table td small { color: var(--text-faint); font-size: .74rem; }
+.fert-prog-total td { background: var(--success-soft); font-weight: 700; border-top: 2px solid var(--success); border-bottom: none; }
+.fert-saved { font-size: .8rem; color: var(--success); font-weight: 600; margin-top: .8rem; }
