@@ -2,7 +2,10 @@ import { Check, Copy, Crown, Download, Link2, MapPinned, Share2 } from "lucide-r
 import { useEffect, useMemo, useState } from "react";
 import type { AppView } from "../../app/navigation";
 import { propertyLocation } from "../../domain/agriculturalContext";
+import { CENARIOS } from "../../domain/fertilization";
+import { PRECO_PADRAO_KG } from "../../domain/fertilizerProgram";
 import type { FieldRecord } from "../../domain/fieldRecords";
+import { parseNumberBR } from "../../domain/parseNumber";
 import { resolvePlan, TRIAL_DAYS, type PlanId } from "../../domain/plans";
 import { soilLevelLabel } from "../../domain/soilAnalysis";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
@@ -13,11 +16,62 @@ import {
   buildPropertyReport,
   priorityLabels,
   whatsappShareUrl,
+  type FertReportPrefs,
   type PropertyReport,
 } from "./buildReport";
 import { BarChart } from "./charts/BarChart";
 import { renderSharedReportHtml } from "./sharedReport";
 import "./report.css";
+
+const brl0 = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const brl2 = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Preferências de adubação salvas por talhão (aba Calagem e adubação).
+function loadFertPrefsByPlot(plotIds: string[]): Record<string, FertReportPrefs> {
+  const out: Record<string, FertReportPrefs> = {};
+  if (typeof localStorage === "undefined") return out;
+  for (const id of plotIds) {
+    try {
+      const raw = localStorage.getItem(`agryn.fert.${id}`);
+      if (!raw) continue;
+      const p = JSON.parse(raw) as {
+        vAlvo?: number; fonteP?: string; cobertura?: string; fonteK?: string; plantas?: string; cenarioId?: string;
+      };
+      const cen = CENARIOS.find((c) => c.id === p.cenarioId);
+      out[id] = {
+        vAlvo: p.vAlvo,
+        fonteP: p.fonteP,
+        cobertura: p.cobertura,
+        fonteK: p.fonteK,
+        plantas: p.plantas ? parseNumberBR(p.plantas) ?? undefined : undefined,
+        sacas: cen?.sacasPorHectare,
+      };
+    } catch {
+      // ignora entrada inválida
+    }
+  }
+  return out;
+}
+
+function loadFertPrecos(): Record<string, number> {
+  const precos: Record<string, number> = { ...PRECO_PADRAO_KG };
+  if (typeof localStorage === "undefined") return precos;
+  try {
+    const raw = localStorage.getItem("agryn.fert.precos");
+    if (raw) {
+      const map = JSON.parse(raw) as Record<string, string>;
+      for (const [k, v] of Object.entries(map)) {
+        const n = parseNumberBR(v);
+        if (n !== null) precos[k] = n;
+      }
+    }
+  } catch {
+    // usa os padrões
+  }
+  return precos;
+}
 
 type ReportModuleProps = {
   agriculture: AgriculturalController;
@@ -91,7 +145,16 @@ export function ReportModule({
 
   const report = useMemo<PropertyReport | null>(() => {
     if (!property) return null;
-    return buildPropertyReport(property, state.plots, records, ndviHistory, soilAnalyses);
+    return buildPropertyReport(
+      property,
+      state.plots,
+      records,
+      ndviHistory,
+      soilAnalyses,
+      undefined,
+      loadFertPrefsByPlot(state.plots.filter((plot) => plot.propertyId === property.id).map((plot) => plot.id)),
+      loadFertPrecos(),
+    );
   }, [property, state.plots, records, ndviHistory, soilAnalyses]);
 
   // Fotos dos registros (anexos de imagem) para ilustrar o relatório. Os anexos
@@ -433,6 +496,79 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
             </table>
           </div>
         ))}
+
+      {plots.some((row) => row.fertilizer) && (
+        <>
+          <h2>Adubação recomendada</h2>
+          {plots
+            .filter((row) => row.fertilizer)
+            .map((row) => {
+              const f = row.fertilizer;
+              if (!f) return null;
+              return (
+                <div className="report-soil-block" key={`fert-${row.plot.id}`}>
+                  <h3>
+                    {row.plot.name} — {f.sacas} sc/ha · V% alvo {f.vAlvo}
+                  </h3>
+                  <p className="report-soil-alerts" style={{ color: "var(--text-soft)" }}>
+                    {f.calagemDispensada
+                      ? `Calagem dispensada — V% atual ${f.vAtual.toFixed(0)}% já atinge o alvo.`
+                      : `Calagem: ${f.calagemTHa.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} t/ha de calcário dolomítico (V% ${f.vAtual.toFixed(0)} → ${f.vAlvo}).`}{" "}
+                    NPK (kg/ha): N {f.npk.n} · P₂O₅ {f.npk.p2o5} · K₂O {f.npk.k2o} · S {f.npk.s}.
+                  </p>
+                  <table className="report-data-table">
+                    <thead>
+                      <tr>
+                        <th>Insumo</th>
+                        <th>Fórmula</th>
+                        <th>kg/ha</th>
+                        <th>g/planta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {f.itens.map((it) => (
+                        <tr key={it.formula + it.nome}>
+                          <td>{it.nome}</td>
+                          <td>{it.formula}</td>
+                          <td>{it.kgPorHectare.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</td>
+                          <td>
+                            {f.plantasPorHa > 0
+                              ? ((it.kgPorHectare * 1000) / f.plantasPorHa).toLocaleString("pt-BR", {
+                                  maximumFractionDigits: 0,
+                                })
+                              : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td>
+                          <strong>Total · custo</strong>
+                        </td>
+                        <td />
+                        <td>
+                          <strong>
+                            {f.totalKgHa.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg/ha
+                          </strong>
+                        </td>
+                        <td>
+                          <strong>
+                            {brl0(f.custoHa)}/ha · {brl2(f.custoSaca)}/sc
+                          </strong>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  {f.kExcesso && (
+                    <p className="report-soil-alerts">
+                      Potássio em excesso na fórmula escolhida — com K alto no solo, prefira
+                      27-00-10 ou 30-00-10.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+        </>
+      )}
 
       <h2>2. Custos</h2>
       <table className="report-data-table">

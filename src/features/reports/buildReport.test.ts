@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { buildPropertyReport, whatsappSummary, whatsappShareUrl } from "./buildReport";
 import type { FarmPlot, FarmProperty } from "../../domain/agriculturalContext";
 import type { NdviResult } from "../ndvi/types";
+import type { SoilAnalysis } from "../soil/soilStore";
+
+function soil(plotId: string): SoilAnalysis {
+  // Casa 1 (Profert): P 12 mg/dm³, K 100 mg/dm³, CTC 7 cmolc, V% 41.
+  return {
+    id: `${plotId}-soil`,
+    plotId,
+    analysisDate: "2026-06-19",
+    createdAt: "2026-06-19T00:00:00Z",
+    source: "pdf",
+    values: { p: 12, k: 100, s: 6.4, ctc: 7, vPercent: 41, ca: 18, mg: 5 },
+  } as SoilAnalysis;
+}
 
 function property(over: Partial<FarmProperty> = {}): FarmProperty {
   return {
@@ -84,5 +97,44 @@ describe("whatsappSummary", () => {
     const url = whatsappShareUrl(report);
     expect(url.startsWith("https://wa.me/?text=")).toBe(true);
     expect(decodeURIComponent(url)).toContain("Sítio São José");
+  });
+});
+
+describe("bloco de adubação no relatório", () => {
+  it("gera calagem, NPK e programa quando há laudo", () => {
+    const report = buildPropertyReport(
+      property(),
+      [plot("A")],
+      [],
+      [],
+      [soil("A")],
+      GERADO,
+    );
+    const fert = report.plots[0].fertilizer;
+    expect(fert).not.toBeNull();
+    expect(fert?.calagemTHa).toBeGreaterThan(1); // V% 41 -> 60
+    expect(fert?.npk.n).toBe(200); // média 45 sc, N foliar padrão
+    expect(fert?.itens.length).toBeGreaterThan(0);
+    expect(fert?.custoHa).toBeGreaterThan(0);
+  });
+
+  it("respeita a fórmula escolhida por talhão", () => {
+    const report = buildPropertyReport(
+      property(),
+      [plot("A")],
+      [],
+      [],
+      [soil("A")],
+      GERADO,
+      { A: { cobertura: "200020", sacas: 45 } },
+    );
+    const fert = report.plots[0].fertilizer;
+    // 20-00-20 entrega K em excesso com K alto no solo
+    expect(fert?.kExcesso).toBe(true);
+  });
+
+  it("sem laudo, o bloco de adubação é nulo", () => {
+    const report = buildPropertyReport(property(), [plot("A")], [], [], [], GERADO);
+    expect(report.plots[0].fertilizer).toBeNull();
   });
 });

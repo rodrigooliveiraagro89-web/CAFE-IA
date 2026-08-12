@@ -9,9 +9,86 @@ import {
   soilAlerts,
   type SoilInterpretationRow,
 } from "../../domain/soilAnalysis";
+import {
+  calcularCalagem,
+  recomendarAdubacao,
+  sacasParaKgHa,
+} from "../../domain/fertilization";
+import {
+  PRECO_PADRAO_KG,
+  custoPorHectare,
+  montarPrograma,
+  type ProgramaItem,
+} from "../../domain/fertilizerProgram";
 import { buildManagementZones, type ManagementZone } from "../ndvi/managementZones";
 import type { NdviResult } from "../ndvi/types";
 import type { SoilAnalysis } from "../soil/soilStore";
+
+/** Preferências de adubação salvas por talhão (localStorage), passadas ao relatório. */
+export type FertReportPrefs = {
+  vAlvo?: number;
+  fonteP?: string;
+  cobertura?: string;
+  fonteK?: string;
+  plantas?: number;
+  sacas?: number;
+};
+
+export type FertReportBlock = {
+  vAtual: number;
+  vAlvo: number;
+  calagemTHa: number;
+  calagemDispensada: boolean;
+  sacas: number;
+  plantasPorHa: number;
+  npk: { n: number; p2o5: number; k2o: number; s: number };
+  itens: ProgramaItem[];
+  totalKgHa: number;
+  custoHa: number;
+  custoSaca: number;
+  kExcesso: boolean;
+};
+
+function buildFertBlock(
+  values: SoilAnalysis["values"],
+  prefs: FertReportPrefs,
+  precos: Record<string, number>,
+): FertReportBlock | null {
+  const sacas = prefs.sacas ?? 45;
+  const plantasPorHa = prefs.plantas ?? 4082;
+  const vAlvo = prefs.vAlvo ?? 60;
+  const sel = { fonteP: prefs.fonteP ?? "map", cobertura: prefs.cobertura ?? "270010", fonteK: prefs.fonteK ?? "kcl" };
+
+  const adub = recomendarAdubacao({
+    produtividadeKgHa: sacasParaKgHa(sacas),
+    pResina: values.p,
+    kMgPorDm3: values.k,
+    sMgPorDm3: values.s,
+  });
+  const programa = montarPrograma({ n: adub.n, p2o5: adub.p2o5, k2o: adub.k2o }, sel);
+  const custoHa = custoPorHectare(programa, precos);
+
+  const calagem =
+    values.ctc !== null && values.ctc !== undefined &&
+    values.vPercent !== null && values.vPercent !== undefined
+      ? calcularCalagem({ ctcCmolc: values.ctc, vAtual: values.vPercent, vAlvo })
+      : null;
+
+  return {
+    vAtual: calagem?.vAtual ?? values.vPercent ?? 0,
+    vAlvo,
+    calagemTHa: calagem?.toneladasPorHectare ?? 0,
+    calagemDispensada: calagem?.dispensada ?? false,
+    sacas,
+    plantasPorHa,
+    npk: { n: adub.n, p2o5: adub.p2o5, k2o: adub.k2o, s: adub.s },
+    itens: programa.itens,
+    totalKgHa: programa.totalKgPorHectare,
+    custoHa,
+    custoSaca: sacas > 0 ? custoHa / sacas : 0,
+    kExcesso: programa.entregue.k2o > adub.k2o * 1.3 + 1,
+  };
+}
 
 export type PriorityLevel = "critica" | "alta" | "moderada" | "baixa" | "sem-dados";
 
@@ -40,6 +117,7 @@ export type PlotReportRow = {
     rows: SoilInterpretationRow[];
     alerts: string[];
   } | null;
+  fertilizer: FertReportBlock | null;
 };
 
 export type PropertyReport = {
@@ -87,6 +165,8 @@ export function buildPropertyReport(
   ndviHistory: NdviResult[],
   soilAnalyses: SoilAnalysis[] = [],
   generatedAt: string = new Date().toISOString(),
+  fertPrefsByPlot: Record<string, FertReportPrefs> = {},
+  precos: Record<string, number> = PRECO_PADRAO_KG,
 ): PropertyReport {
   const propertyPlots = plots.filter((plot) => plot.propertyId === property.id);
 
@@ -116,6 +196,9 @@ export function buildPropertyReport(
             rows: soilRows,
             alerts: soilAlerts(soilRows),
           }
+        : null,
+      fertilizer: latestSoil
+        ? buildFertBlock(latestSoil.values, fertPrefsByPlot[plot.id] ?? {}, precos)
         : null,
     };
   });
