@@ -116,6 +116,9 @@ describe("bloco de adubação no relatório", () => {
     expect(fert?.npk.n).toBe(200); // média 45 sc, N foliar padrão
     expect(fert?.itens.length).toBeGreaterThan(0);
     expect(fert?.custoHa).toBeGreaterThan(0);
+    // Proveniência carimbada com o laudo e a data de geração do relatório.
+    expect(fert?.proveniencia.laudo?.id).toBe("A-soil");
+    expect(fert?.proveniencia.geradoEm).toBe(GERADO);
   });
 
   it("respeita a fórmula escolhida por talhão", () => {

@@ -283,3 +283,10 @@
 .fert-chart .report-bar-chart { width: 100%; height: auto; }
 .fert-chart .report-chart-label, .fert-chart .report-chart-value { font-size: 11px; fill: var(--text); }
 .fert-chart .report-chart-empty { color: var(--text-soft); font-size: .85rem; font-style: italic; }
+
+/* --- Proveniência --- */
+.fert-prov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .9rem 1.4rem; margin: 0 0 .9rem; }
+.fert-prov-grid div { display: flex; flex-direction: column; gap: .2rem; }
+.fert-prov-grid dt { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); }
+.fert-prov-grid dd { margin: 0; font-size: .9rem; color: var(--text); font-weight: 600; }
+.fert-prov-note { margin: 0; font-size: .78rem; color: var(--text-soft); border-top: 1px dashed var(--line); padding-top: .7rem; font-style: italic; }

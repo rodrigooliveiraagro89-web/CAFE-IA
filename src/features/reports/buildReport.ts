@@ -20,6 +20,7 @@ import {
   montarPrograma,
   type ProgramaItem,
 } from "../../domain/fertilizerProgram";
+import { buildProveniencia, type LaudoRef, type Proveniencia } from "../../domain/provenance";
 import { buildManagementZones, type ManagementZone } from "../ndvi/managementZones";
 import type { NdviResult } from "../ndvi/types";
 import type { SoilAnalysis } from "../soil/soilStore";
@@ -47,12 +48,15 @@ export type FertReportBlock = {
   custoHa: number;
   custoSaca: number;
   kExcesso: boolean;
+  proveniencia: Proveniencia;
 };
 
 function buildFertBlock(
   values: SoilAnalysis["values"],
   prefs: FertReportPrefs,
   precos: Record<string, number>,
+  laudo: LaudoRef | null,
+  geradoEm: string,
 ): FertReportBlock | null {
   const sacas = prefs.sacas ?? 45;
   const plantasPorHa = prefs.plantas ?? 4082;
@@ -87,6 +91,11 @@ function buildFertBlock(
     custoHa,
     custoSaca: sacas > 0 ? custoHa / sacas : 0,
     kExcesso: programa.entregue.k2o > adub.k2o * 1.3 + 1,
+    proveniencia: buildProveniencia(
+      laudo,
+      { vAlvo, cobertura: sel.cobertura, fonteP: sel.fonteP, fonteK: sel.fonteK, sacas, plantasPorHa },
+      geradoEm,
+    ),
   };
 }
 
@@ -198,7 +207,18 @@ export function buildPropertyReport(
           }
         : null,
       fertilizer: latestSoil
-        ? buildFertBlock(latestSoil.values, fertPrefsByPlot[plot.id] ?? {}, precos)
+        ? buildFertBlock(
+            latestSoil.values,
+            fertPrefsByPlot[plot.id] ?? {},
+            precos,
+            {
+              id: latestSoil.id,
+              data: latestSoil.analysisDate,
+              laboratorio: latestSoil.laboratory,
+              origem: latestSoil.source,
+            },
+            generatedAt,
+          )
         : null,
     };
   });

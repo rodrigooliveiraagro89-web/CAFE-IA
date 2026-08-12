@@ -7,6 +7,7 @@ import { PRECO_PADRAO_KG } from "../../domain/fertilizerProgram";
 import type { FieldRecord } from "../../domain/fieldRecords";
 import { parseNumberBR } from "../../domain/parseNumber";
 import { resolvePlan, TRIAL_DAYS, type PlanId } from "../../domain/plans";
+import { provenienciaResumo } from "../../domain/provenance";
 import { soilLevelLabel } from "../../domain/soilAnalysis";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { supabase } from "../../lib/supabaseClient";
@@ -564,6 +565,7 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
                       27-00-10 ou 30-00-10.
                     </p>
                   )}
+                  <p className="report-provenance">{provenienciaResumo(f.proveniencia)}</p>
                 </div>
               );
             })}

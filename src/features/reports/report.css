@@ -355,3 +355,12 @@
   color: var(--text-faint);
   font-size: 0.74rem;
 }
+
+.report-provenance {
+  margin: 0.5rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--line);
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--text-soft);
+}

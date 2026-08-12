@@ -28,6 +28,7 @@ import {
   montarPrograma,
 } from "../../domain/fertilizerProgram";
 import { gramasPorPlanta } from "../../domain/calculators";
+import { buildProveniencia, provenienciaResumo } from "../../domain/provenance";
 import { BarChart } from "../reports/charts/BarChart";
 import { parseNumberBR } from "../../domain/parseNumber";
 import {
@@ -213,6 +214,12 @@ export function FertilizationModule({
   for (const [id, raw] of Object.entries(precos)) {
     precosNum[id] = parseNumberBR(raw) ?? 0;
   }
+
+  // Proveniência: qual laudo + base + parâmetros geraram esta recomendação.
+  const proveniencia = buildProveniencia(
+    soil ? { id: soil.id, data: soil.analysisDate, laboratorio: soil.laboratory, origem: soil.source } : null,
+    { vAlvo, cobertura, fonteP, fonteK, sacas: cenario.sacasPorHectare, plantasPorHa },
+  );
 
   // Custo do programa em cada cenário (a fórmula é a mesma; as doses mudam).
   const custoPorCenario = CENARIOS.map((item) => {
@@ -742,6 +749,46 @@ export function FertilizationModule({
           </section>
         );
       })()}
+
+      <section className="panel-card fert-prov">
+        <div className="panel-title">
+          <FlaskConical size={21} />
+          <div>
+            <span className="eyebrow">Rastreabilidade</span>
+            <h2>Proveniência da recomendação</h2>
+          </div>
+        </div>
+        <dl className="fert-prov-grid">
+          <div>
+            <dt>Laudo de origem</dt>
+            <dd>
+              {soil
+                ? `${soil.laboratory ? soil.laboratory + " · " : ""}${
+                    soil.analysisDate
+                      ? new Date(`${soil.analysisDate}T12:00:00`).toLocaleDateString("pt-BR")
+                      : "sem data"
+                  } · ${soil.source === "pdf" ? "PDF" : soil.source === "foto" ? "foto" : "manual"}`
+                : "Sem laudo — classes médias assumidas"}
+            </dd>
+          </div>
+          <div>
+            <dt>Base técnica</dt>
+            <dd>{proveniencia.engine} · v{proveniencia.versao}</dd>
+          </div>
+          <div>
+            <dt>Parâmetros</dt>
+            <dd>
+              V% alvo {vAlvo} · cobertura {cobertura} · {cenario.sacasPorHectare} sc/ha ·{" "}
+              {plantasPorHa > 0 ? `${nf(plantasPorHa)} pl/ha` : "plantas/ha não informado"}
+            </dd>
+          </div>
+          <div>
+            <dt>Gerado em</dt>
+            <dd>{new Date(proveniencia.geradoEm).toLocaleString("pt-BR")}</dd>
+          </div>
+        </dl>
+        <p className="fert-prov-note">{provenienciaResumo(proveniencia)}</p>
+      </section>
 
       <p className="fert-disclaimer">
         Cálculo determinístico a partir das tabelas do Boletim 100 (IAC) e do laudo informado.
