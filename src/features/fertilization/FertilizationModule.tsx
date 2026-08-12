@@ -8,6 +8,7 @@ import {
   Info,
   Layers,
   Mountain,
+  ShieldCheck,
   Sprout,
   TriangleAlert,
 } from "lucide-react";
@@ -29,7 +30,14 @@ import {
 } from "../../domain/fertilizerProgram";
 import { gramasPorPlanta } from "../../domain/calculators";
 import { buildProveniencia, provenienciaResumo } from "../../domain/provenance";
+import { shortHash, type RecommendationSnapshot } from "../../domain/recommendationSnapshot";
 import { BarChart } from "../reports/charts/BarChart";
+import {
+  listSnapshots,
+  saveSnapshot,
+  type SavedSnapshot,
+  type SnapshotListItem,
+} from "./snapshotClient";
 import { parseNumberBR } from "../../domain/parseNumber";
 import {
   VR_LIMITACAO_GEO,
@@ -139,6 +147,10 @@ export function FertilizationModule({
   const [cobertura, setCobertura] = useState(savedPrefs?.cobertura ?? "270010");
   const [fonteK, setFonteK] = useState(savedPrefs?.fonteK ?? "kcl");
   const [precos, setPrecos] = useState<Record<string, string>>(loadPrecos);
+  const [emitindo, setEmitindo] = useState(false);
+  const [emitido, setEmitido] = useState<SavedSnapshot | null>(null);
+  const [erroEmissao, setErroEmissao] = useState<string | null>(null);
+  const [emissoes, setEmissoes] = useState<SnapshotListItem[]>([]);
   const plantasPorHa = parseNumberBR(plantasPorHaRaw) ?? 0;
   const plantasPorHaInvalido = plantasPorHaRaw.trim() !== "" && parseNumberBR(plantasPorHaRaw) === null;
 
@@ -165,6 +177,18 @@ export function FertilizationModule({
       // sem persistência: segue em memória
     }
   }, [precos]);
+
+  // Carrega o histórico de emissões (snapshots) deste talhão.
+  useEffect(() => {
+    if (!plot) return;
+    let active = true;
+    void listSnapshots(plot.id).then((list) => {
+      if (active) setEmissoes(list);
+    });
+    return () => {
+      active = false;
+    };
+  }, [plot]);
   const soil = plot ? latestSoilForPlot(soilAnalyses, plot.id) : null;
   const cenario = CENARIOS.find((item) => item.id === cenarioId) ?? CENARIOS[1];
 
@@ -221,6 +245,7 @@ export function FertilizationModule({
     { vAlvo, cobertura, fonteP, fonteK, sacas: cenario.sacasPorHectare, plantasPorHa },
   );
 
+
   // Custo do programa em cada cenário (a fórmula é a mesma; as doses mudam).
   const custoPorCenario = CENARIOS.map((item) => {
     const adub = recomendarAdubacao({
@@ -242,6 +267,41 @@ export function FertilizationModule({
       custoSaca: item.sacasPorHectare > 0 ? custoHa / item.sacasPorHectare : 0,
     };
   });
+
+  const custoAtual = custoPorCenario.find((item) => item.id === cenarioId);
+
+  async function emitirRecomendacao() {
+    if (!plot) return;
+    setEmitindo(true);
+    setErroEmissao(null);
+    const snap: RecommendationSnapshot = {
+      plotId: plot.id,
+      soilAnalysisId: soil?.id ?? null,
+      engine: proveniencia.engine,
+      version: proveniencia.versao,
+      params: { vAlvo, cobertura, fonteP, fonteK, sacas: cenario.sacasPorHectare, plantasPorHa },
+      npk: { n: adubacao.n, p2o5: adubacao.p2o5, k2o: adubacao.k2o, s: adubacao.s },
+      calagemTHa: calagem?.toneladasPorHectare ?? 0,
+      programa: programa.itens.map((it) => ({
+        id: it.id,
+        formula: it.formula,
+        kgPorHectare: Math.round(it.kgPorHectare * 100) / 100,
+      })),
+      custoHa: Math.round((custoAtual?.custoHa ?? 0) * 100) / 100,
+      custoSaca: Math.round((custoAtual?.custoSaca ?? 0) * 100) / 100,
+    };
+    const result = await saveSnapshot(snap);
+    if (result.ok) {
+      setEmitido(result.saved);
+      setEmissoes((prev) => [
+        { id: result.saved.id, hash: result.saved.hash, createdAt: result.saved.createdAt, cobertura, custoSaca: snap.custoSaca },
+        ...prev,
+      ]);
+    } else {
+      setErroEmissao(result.reason);
+    }
+    setEmitindo(false);
+  }
 
   const totalCalcario = calagem ? calagem.toneladasPorHectare * plot.areaHectares : 0;
 
@@ -788,6 +848,39 @@ export function FertilizationModule({
           </div>
         </dl>
         <p className="fert-prov-note">{provenienciaResumo(proveniencia)}</p>
+
+        <div className="fert-emit">
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => void emitirRecomendacao()}
+            disabled={emitindo}
+          >
+            <ShieldCheck size={16} aria-hidden="true" />
+            {emitindo ? "Registrando…" : "Registrar recomendação (imutável)"}
+          </button>
+          {emitido && (
+            <p className="fert-emit-ok">
+              ✓ Emitida em {new Date(emitido.createdAt).toLocaleString("pt-BR")} · id{" "}
+              {emitido.id.slice(0, 8)} · hash <code>{shortHash(emitido.hash)}</code>
+            </p>
+          )}
+          {erroEmissao && <p className="fert-emit-erro">{erroEmissao}</p>}
+        </div>
+
+        {emissoes.length > 0 && (
+          <details className="fert-emit-list">
+            <summary>Emissões anteriores ({emissoes.length})</summary>
+            <ul>
+              {emissoes.map((item) => (
+                <li key={item.id}>
+                  <span>{new Date(item.createdAt).toLocaleDateString("pt-BR")}</span> · {item.cobertura} ·{" "}
+                  {brl2(item.custoSaca)}/sc · <code>{shortHash(item.hash)}</code>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
 
       <p className="fert-disclaimer">
