@@ -31,6 +31,7 @@ export type AgriculturalController = {
 
 type PropertyRow = {
   id: string;
+  user_id: string;
   name: string;
   producer: string;
   responsible: string;
@@ -65,6 +66,7 @@ function propertyFromRow(row: PropertyRow): FarmProperty {
     city: row.city,
     state: row.state,
     createdAt: row.created_at,
+    ownerId: row.user_id,
   };
 }
 
@@ -105,7 +107,11 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
     if (!userId) return;
     const syncPending = async () => {
       if (!navigator.onLine) return;
-      const properties = state.properties.map((property) => ({
+      // Só sincroniza o que é do usuário — nunca reescreve propriedade
+      // compartilhada por outro dono (o RLS bloquearia, mas nem tentamos).
+      const owned = state.properties.filter((p) => !p.ownerId || p.ownerId === userId);
+      const ownedIds = new Set(owned.map((p) => p.id));
+      const properties = owned.map((property) => ({
         id: property.id,
         user_id: userId,
         name: property.name,
@@ -115,7 +121,7 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
         state: property.state,
         created_at: property.createdAt,
       }));
-      const plots = state.plots.map((plot) => ({
+      const plots = state.plots.filter((plot) => ownedIds.has(plot.propertyId)).map((plot) => ({
         id: plot.id,
         user_id: userId,
         property_id: plot.propertyId,

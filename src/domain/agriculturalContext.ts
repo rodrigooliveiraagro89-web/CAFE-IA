@@ -35,7 +35,14 @@ export type FarmProperty = {
   city: string;
   state: string;
   createdAt: string;
+  /** Dono (user_id). Ausente = criada localmente (própria). Diferente do usuário atual = compartilhada (leitura). */
+  ownerId?: string;
 };
+
+/** true quando a propriedade é de outro dono (compartilhada com o usuário atual). */
+export function isSharedProperty(property: FarmProperty, userId: string | null): boolean {
+  return Boolean(property.ownerId && userId && property.ownerId !== userId);
+}
 
 export type FarmPlot = {
   id: string;

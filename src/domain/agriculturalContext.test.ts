@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { parseGeoJsonPolygon, parseKmlPolygon, parsePlotBoundary } from "./agriculturalContext";
+import {
+  isSharedProperty,
+  parseGeoJsonPolygon,
+  parseKmlPolygon,
+  parsePlotBoundary,
+  type FarmProperty,
+} from "./agriculturalContext";
+
+describe("isSharedProperty", () => {
+  const base = { id: "p1", name: "Sítio", producer: "", responsible: "", city: "", state: "", createdAt: "" };
+  it("é compartilhada quando o dono é outro usuário", () => {
+    expect(isSharedProperty({ ...base, ownerId: "outro" } as FarmProperty, "eu")).toBe(true);
+  });
+  it("não é compartilhada quando o dono é o usuário atual", () => {
+    expect(isSharedProperty({ ...base, ownerId: "eu" } as FarmProperty, "eu")).toBe(false);
+  });
+  it("não é compartilhada sem ownerId nem sem usuário", () => {
+    expect(isSharedProperty(base as FarmProperty, "eu")).toBe(false);
+    expect(isSharedProperty({ ...base, ownerId: "outro" } as FarmProperty, null)).toBe(false);
+  });
+});
 
 const coordinates = [
   [-46.6, -21.2],

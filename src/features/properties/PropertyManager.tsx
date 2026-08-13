@@ -2,16 +2,20 @@ import {
   Building2,
   Check,
   Crown,
+  Eye,
   FileUp,
   LandPlot,
   MapPinned,
   Plus,
+  Share2,
   Trash2,
+  UserPlus,
   Wheat,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   cropOptions,
+  isSharedProperty,
   parsePlotBoundary,
   phenologicalStages,
   propertyLocation,
@@ -21,6 +25,12 @@ import {
 } from "../../domain/agriculturalContext";
 import { canAddPlot, canAddProperty, resolvePlan, TRIAL_DAYS } from "../../domain/plans";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
+import {
+  inviteCollaborator,
+  listCollaborators,
+  revokeCollaborator,
+  type Collaborator,
+} from "./collaboratorsClient";
 
 type PropertyManagerProps = {
   agriculture: AgriculturalController;
@@ -28,6 +38,7 @@ type PropertyManagerProps = {
   trialAvailable?: boolean;
   onStartTrial?: () => void;
   onSubscribe?: () => void;
+  userId?: string | null;
 };
 
 function UpgradeNotice({
@@ -90,14 +101,94 @@ const blankPlot: PlotInput = {
   geometry: null,
 };
 
+function SharePanel({ propertyId, propertyName }: { propertyId: string; propertyName: string }) {
+  const [colabs, setColabs] = useState<Collaborator[]>([]);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void listCollaborators(propertyId).then((list) => {
+      if (active) setColabs(list);
+    });
+    return () => {
+      active = false;
+    };
+  }, [propertyId]);
+
+  async function convidar(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    const result = await inviteCollaborator(propertyId, email);
+    if (result.ok) {
+      setColabs((prev) => [...prev, result.collaborator]);
+      setEmail("");
+      setMsg({ ok: true, text: `Convite enviado para ${result.collaborator.invitedEmail}.` });
+    } else {
+      setMsg({ ok: false, text: result.reason });
+    }
+    setBusy(false);
+  }
+
+  async function revogar(id: string) {
+    if (await revokeCollaborator(id)) setColabs((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  return (
+    <section className="panel-card share-panel">
+      <div className="section-heading compact-heading">
+        <div>
+          <span className="eyebrow"><Share2 size={13} /> Colaboração</span>
+          <h2>Compartilhar {propertyName}</h2>
+          <p>Convide o produtor ou o técnico por e-mail para acompanhar esta propriedade em leitura.</p>
+        </div>
+      </div>
+      <form className="share-invite" onSubmit={(event) => void convidar(event)}>
+        <input
+          type="email"
+          placeholder="email@exemplo.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          aria-label="E-mail do convidado"
+          required
+        />
+        <button className="primary-button" type="submit" disabled={busy}>
+          <UserPlus size={16} /> {busy ? "Convidando…" : "Convidar"}
+        </button>
+      </form>
+      {msg && <p className={msg.ok ? "share-ok" : "share-erro"}>{msg.text}</p>}
+      {colabs.length > 0 && (
+        <ul className="share-list">
+          {colabs.map((item) => (
+            <li key={item.id}>
+              <span><Eye size={13} aria-hidden="true" /> {item.invitedEmail}</span>
+              <button type="button" className="text-button" onClick={() => void revogar(item.id)}>
+                Remover acesso
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="share-note">
+        Quem você convidar vê talhões, laudos, NDVI e recomendações — sem poder editar. Você pode
+        remover o acesso quando quiser.
+      </p>
+    </section>
+  );
+}
+
 export function PropertyManager({
   agriculture,
   planId = null,
   trialAvailable = false,
   onStartTrial,
   onSubscribe,
+  userId = null,
 }: PropertyManagerProps) {
   const { state, selectedProperty, selectedPlot } = agriculture;
+  const selectedShared = selectedProperty ? isSharedProperty(selectedProperty, userId) : false;
   const [propertyDraft, setPropertyDraft] = useState(blankProperty);
   const [plotDraft, setPlotDraft] = useState(blankPlot);
   const [propertyFormOpen, setPropertyFormOpen] = useState(state.properties.length === 0);
@@ -266,44 +357,63 @@ export function PropertyManager({
               {state.properties.map((property) => {
                 const active = property.id === selectedProperty?.id;
                 const count = state.plots.filter((plot) => plot.propertyId === property.id).length;
+                const shared = isSharedProperty(property, userId);
                 return (
                   <article className="selection-card" data-active={active} key={property.id}>
                     <button className="selection-main" type="button" onClick={() => agriculture.selectProperty(property.id)}>
                       <span className="selection-icon"><Building2 size={21} /></span>
                       <span>
-                        <strong>{property.name}</strong>
+                        <strong>
+                          {property.name}
+                          {shared && <span className="shared-badge"><Eye size={12} /> compartilhada</span>}
+                        </strong>
                         <small>{property.producer} · {propertyLocation(property)}</small>
                         <small>{count} {count === 1 ? "talhão" : "talhões"}</small>
                       </span>
                       {active && <Check size={20} aria-label="Selecionada" />}
                     </button>
-                    <button
-                      className="danger-icon"
-                      type="button"
-                      title="Excluir propriedade"
-                      onClick={() => {
-                        if (window.confirm(`Excluir ${property.name} e seus talhões?`)) {
-                          agriculture.removeProperty(property.id);
-                        }
-                      }}
-                    >
-                      <Trash2 size={17} />
-                    </button>
+                    {!shared && (
+                      <button
+                        className="danger-icon"
+                        type="button"
+                        title="Excluir propriedade"
+                        onClick={() => {
+                          if (window.confirm(`Excluir ${property.name} e seus talhões?`)) {
+                            agriculture.removeProperty(property.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={17} />
+                      </button>
+                    )}
                   </article>
                 );
               })}
             </div>
           </section>
 
+          {selectedProperty && !selectedShared && (
+            <SharePanel propertyId={selectedProperty.id} propertyName={selectedProperty.name} />
+          )}
+
           {selectedProperty && (
             <section className="panel-card">
+              {selectedShared && (
+                <div className="shared-readonly" role="status">
+                  <Eye size={17} aria-hidden="true" />
+                  <span>
+                    Propriedade <strong>compartilhada com você</strong> — somente leitura. As
+                    alterações são feitas pelo dono.
+                  </span>
+                </div>
+              )}
               <div className="section-heading compact-heading">
                 <div>
                   <span className="eyebrow">{selectedProperty.name}</span>
                   <h2>Talhões e culturas</h2>
                   <p>Selecione a área operacional ou cadastre um novo limite.</p>
                 </div>
-                {plotAllowed && (
+                {plotAllowed && !selectedShared && (
                   <button className="secondary-button" type="button" onClick={() => setPlotFormOpen(true)}>
                     <Plus size={17} /> Novo talhão
                   </button>
@@ -402,16 +512,18 @@ export function PropertyManager({
                         <span className="plot-meta">{plot.season}{plot.variety ? ` · ${plot.variety}` : ""}</span>
                         {plot.geometry && <span className="geometry-badge"><MapPinned size={13} /> Limite geográfico</span>}
                       </button>
-                      <button
-                        className="danger-icon"
-                        type="button"
-                        title="Excluir talhão"
-                        onClick={() => {
-                          if (window.confirm(`Excluir o talhão ${plot.name}?`)) agriculture.removePlot(plot.id);
-                        }}
-                      >
-                        <Trash2 size={17} />
-                      </button>
+                      {!selectedShared && (
+                        <button
+                          className="danger-icon"
+                          type="button"
+                          title="Excluir talhão"
+                          onClick={() => {
+                            if (window.confirm(`Excluir o talhão ${plot.name}?`)) agriculture.removePlot(plot.id);
+                          }}
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      )}
                     </article>
                   ))}
                 </div>

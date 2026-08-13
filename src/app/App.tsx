@@ -172,6 +172,7 @@ export function App() {
       {activeView === "propriedades" && (
         <PropertyManager
           agriculture={agriculture}
+          userId={auth.userId}
           planId={effectivePlanId(auth.profile?.plano, auth.profile?.trialAte)}
           trialAvailable={!trialAlreadyUsed(auth.profile?.trialAte)}
           onStartTrial={() => void auth.startTrial()}
