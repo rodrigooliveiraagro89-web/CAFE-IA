@@ -24,7 +24,10 @@ describe("App AGRYN", () => {
     await user.click(
       await screen.findByRole("button", { name: /Mais ferramentasTodas as ferramentas AGRYN/i }),
     );
-    expect(screen.getByRole("heading", { name: "Todos os módulos AGRYN" })).toBeInTheDocument();
+    // ModuleHub agora carrega sob demanda (React.lazy) — espera aparecer.
+    expect(
+      await screen.findByRole("heading", { name: "Todos os módulos AGRYN" }),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByRole("searchbox", { name: "Buscar módulo" }), "clima");
     expect(screen.getByRole("link", { name: /Clima:/i })).toBeInTheDocument();

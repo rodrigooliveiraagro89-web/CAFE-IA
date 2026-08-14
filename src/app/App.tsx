@@ -1,31 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { AuthScreen } from "../components/AuthScreen";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { logEvent } from "../lib/telemetry";
 import { evaluateRecommendationReadiness } from "../domain/safety";
-import { CalculatorsModule } from "../features/calculators/CalculatorsModule";
-import { CostCenter } from "../features/costs/CostCenter";
-import { FertilizationModule } from "../features/fertilization/FertilizationModule";
-import { AssistantModule } from "../features/assistant/AssistantModule";
-import { DiagnosisModule } from "../features/diagnosis/DiagnosisModule";
-import { PrivacyModule } from "../features/privacy/PrivacyModule";
-import { MarketModule } from "../features/market/MarketModule";
-import { WeatherModule } from "../features/weather/WeatherModule";
+// Dashboard é a tela inicial — fica eager para o primeiro paint ser instantâneo.
 import { Dashboard } from "../features/dashboard/Dashboard";
-import { FieldNotebook } from "../features/fieldbook/FieldNotebook";
-import { ModuleHub } from "../features/modules/ModuleHub";
-import { MappingModule } from "../features/mapping/MappingModule";
-import { useNdviHistory } from "../features/ndvi/historyStore";
-import { NdviModule } from "../features/ndvi/NdviModule";
 import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
-import { PortfolioPanel } from "../features/portfolio/PortfolioPanel";
-import { PropertyManager } from "../features/properties/PropertyManager";
-import { ReportModule } from "../features/reports/ReportModule";
-import { SoilModule } from "../features/soil/SoilModule";
+import { useNdviHistory } from "../features/ndvi/historyStore";
 import { useSoilAnalyses } from "../features/soil/soilStore";
-import { TimelineModule } from "../features/timeline/TimelineModule";
-import { SafetyCenter } from "../features/safety/SafetyCenter";
+// Módulos de rota carregados sob demanda (code-splitting) — Leaflet/NDVI/mapa e
+// demais telas saem do bundle inicial e só baixam quando o usuário abre.
+const CalculatorsModule = lazy(() => import("../features/calculators/CalculatorsModule").then((m) => ({ default: m.CalculatorsModule })));
+const CostCenter = lazy(() => import("../features/costs/CostCenter").then((m) => ({ default: m.CostCenter })));
+const FertilizationModule = lazy(() => import("../features/fertilization/FertilizationModule").then((m) => ({ default: m.FertilizationModule })));
+const AssistantModule = lazy(() => import("../features/assistant/AssistantModule").then((m) => ({ default: m.AssistantModule })));
+const DiagnosisModule = lazy(() => import("../features/diagnosis/DiagnosisModule").then((m) => ({ default: m.DiagnosisModule })));
+const PrivacyModule = lazy(() => import("../features/privacy/PrivacyModule").then((m) => ({ default: m.PrivacyModule })));
+const MarketModule = lazy(() => import("../features/market/MarketModule").then((m) => ({ default: m.MarketModule })));
+const WeatherModule = lazy(() => import("../features/weather/WeatherModule").then((m) => ({ default: m.WeatherModule })));
+const FieldNotebook = lazy(() => import("../features/fieldbook/FieldNotebook").then((m) => ({ default: m.FieldNotebook })));
+const ModuleHub = lazy(() => import("../features/modules/ModuleHub").then((m) => ({ default: m.ModuleHub })));
+const MappingModule = lazy(() => import("../features/mapping/MappingModule").then((m) => ({ default: m.MappingModule })));
+const NdviModule = lazy(() => import("../features/ndvi/NdviModule").then((m) => ({ default: m.NdviModule })));
+const PortfolioPanel = lazy(() => import("../features/portfolio/PortfolioPanel").then((m) => ({ default: m.PortfolioPanel })));
+const PropertyManager = lazy(() => import("../features/properties/PropertyManager").then((m) => ({ default: m.PropertyManager })));
+const ReportModule = lazy(() => import("../features/reports/ReportModule").then((m) => ({ default: m.ReportModule })));
+const SoilModule = lazy(() => import("../features/soil/SoilModule").then((m) => ({ default: m.SoilModule })));
+const TimelineModule = lazy(() => import("../features/timeline/TimelineModule").then((m) => ({ default: m.TimelineModule })));
+const SafetyCenter = lazy(() => import("../features/safety/SafetyCenter").then((m) => ({ default: m.SafetyCenter })));
 import { effectivePlanId, trialAlreadyUsed } from "../domain/plans";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
 import { useAuth } from "../lib/useAuth";
@@ -142,6 +145,7 @@ export function App() {
     >
       <ImportLocalDataDialog userId={auth.userId} onDone={() => window.location.reload()} />
       <ErrorBoundary resetKey={activeView} label="esta tela">
+      <Suspense fallback={<div className="route-loading" role="status">Carregando…</div>}>
       {activeView === "inicio" && (
         <Dashboard
           safety={safety}
@@ -280,6 +284,7 @@ export function App() {
         />
       )}
       {activeView === "seguranca" && <SafetyCenter safety={safety} />}
+      </Suspense>
       </ErrorBoundary>
     </AppShell>
   );

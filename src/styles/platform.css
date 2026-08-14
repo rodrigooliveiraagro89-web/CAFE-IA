@@ -870,3 +870,6 @@ input[aria-invalid="true"] {
 .share-list li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); font-size: .88rem; }
 .share-list li span { display: inline-flex; align-items: center; gap: .4rem; color: var(--text); }
 .share-note { margin: .9rem 0 0; font-size: .78rem; color: var(--text-faint); }
+
+/* Fallback de carregamento das rotas lazy */
+.route-loading { display: flex; align-items: center; justify-content: center; min-height: 40vh; color: var(--text-soft); font-size: .95rem; }
