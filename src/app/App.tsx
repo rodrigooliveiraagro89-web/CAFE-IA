@@ -7,6 +7,7 @@ import { evaluateRecommendationReadiness } from "../domain/safety";
 // Dashboard é a tela inicial — fica eager para o primeiro paint ser instantâneo.
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
+import { WelcomeScreen } from "../features/onboarding/WelcomeScreen";
 import { useNdviHistory } from "../features/ndvi/historyStore";
 import { useSoilAnalyses } from "../features/soil/soilStore";
 // Módulos de rota carregados sob demanda (code-splitting) — Leaflet/NDVI/mapa e
@@ -69,7 +70,7 @@ export function App() {
   const agriculture = useAgriculturalContext(auth.userId);
   const fieldBook = useFieldRecords(auth.userId);
   const ndviHistory = useNdviHistory(auth.userId);
-  const soil = useSoilAnalyses(auth.userId);
+  const soil = useSoilAnalyses(auth.userId, agriculture.demoActive);
   const safety = useMemo(() => {
     const plot = agriculture.selectedPlot;
     if (!plot) return evaluateRecommendationReadiness();
@@ -102,6 +103,10 @@ export function App() {
     document.documentElement.style.colorScheme = theme;
     savePreferences({ theme, lastView: activeView });
   }, [activeView, theme]);
+
+  // Conta nova (logada, sem propriedades e fora do modo demo): tela de boas-vindas.
+  const showWelcome =
+    Boolean(auth.userId) && agriculture.state.properties.length === 0 && !agriculture.demoActive;
 
   function navigate(view: AppView) {
     setActiveView(view);
@@ -144,9 +149,24 @@ export function App() {
       onSignOut={auth.signOut}
     >
       <ImportLocalDataDialog userId={auth.userId} onDone={() => window.location.reload()} />
+      {agriculture.demoActive && (
+        <div className="demo-banner" role="status">
+          <span>🧪 <strong>Modo demonstração</strong> — dados fictícios, nada é salvo.</span>
+          <button type="button" onClick={() => { agriculture.exitDemo(); navigate("inicio"); }}>
+            Sair do exemplo
+          </button>
+        </div>
+      )}
       <ErrorBoundary resetKey={activeView} label="esta tela">
       <Suspense fallback={<div className="route-loading" role="status">Carregando…</div>}>
-      {activeView === "inicio" && (
+      {activeView === "inicio" && showWelcome && (
+        <WelcomeScreen
+          name={auth.profile?.nome?.split(" ")[0]}
+          onLoadDemo={agriculture.loadDemo}
+          onCreate={() => navigate("propriedades")}
+        />
+      )}
+      {activeView === "inicio" && !showWelcome && (
         <Dashboard
           safety={safety}
           onNavigate={navigate}

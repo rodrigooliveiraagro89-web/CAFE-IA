@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import type { SoilValues } from "../../domain/soilAnalysis";
+import { demoSoil } from "../onboarding/demoData";
 
 const STORAGE_KEY = "agryn.soil-analyses.v1";
 const LIMIT = 50;
@@ -43,15 +44,17 @@ function logSyncError(action: string, error: { message: string } | null) {
   if (error) console.error(`[agryn] falha ao sincronizar ${action}:`, error.message);
 }
 
-export function useSoilAnalyses(userId: string | null = null) {
+export function useSoilAnalyses(userId: string | null = null, demoActive = false) {
   const [analyses, setAnalyses] = useState<SoilAnalysis[]>(loadAnalyses);
   const previousUserId = useRef<string | null>(null);
 
   useEffect(() => {
+    if (demoActive) return; // não persiste dados de exemplo
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(analyses));
-  }, [analyses]);
+  }, [analyses, demoActive]);
 
   useEffect(() => {
+    if (demoActive) return; // no modo demo, a nuvem não manda
     if (!userId) {
       if (previousUserId.current) {
         window.localStorage.removeItem(STORAGE_KEY);
@@ -81,13 +84,14 @@ export function useSoilAnalyses(userId: string | null = null) {
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, demoActive]);
 
   return {
-    analyses,
+    analyses: demoActive ? demoSoil : analyses,
     addAnalysis(input: Omit<SoilAnalysis, "id" | "createdAt">) {
       const id = crypto.randomUUID();
       const analysis: SoilAnalysis = { ...input, id, createdAt: new Date().toISOString() };
+      if (demoActive) return id; // no modo demo não grava nada
       setAnalyses((current) => [analysis, ...current].slice(0, LIMIT));
       if (userId) {
         supabase

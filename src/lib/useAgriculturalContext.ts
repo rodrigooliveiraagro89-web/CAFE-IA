@@ -8,6 +8,7 @@ import {
   type PropertyInput,
 } from "../domain/agriculturalContext";
 import type { GeoPolygon } from "../features/ndvi/types";
+import { demoPlots, demoProperty } from "../features/onboarding/demoData";
 import { supabase } from "./supabaseClient";
 
 const STORAGE_KEY = "agryn.agricultural-context.v1";
@@ -27,6 +28,10 @@ export type AgriculturalController = {
   selectPlot: (plotId: string) => void;
   removeProperty: (propertyId: string) => void;
   removePlot: (plotId: string) => void;
+  /** Modo demonstração ativo (dados fictícios, nunca sincronizados). */
+  demoActive: boolean;
+  loadDemo: () => void;
+  exitDemo: () => void;
 };
 
 type PropertyRow = {
@@ -95,16 +100,18 @@ function logSyncError(action: string, error: { message: string } | null) {
 
 export function useAgriculturalContext(userId: string | null = null): AgriculturalController {
   const [state, setState] = useState<AgriculturalContextState>(loadContext);
+  const [demoActive, setDemoActive] = useState(false);
   const previousUserId = useRef<string | null>(null);
 
   // Cache local para carregamento instantâneo — deixa de ser fonte de verdade
-  // assim que há uma conta logada (a nuvem manda).
+  // assim que há uma conta logada (a nuvem manda). Nunca persiste o modo demo.
   useEffect(() => {
+    if (demoActive) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+  }, [state, demoActive]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || demoActive) return;
     const syncPending = async () => {
       if (!navigator.onLine) return;
       // Só sincroniza o que é do usuário — nunca reescreve propriedade
@@ -153,12 +160,13 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
     const onOnline = () => { void syncPending(); };
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, [state, userId]);
+  }, [state, userId, demoActive]);
 
   // Ao logar, busca propriedades e talhões reais da conta.
   // Ao deslogar, limpa o cache local para não vazar dado de uma conta pra
   // sessão seguinte no mesmo navegador.
   useEffect(() => {
+    if (demoActive) return; // no modo demo, a nuvem não manda
     if (!userId) {
       if (previousUserId.current) {
         window.localStorage.removeItem(STORAGE_KEY);
@@ -197,7 +205,7 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, demoActive]);
 
   const selectedProperty =
     state.properties.find((property) => property.id === state.selectedPropertyId) ?? null;
@@ -363,8 +371,22 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
             .then(({ error }) => logSyncError("remoção do talhão", error));
         }
       },
+      demoActive,
+      loadDemo() {
+        setDemoActive(true);
+        setState({
+          properties: [demoProperty],
+          plots: demoPlots,
+          selectedPropertyId: demoProperty.id,
+          selectedPlotId: demoPlots[0]?.id ?? "",
+        });
+      },
+      exitDemo() {
+        setDemoActive(false);
+        setState(emptyAgriculturalContext);
+      },
     }),
-    [selectedPlot, selectedProperty, state, userId],
+    [selectedPlot, selectedProperty, state, userId, demoActive],
   );
 }
 

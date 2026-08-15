@@ -6,16 +6,17 @@ import { App } from "./App";
 describe("App AGRYN", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("apresenta a jornada AGRYN sem inventar indicadores", async () => {
+  it("conta nova vê as boas-vindas e carrega o exemplo (dados fictícios)", async () => {
+    const user = userEvent.setup();
     render(<App />);
-    expect(await screen.findByRole("heading", { name: /Rodrigo/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Módulos da operação" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Solo:/i })).toHaveAttribute(
-      "href",
-      "./?view=analise-solo",
-    );
-    expect(screen.getAllByText("Selecione uma propriedade").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Recomendação protegida" })).toBeInTheDocument();
+    // Conta sem propriedades: tela de boas-vindas, não o painel.
+    expect(
+      await screen.findByRole("button", { name: /Explorar com dados de exemplo/i }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Explorar com dados de exemplo/i }));
+    // Ao carregar o exemplo, a propriedade fictícia aparece e há o aviso de demo.
+    expect((await screen.findAllByText(/Fazenda Modelo/i)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Modo demonstração/i)).toBeInTheDocument();
   });
 
   it("abre a central de módulos e filtra recursos reais", async () => {
