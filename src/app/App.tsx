@@ -37,6 +37,7 @@ import { useFieldRecords } from "../lib/useFieldRecords";
 import { loadPreferences, savePreferences, type ThemePreference } from "../lib/preferences";
 import type { AppView } from "./navigation";
 import { createProCheckout } from "../features/billing/billingClient";
+import { linkPendingCollaborations } from "../features/properties/collaboratorsClient";
 
 const validViews: AppView[] = [
   "inicio",
@@ -103,6 +104,11 @@ export function App() {
     document.documentElement.style.colorScheme = theme;
     savePreferences({ theme, lastView: activeView });
   }, [activeView, theme]);
+
+  // Ao logar, vincula convites de colaboração feitos ao e-mail do usuário.
+  useEffect(() => {
+    if (auth.userId) void linkPendingCollaborations();
+  }, [auth.userId]);
 
   // Conta nova (logada, sem propriedades e fora do modo demo): tela de boas-vindas.
   const showWelcome =

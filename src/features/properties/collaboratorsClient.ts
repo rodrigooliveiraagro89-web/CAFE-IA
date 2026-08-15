@@ -77,3 +77,32 @@ export async function revokeCollaborator(id: string): Promise<boolean> {
   const { error } = await supabase.from("property_collaborators").delete().eq("id", id);
   return !error;
 }
+
+/**
+ * Ao logar, vincula o member_id nos convites feitos ao e-mail do usuário (que
+ * ainda estavam só por e-mail). Deixa a colaboração robusta — o RLS passa a
+ * casar por member_id, não só pelo e-mail do JWT. Best-effort e idempotente.
+ */
+export async function linkPendingCollaborations(): Promise<void> {
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+  if (!user?.email) return;
+  await supabase
+    .from("property_collaborators")
+    .update({ member_id: user.id, status: "active" })
+    .is("member_id", null)
+    .ilike("invited_email", user.email);
+}
+
+/** Texto e link prontos para o dono enviar o convite (WhatsApp, etc.). */
+export function inviteMessage(propertyName: string, email: string): { texto: string; url: string; whatsapp: string } {
+  const appUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${import.meta.env.BASE_URL ?? "/"}`
+      : "https://rodrigooliveiraagro89-web.github.io/CAFE-IA/";
+  const texto =
+    `Compartilhei a propriedade "${propertyName}" com você no AGRYN (acesso de leitura).\n` +
+    `Entre com este e-mail: ${email}\n` +
+    `Acesse: ${appUrl}`;
+  return { texto, url: appUrl, whatsapp: `https://wa.me/?text=${encodeURIComponent(texto)}` };
+}

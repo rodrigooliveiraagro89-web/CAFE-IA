@@ -27,6 +27,7 @@ import { canAddPlot, canAddProperty, resolvePlan, TRIAL_DAYS } from "../../domai
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import {
   inviteCollaborator,
+  inviteMessage,
   listCollaborators,
   revokeCollaborator,
   type Collaborator,
@@ -106,6 +107,8 @@ function SharePanel({ propertyId, propertyName }: { propertyId: string; property
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [convite, setConvite] = useState<{ email: string; texto: string; whatsapp: string } | null>(null);
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -124,8 +127,11 @@ function SharePanel({ propertyId, propertyName }: { propertyId: string; property
     const result = await inviteCollaborator(propertyId, email);
     if (result.ok) {
       setColabs((prev) => [...prev, result.collaborator]);
+      const message = inviteMessage(propertyName, result.collaborator.invitedEmail);
+      setConvite({ email: result.collaborator.invitedEmail, texto: message.texto, whatsapp: message.whatsapp });
+      setCopiado(false);
       setEmail("");
-      setMsg({ ok: true, text: `Convite enviado para ${result.collaborator.invitedEmail}.` });
+      setMsg(null);
     } else {
       setMsg({ ok: false, text: result.reason });
     }
@@ -159,6 +165,29 @@ function SharePanel({ propertyId, propertyName }: { propertyId: string; property
         </button>
       </form>
       {msg && <p className={msg.ok ? "share-ok" : "share-erro"}>{msg.text}</p>}
+      {convite && (
+        <div className="share-invite-ready">
+          <p className="share-ok">
+            ✓ Acesso liberado para <strong>{convite.email}</strong>. Envie o convite para a pessoa
+            entrar (com esse e-mail):
+          </p>
+          <textarea readOnly rows={3} value={convite.texto} aria-label="Mensagem do convite" />
+          <div className="share-invite-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                void navigator.clipboard?.writeText(convite.texto).then(() => setCopiado(true));
+              }}
+            >
+              {copiado ? <Check size={16} /> : null} {copiado ? "Copiado" : "Copiar mensagem"}
+            </button>
+            <a className="secondary-button" href={convite.whatsapp} target="_blank" rel="noopener noreferrer">
+              <Share2 size={16} /> Enviar por WhatsApp
+            </a>
+          </div>
+        </div>
+      )}
       {colabs.length > 0 && (
         <ul className="share-list">
           {colabs.map((item) => (
