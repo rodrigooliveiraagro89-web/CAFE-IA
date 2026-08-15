@@ -84,14 +84,18 @@ export async function revokeCollaborator(id: string): Promise<boolean> {
  * casar por member_id, não só pelo e-mail do JWT. Best-effort e idempotente.
  */
 export async function linkPendingCollaborations(): Promise<void> {
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
-  if (!user?.email) return;
-  await supabase
-    .from("property_collaborators")
-    .update({ member_id: user.id, status: "active" })
-    .is("member_id", null)
-    .ilike("invited_email", user.email);
+  try {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+    if (!user?.email) return;
+    await supabase
+      .from("property_collaborators")
+      .update({ member_id: user.id, status: "active" })
+      .is("member_id", null)
+      .ilike("invited_email", user.email);
+  } catch {
+    // best-effort: nunca derruba o app por causa disto
+  }
 }
 
 /** Texto e link prontos para o dono enviar o convite (WhatsApp, etc.). */

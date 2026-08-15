@@ -19,6 +19,8 @@ function makeBuilder(result: QueryResult) {
     select: () => builder,
     order: () => builder,
     eq: () => builder,
+    is: () => builder,
+    ilike: () => builder,
     limit: () => builder,
     maybeSingle: () => Promise.resolve(result),
     insert: () => Promise.resolve(result),
@@ -46,6 +48,7 @@ vi.mock("../lib/supabaseClient", () => ({
   supabase: {
     auth: {
       getSession: () => Promise.resolve({ data: { session: fakeSession } }),
+      getUser: () => Promise.resolve({ data: { user: fakeSession.user } }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       signUp: () => Promise.resolve({ error: null }),
       signInWithPassword: () => Promise.resolve({ error: null }),
