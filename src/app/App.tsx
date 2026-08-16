@@ -10,26 +10,46 @@ import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDia
 import { WelcomeScreen } from "../features/onboarding/WelcomeScreen";
 import { useNdviHistory } from "../features/ndvi/historyStore";
 import { useSoilAnalyses } from "../features/soil/soilStore";
+// Recupera de chunk obsoleto: após um deploy, os hashes mudam e o index antigo
+// (ainda aberto no navegador) tenta baixar um chunk que sumiu → "Failed to fetch
+// dynamically imported module". Recarregamos a página UMA vez para pegar a versão
+// nova; o flag em sessionStorage evita laço (é limpo no boot, em main.tsx).
+function retryImport<T>(factory: () => Promise<T>): Promise<T> {
+  return factory().catch((error: unknown) => {
+    const KEY = "agryn:chunk-reload";
+    try {
+      if (!sessionStorage.getItem(KEY)) {
+        sessionStorage.setItem(KEY, "1");
+        window.location.reload();
+        return new Promise<T>(() => {}); // segura enquanto a página recarrega
+      }
+    } catch {
+      /* sem sessionStorage: propaga o erro para o ErrorBoundary */
+    }
+    throw error;
+  });
+}
+
 // Módulos de rota carregados sob demanda (code-splitting) — Leaflet/NDVI/mapa e
 // demais telas saem do bundle inicial e só baixam quando o usuário abre.
-const CalculatorsModule = lazy(() => import("../features/calculators/CalculatorsModule").then((m) => ({ default: m.CalculatorsModule })));
-const CostCenter = lazy(() => import("../features/costs/CostCenter").then((m) => ({ default: m.CostCenter })));
-const FertilizationModule = lazy(() => import("../features/fertilization/FertilizationModule").then((m) => ({ default: m.FertilizationModule })));
-const AssistantModule = lazy(() => import("../features/assistant/AssistantModule").then((m) => ({ default: m.AssistantModule })));
-const DiagnosisModule = lazy(() => import("../features/diagnosis/DiagnosisModule").then((m) => ({ default: m.DiagnosisModule })));
-const PrivacyModule = lazy(() => import("../features/privacy/PrivacyModule").then((m) => ({ default: m.PrivacyModule })));
-const MarketModule = lazy(() => import("../features/market/MarketModule").then((m) => ({ default: m.MarketModule })));
-const WeatherModule = lazy(() => import("../features/weather/WeatherModule").then((m) => ({ default: m.WeatherModule })));
-const FieldNotebook = lazy(() => import("../features/fieldbook/FieldNotebook").then((m) => ({ default: m.FieldNotebook })));
-const ModuleHub = lazy(() => import("../features/modules/ModuleHub").then((m) => ({ default: m.ModuleHub })));
-const MappingModule = lazy(() => import("../features/mapping/MappingModule").then((m) => ({ default: m.MappingModule })));
-const NdviModule = lazy(() => import("../features/ndvi/NdviModule").then((m) => ({ default: m.NdviModule })));
-const PortfolioPanel = lazy(() => import("../features/portfolio/PortfolioPanel").then((m) => ({ default: m.PortfolioPanel })));
-const PropertyManager = lazy(() => import("../features/properties/PropertyManager").then((m) => ({ default: m.PropertyManager })));
-const ReportModule = lazy(() => import("../features/reports/ReportModule").then((m) => ({ default: m.ReportModule })));
-const SoilModule = lazy(() => import("../features/soil/SoilModule").then((m) => ({ default: m.SoilModule })));
-const TimelineModule = lazy(() => import("../features/timeline/TimelineModule").then((m) => ({ default: m.TimelineModule })));
-const SafetyCenter = lazy(() => import("../features/safety/SafetyCenter").then((m) => ({ default: m.SafetyCenter })));
+const CalculatorsModule = lazy(() => retryImport(() => import("../features/calculators/CalculatorsModule")).then((m) => ({ default: m.CalculatorsModule })));
+const CostCenter = lazy(() => retryImport(() => import("../features/costs/CostCenter")).then((m) => ({ default: m.CostCenter })));
+const FertilizationModule = lazy(() => retryImport(() => import("../features/fertilization/FertilizationModule")).then((m) => ({ default: m.FertilizationModule })));
+const AssistantModule = lazy(() => retryImport(() => import("../features/assistant/AssistantModule")).then((m) => ({ default: m.AssistantModule })));
+const DiagnosisModule = lazy(() => retryImport(() => import("../features/diagnosis/DiagnosisModule")).then((m) => ({ default: m.DiagnosisModule })));
+const PrivacyModule = lazy(() => retryImport(() => import("../features/privacy/PrivacyModule")).then((m) => ({ default: m.PrivacyModule })));
+const MarketModule = lazy(() => retryImport(() => import("../features/market/MarketModule")).then((m) => ({ default: m.MarketModule })));
+const WeatherModule = lazy(() => retryImport(() => import("../features/weather/WeatherModule")).then((m) => ({ default: m.WeatherModule })));
+const FieldNotebook = lazy(() => retryImport(() => import("../features/fieldbook/FieldNotebook")).then((m) => ({ default: m.FieldNotebook })));
+const ModuleHub = lazy(() => retryImport(() => import("../features/modules/ModuleHub")).then((m) => ({ default: m.ModuleHub })));
+const MappingModule = lazy(() => retryImport(() => import("../features/mapping/MappingModule")).then((m) => ({ default: m.MappingModule })));
+const NdviModule = lazy(() => retryImport(() => import("../features/ndvi/NdviModule")).then((m) => ({ default: m.NdviModule })));
+const PortfolioPanel = lazy(() => retryImport(() => import("../features/portfolio/PortfolioPanel")).then((m) => ({ default: m.PortfolioPanel })));
+const PropertyManager = lazy(() => retryImport(() => import("../features/properties/PropertyManager")).then((m) => ({ default: m.PropertyManager })));
+const ReportModule = lazy(() => retryImport(() => import("../features/reports/ReportModule")).then((m) => ({ default: m.ReportModule })));
+const SoilModule = lazy(() => retryImport(() => import("../features/soil/SoilModule")).then((m) => ({ default: m.SoilModule })));
+const TimelineModule = lazy(() => retryImport(() => import("../features/timeline/TimelineModule")).then((m) => ({ default: m.TimelineModule })));
+const SafetyCenter = lazy(() => retryImport(() => import("../features/safety/SafetyCenter")).then((m) => ({ default: m.SafetyCenter })));
 import { effectivePlanId, trialAlreadyUsed } from "../domain/plans";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
 import { useAuth } from "../lib/useAuth";
