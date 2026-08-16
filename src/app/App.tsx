@@ -8,6 +8,7 @@ import { evaluateRecommendationReadiness } from "../domain/safety";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
 import { WelcomeScreen } from "../features/onboarding/WelcomeScreen";
+import { AreaOnboarding } from "../features/onboarding/AreaOnboarding";
 import { useNdviHistory } from "../features/ndvi/historyStore";
 import { useSoilAnalyses } from "../features/soil/soilStore";
 // Recupera de chunk obsoleto: após um deploy, os hashes mudam e o index antigo
@@ -85,6 +86,7 @@ const validViews: AppView[] = [
 
 export function App() {
   const initialPreferences = useMemo(() => loadPreferences(), []);
+  const [onboarding, setOnboarding] = useState(false);
   const [activeView, setActiveView] = useState<AppView>(
     getInitialView(initialPreferences.lastView),
   );
@@ -224,11 +226,19 @@ export function App() {
       )}
       <ErrorBoundary resetKey={activeView} label="esta tela">
       <Suspense fallback={<div className="route-loading" role="status">Carregando…</div>}>
-      {activeView === "inicio" && showWelcome && (
+      {activeView === "inicio" && showWelcome && onboarding && (
+        <AreaOnboarding
+          agriculture={agriculture}
+          producerName={auth.profile?.nome ?? ""}
+          onDone={() => setOnboarding(false)}
+          onCancel={() => setOnboarding(false)}
+        />
+      )}
+      {activeView === "inicio" && showWelcome && !onboarding && (
         <WelcomeScreen
           name={auth.profile?.nome?.split(" ")[0]}
           onLoadDemo={agriculture.loadDemo}
-          onCreate={() => navigate("propriedades")}
+          onStart={() => setOnboarding(true)}
         />
       )}
       {activeView === "inicio" && !showWelcome && (

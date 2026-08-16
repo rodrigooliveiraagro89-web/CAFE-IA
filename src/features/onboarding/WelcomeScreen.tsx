@@ -3,7 +3,7 @@ import { ArrowRight, FlaskConical, PlayCircle, Satellite, Sprout } from "lucide-
 type WelcomeScreenProps = {
   name?: string;
   onLoadDemo: () => void;
-  onCreate: () => void;
+  onStart: () => void;
 };
 
 /**
@@ -11,7 +11,7 @@ type WelcomeScreenProps = {
  * e pode explorar com DADOS DE EXEMPLO (fictícios, nunca salvos) em um clique —
  * valor na hora, antes de cadastrar qualquer coisa.
  */
-export function WelcomeScreen({ name, onLoadDemo, onCreate }: WelcomeScreenProps) {
+export function WelcomeScreen({ name, onLoadDemo, onStart }: WelcomeScreenProps) {
   const passos = [
     { icon: Sprout, titulo: "Cadastre a propriedade e os talhões", texto: "Suas áreas de café, com cultura e safra." },
     { icon: FlaskConical, titulo: "Envie o laudo de solo", texto: "A IA lê o PDF/foto e interpreta os nutrientes." },
@@ -27,15 +27,16 @@ export function WelcomeScreen({ name, onLoadDemo, onCreate }: WelcomeScreenProps
           pelo Boletim 100, monitoramento por satélite e relatório técnico — tudo por talhão.
         </p>
         <div className="welcome-cta">
-          <button type="button" className="primary-button" onClick={onLoadDemo}>
-            <PlayCircle size={18} /> Explorar com dados de exemplo
+          <button type="button" className="primary-button" onClick={onStart}>
+            <Sprout size={18} /> Cadastrar minha área <ArrowRight size={16} />
           </button>
-          <button type="button" className="secondary-button" onClick={onCreate}>
-            Cadastrar minha propriedade <ArrowRight size={17} />
+          <button type="button" className="secondary-button" onClick={onLoadDemo}>
+            <PlayCircle size={17} /> Explorar com dados de exemplo
           </button>
         </div>
         <small className="welcome-note">
-          Os dados de exemplo são fictícios e não são salvos — é só para você ver o app funcionando.
+          Começar leva menos de 1 minuto. Os dados de exemplo são fictícios e não são salvos — é só
+          para ver o app funcionando.
         </small>
       </div>
 
