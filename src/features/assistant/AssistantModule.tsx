@@ -8,6 +8,10 @@ import "./assistant.css";
 type AssistantModuleProps = {
   accessToken: string;
   onNavigate: (view: AppView) => void;
+  /** Briefing do talhão selecionado (laudo, calagem/NPK, NDVI, alertas). */
+  context?: string;
+  /** Nome do talhão em contexto, para o indicador visual. */
+  contextPlotName?: string;
 };
 
 const SUGESTOES = [
@@ -21,7 +25,7 @@ const BOAS_VINDAS =
   "Sou o assistente do AGRYN. Posso explicar conceitos, orientar manejo e ajudar você a usar o app. " +
   "Para dose de adubo ou calagem, eu te levo até os módulos que calculam por norma técnica — não invento número.";
 
-export function AssistantModule({ accessToken, onNavigate }: AssistantModuleProps) {
+export function AssistantModule({ accessToken, onNavigate, context, contextPlotName }: AssistantModuleProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,7 +47,7 @@ export function AssistantModule({ accessToken, onNavigate }: AssistantModuleProp
     setLoading(true);
 
     try {
-      const reply = await sendChat(novoHistorico, accessToken);
+      const reply = await sendChat(novoHistorico, accessToken, context);
       setMessages([...novoHistorico, { role: "assistant", content: reply }]);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível responder agora.");
@@ -79,6 +83,14 @@ export function AssistantModule({ accessToken, onNavigate }: AssistantModuleProp
           número.
         </span>
       </p>
+
+      {context && contextPlotName && (
+        <p className="assistant-context-chip">
+          <Sprout size={15} aria-hidden="true" />
+          Respondendo com os dados do talhão <strong>{contextPlotName}</strong> (laudo, calagem,
+          NPK, NDVI e alertas).
+        </p>
+      )}
 
       <section className="assistant-chat">
         <div className="assistant-messages" ref={listRef}>

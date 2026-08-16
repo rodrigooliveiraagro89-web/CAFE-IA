@@ -58,6 +58,8 @@ import { loadPreferences, savePreferences, type ThemePreference } from "../lib/p
 import type { AppView } from "./navigation";
 import { createProCheckout } from "../features/billing/billingClient";
 import { linkPendingCollaborations } from "../features/properties/collaboratorsClient";
+import { buildAssistantContext } from "../features/assistant/assistantContext";
+import { buildAlerts } from "../domain/alerts";
 
 const validViews: AppView[] = [
   "inicio",
@@ -133,6 +135,43 @@ export function App() {
   // Conta nova (logada, sem propriedades e fora do modo demo): tela de boas-vindas.
   const showWelcome =
     Boolean(auth.userId) && agriculture.state.properties.length === 0 && !agriculture.demoActive;
+
+  // Briefing do talhão selecionado para o AGRYN IA responder com dados reais.
+  const assistantContext = useMemo(() => {
+    const plot = agriculture.selectedPlot;
+    if (!plot) return "";
+    const soilForPlot =
+      soil.analyses
+        .filter((a) => a.plotId === plot.id)
+        .sort(
+          (a, b) =>
+            new Date(b.analysisDate ?? b.createdAt).getTime() -
+            new Date(a.analysisDate ?? a.createdAt).getTime(),
+        )[0] ?? null;
+    const ndviForPlot =
+      ndviHistory.history
+        .filter((n) => n.plotId === plot.id)
+        .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())[0] ?? null;
+    const propertyPlots = agriculture.state.plots.filter((p) => p.propertyId === plot.propertyId);
+    const alerts = buildAlerts(propertyPlots, fieldBook.records, ndviHistory.history, soil.analyses)
+      .filter((a) => !a.plotId || a.plotId === plot.id)
+      .map((a) => a.title);
+    return buildAssistantContext({
+      property: agriculture.selectedProperty,
+      plot,
+      soil: soilForPlot,
+      ndviMean: ndviForPlot?.statistics.mean ?? null,
+      ndviDate: ndviForPlot?.acquiredAt ?? null,
+      alerts,
+    });
+  }, [
+    agriculture.selectedPlot,
+    agriculture.selectedProperty,
+    agriculture.state.plots,
+    soil.analyses,
+    ndviHistory.history,
+    fieldBook.records,
+  ]);
 
   function navigate(view: AppView) {
     setActiveView(view);
@@ -292,7 +331,12 @@ export function App() {
         />
       )}
       {activeView === "assistente" && (
-        <AssistantModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />
+        <AssistantModule
+          accessToken={auth.session?.access_token ?? ""}
+          onNavigate={navigate}
+          context={assistantContext}
+          contextPlotName={agriculture.selectedPlot?.name}
+        />
       )}
       {activeView === "diagnostico" && (
         <DiagnosisModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />

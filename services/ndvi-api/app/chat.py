@@ -36,6 +36,22 @@ SYSTEM_PROMPT = (
 )
 
 ALLOWED_ROLES = {"user", "assistant"}
+MAX_CONTEXT_CHARS = 3000
+
+
+def _system_with_context(context: str | None) -> str:
+    """Injeta o briefing do talhão (dados reais do app) no system prompt."""
+    if not isinstance(context, str) or not context.strip():
+        return SYSTEM_PROMPT
+    ctx = context.strip()[:MAX_CONTEXT_CHARS]
+    return (
+        SYSTEM_PROMPT
+        + "\n\nCONTEXTO DO TALHÃO SELECIONADO (dados reais do app, calculados pelos "
+        "módulos determinísticos — Boletim 100/IAC). Estes números NÃO são inventados: "
+        "você PODE citá-los ao responder e deve ancorar a resposta neles quando fizer "
+        "sentido. Para recalcular ou detalhar doses, remeta o usuário à aba 'Calagem e "
+        "adubação'.\n" + ctx
+    )
 
 
 def _require_anthropic_config() -> None:
@@ -74,7 +90,7 @@ def sanitize_messages(messages: list[dict]) -> list[dict]:
     return clean
 
 
-async def chat_reply(messages: list[dict]) -> str:
+async def chat_reply(messages: list[dict], context: str | None = None) -> str:
     """Chama o Claude com o histórico e devolve o texto da resposta."""
     _require_anthropic_config()
     clean = sanitize_messages(messages)
@@ -84,7 +100,7 @@ async def chat_reply(messages: list[dict]) -> str:
         response = await client.messages.create(
             model=MODEL,
             max_tokens=MAX_OUTPUT_TOKENS,
-            system=SYSTEM_PROMPT,
+            system=_system_with_context(context),
             messages=clean,
         )
     except anthropic.APIError as error:

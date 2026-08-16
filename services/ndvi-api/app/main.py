@@ -188,7 +188,7 @@ async def chat(
         feature="o assistente de IA",
     )
 
-    reply = await chat_reply(payload.get("messages", []))
+    reply = await chat_reply(payload.get("messages", []), payload.get("context"))
     return {"reply": reply}
 
 

@@ -24,11 +24,15 @@ async function responseMessage(response: Response, fallback: string): Promise<st
 export async function sendChat(
   messages: ChatMessage[],
   accessToken: string,
+  context?: string,
 ): Promise<string> {
   const apiUrl = getProcessingApiUrl();
   if (!apiUrl) {
     throw new Error("O assistente de IA não está configurado no momento.");
   }
+
+  const body: { messages: ChatMessage[]; context?: string } = { messages };
+  if (context && context.trim()) body.context = context.trim();
 
   const response = await fetchWithTimeout(
     `${apiUrl}/v1/chat`,
@@ -38,7 +42,7 @@ export async function sendChat(
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify(body),
     },
     AI_TIMEOUT_MS,
   );
