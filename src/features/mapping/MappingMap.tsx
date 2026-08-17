@@ -58,29 +58,50 @@ const ESRI_IMAGERY_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const ESRI_ATTRIBUTION =
   "&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community";
-const ESRI_REFERENCE_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 const OPENTOPO_URL = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
 const OPENTOPO_ATTRIBUTION =
   '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), &copy; OpenStreetMap';
+
+// CARTO Voyager — mapa de ruas com rótulos de cidades, vias e pontos bem
+// legíveis, no estilo do Google Maps (gratuito, sem chave). "only_labels" traz
+// só os rótulos+vias para sobrepor à imagem de satélite (modo híbrido).
+const CARTO_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const CARTO_VOYAGER_URL =
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const CARTO_LABELS_URL =
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png";
+const CARTO_SUBDOMAINS = "abcd";
 
 function Basemaps({ basemap }: { basemap: Basemap }) {
   if (basemap === "mapa") {
     return (
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution={CARTO_ATTRIBUTION}
+        url={CARTO_VOYAGER_URL}
+        subdomains={CARTO_SUBDOMAINS}
+        detectRetina
+        maxZoom={20}
       />
     );
   }
   if (basemap === "relevo") {
     return <TileLayer attribution={OPENTOPO_ATTRIBUTION} url={OPENTOPO_URL} maxZoom={17} />;
   }
-  // satelite e hibrido usam a imagem Esri; o híbrido adiciona rótulos por cima.
+  // satelite e hibrido usam a imagem Esri; o híbrido adiciona os rótulos do
+  // CARTO Voyager (cidades, vias e pontos) por cima — bem parecido com o Google.
   return (
     <>
       <TileLayer attribution={ESRI_ATTRIBUTION} url={ESRI_IMAGERY_URL} maxZoom={19} />
-      {basemap === "hibrido" && <TileLayer url={ESRI_REFERENCE_URL} maxZoom={19} />}
+      {basemap === "hibrido" && (
+        <TileLayer
+          attribution={CARTO_ATTRIBUTION}
+          url={CARTO_LABELS_URL}
+          subdomains={CARTO_SUBDOMAINS}
+          detectRetina
+          maxZoom={20}
+        />
+      )}
     </>
   );
 }
