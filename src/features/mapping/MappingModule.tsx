@@ -160,6 +160,7 @@ export function MappingModule({
   const [feedback, setFeedback] = useState("");
   const [walking, setWalking] = useState(false);
   const [liveLocation, setLiveLocation] = useState<LiveLocation | null>(null);
+  const [myLocation, setMyLocation] = useState<LiveLocation | null>(null);
   const [follow, setFollow] = useState(true);
   const [gpsMessage, setGpsMessage] = useState("");
   const watchIdRef = useRef<number | null>(null);
@@ -280,10 +281,9 @@ export function MappingModule({
     setSearchMessage("Obtendo sua localização…");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setFocusTarget({
-          center: [position.coords.longitude, position.coords.latitude],
-          zoom: 16,
-        });
+        const here: Position = [position.coords.longitude, position.coords.latitude];
+        setMyLocation({ position: here, accuracy: position.coords.accuracy });
+        setFocusTarget({ center: here, zoom: 16 });
         setSearchMessage("");
       },
       () => setSearchMessage("Não foi possível obter a localização."),
@@ -656,6 +656,14 @@ export function MappingModule({
                 <button
                   className="secondary-button"
                   type="button"
+                  data-active={Boolean(myLocation)}
+                  onClick={locateMe}
+                >
+                  <LocateFixed size={16} /> {myLocation ? "Centralizar em mim" : "Minha localização"}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
                   onClick={() => boundaryFileRef.current?.click()}
                 >
                   <FileUp size={16} /> Importar KML/GeoJSON
@@ -961,7 +969,8 @@ export function MappingModule({
             drawing={drawing}
             points={points}
             focusTarget={focusTarget}
-            liveLocation={liveLocation}
+            liveLocation={walking ? liveLocation : myLocation}
+            liveTrail={walking}
             follow={walking && follow}
             onAddPoint={(position) => setPoints((current) => [...current, position])}
             onMovePoint={(index, position) =>

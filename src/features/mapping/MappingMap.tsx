@@ -40,6 +40,8 @@ type MappingMapProps = {
   points: Position[];
   focusTarget: { center: Position; zoom?: number } | { bounds: Position[] } | null;
   liveLocation: LiveLocation | null;
+  /** Liga a linha tracejada do último ponto até a posição (só na caminhada GPS). */
+  liveTrail: boolean;
   follow: boolean;
   onAddPoint: (position: Position) => void;
   onMovePoint: (index: number, position: Position) => void;
@@ -116,6 +118,7 @@ export function MappingMap({
   points,
   focusTarget,
   liveLocation,
+  liveTrail,
   follow,
   onAddPoint,
   onMovePoint,
@@ -233,7 +236,7 @@ export function MappingMap({
               weight: 3,
             }}
           />
-          {points.length > 0 && (
+          {liveTrail && points.length > 0 && (
             <Polyline
               positions={[
                 [points[points.length - 1][1], points[points.length - 1][0]],
