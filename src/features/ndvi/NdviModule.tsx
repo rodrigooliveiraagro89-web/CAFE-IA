@@ -144,6 +144,24 @@ export function NdviModule({
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
   const boundaryFileRef = useRef<HTMLInputElement | null>(null);
 
+  // Puxa o limite desenhado no Mapeamento quando o talhão ativo muda — inclusive
+  // pela barra de contexto no topo, não só pelo seletor daqui. Padrão oficial do
+  // React de ajustar estado durante a renderização ao detectar troca de prop.
+  const activePlotId = agriculture.selectedPlot?.id ?? null;
+  const [syncedPlotId, setSyncedPlotId] = useState(activePlotId);
+  if (activePlotId !== syncedPlotId) {
+    setSyncedPlotId(activePlotId);
+    const boundary = agriculture.selectedPlot?.geometry?.coordinates[0];
+    if (boundary) {
+      setPoints(pointsFromGeometry(boundary));
+      setDrawing(false);
+      setScenes([]);
+      setSelectedSceneId("");
+      setSearchState({ status: "idle" });
+      setJobState({ status: "idle" });
+    }
+  }
+
   const geometryIssue = useMemo(
     () => (points.length ? polygonValidationIssue(points) : null),
     [points],
@@ -597,10 +615,52 @@ export function NdviModule({
               {agriculture.state.plots
                 .filter((plot) => plot.propertyId === agriculture.selectedProperty?.id)
                 .map((plot) => (
-                  <option value={plot.id} key={plot.id}>{plot.name} · {plot.crop}</option>
+                  <option value={plot.id} key={plot.id}>
+                    {plot.name} · {plot.crop}
+                    {plot.geometry ? " · com limite" : " · sem limite"}
+                  </option>
                 ))}
             </select>
           </label>
+
+          {agriculture.selectedPlot &&
+            (agriculture.selectedPlot.geometry ? (
+              <div className="ndvi-mapping-hint" data-ok="true">
+                <MapPinned size={16} aria-hidden="true" />
+                <span>
+                  Limite vindo do <strong>Mapeamento</strong> —{" "}
+                  {formatNumber(agriculture.selectedPlot.areaHectares, 2)} ha.
+                </span>
+                <button
+                  type="button"
+                  className="ndvi-inline-link"
+                  onClick={() =>
+                    setPoints(
+                      pointsFromGeometry(
+                        agriculture.selectedPlot?.geometry?.coordinates[0],
+                      ),
+                    )
+                  }
+                >
+                  Puxar novamente
+                </button>
+              </div>
+            ) : (
+              <div className="ndvi-mapping-hint" role="status">
+                <MapPinned size={16} aria-hidden="true" />
+                <span>
+                  Este talhão ainda não tem limite salvo. Desenhe no{" "}
+                  <strong>Mapeamento</strong> para o NDVI recortar exatamente a área.
+                </span>
+                <button
+                  type="button"
+                  className="ndvi-inline-link"
+                  onClick={() => onNavigate("mapeamento")}
+                >
+                  Abrir Mapeamento
+                </button>
+              </div>
+            ))}
 
           <div className="ndvi-date-grid">
             <label>

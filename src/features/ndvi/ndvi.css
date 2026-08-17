@@ -363,6 +363,35 @@
   color: var(--danger);
 }
 
+.ndvi-mapping-hint {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: -0.3rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.ndvi-mapping-hint[data-ok="true"] {
+  background: var(--success-soft);
+}
+
+.ndvi-mapping-hint > svg {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  color: var(--agryn-emerald-deep);
+}
+
+.ndvi-mapping-hint span {
+  flex: 1;
+  min-width: 12ch;
+}
+
 .ndvi-search-button:disabled,
 .ndvi-process-button:disabled,
 .ndvi-regional-button:disabled,
