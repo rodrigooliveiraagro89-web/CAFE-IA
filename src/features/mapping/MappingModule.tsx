@@ -11,6 +11,7 @@ import {
   LocateFixed,
   MapPin,
   MapPinned,
+  MousePointerClick,
   Pencil,
   Plus,
   RotateCcw,
@@ -646,11 +647,11 @@ export function MappingModule({
           <div className="mapping-sidebar-actions">
             {!drawing && !walking ? (
               <>
-                <button className="primary-button" type="button" onClick={startWalking}>
-                  <Footprints size={17} /> Mapear caminhando (GPS)
+                <button className="primary-button" type="button" onClick={startDrawing}>
+                  <MousePointerClick size={17} /> Marcar pontos no clique (manual)
                 </button>
-                <button className="secondary-button" type="button" onClick={startDrawing}>
-                  <Plus size={17} /> Desenhar no mapa
+                <button className="secondary-button" type="button" onClick={startWalking}>
+                  <Footprints size={17} /> Mapear caminhando (GPS)
                 </button>
                 <button
                   className="secondary-button"
@@ -666,6 +667,11 @@ export function MappingModule({
                   accept=".geojson,.json,.kml,application/geo+json,application/vnd.google-earth.kml+xml"
                   onChange={(event) => void importBoundary(event.target.files?.[0])}
                 />
+                <p className="mapping-modes-hint">
+                  <strong>Manual:</strong> toque no mapa para marcar cada vértice. Ative o{" "}
+                  <strong>Modo mira</strong> para cravar pontos com precisão, ou{" "}
+                  <strong>caminhe com o GPS</strong> pela borda do talhão.
+                </p>
               </>
             ) : walking ? (
               <>

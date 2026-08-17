@@ -123,6 +123,17 @@
   justify-content: center;
 }
 
+.mapping-modes-hint {
+  margin: 0.1rem 0 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+
+.mapping-modes-hint strong {
+  color: var(--text);
+}
+
 .mapping-save-panel {
   display: grid;
   gap: 0.6rem;
