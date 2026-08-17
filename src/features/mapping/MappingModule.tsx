@@ -3,21 +3,32 @@ import {
   Check,
   Crosshair,
   Crown,
+  Download,
   FileUp,
   Footprints,
   LandPlot,
+  Layers,
   LocateFixed,
   MapPin,
   MapPinned,
   Pencil,
   Plus,
   RotateCcw,
+  Ruler,
   Satellite,
   Search,
+  Target,
   Undo2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import type { AppView } from "../../app/navigation";
 import {
   cropOptions,
@@ -26,6 +37,16 @@ import {
   type FarmPlot,
 } from "../../domain/agriculturalContext";
 import { canAddPlot, resolvePlan, TRIAL_DAYS } from "../../domain/plans";
+import { safeFileName, toGeoJSON, toKML } from "../../domain/geoExport";
+import { plotColor } from "../../domain/plotColor";
+import {
+  AREA_UNITS,
+  DISTANCE_UNITS,
+  formatArea,
+  formatDistance,
+  type AreaUnit,
+  type DistanceUnit,
+} from "../../domain/units";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { fetchWithTimeout } from "../../lib/http";
 import {
@@ -34,12 +55,24 @@ import {
   polygonValidationIssue,
 } from "../ndvi/domain";
 import type { Position } from "../ndvi/types";
-import { MappingMap, type Basemap, type LiveLocation } from "./MappingMap";
+import {
+  MappingMap,
+  type Basemap,
+  type LiveLocation,
+  type MeasureMode,
+} from "./MappingMap";
 import "./mapping.css";
 
 const MAX_ACCEPTABLE_ACCURACY_METERS = 10;
 const DUPLICATE_POINT_THRESHOLD_METERS = 2;
 const AUTO_CLOSE_THRESHOLD_METERS = 10;
+
+const BASEMAP_OPTIONS: { id: Basemap; label: string }[] = [
+  { id: "satelite", label: "Satélite" },
+  { id: "mapa", label: "Mapa" },
+  { id: "hibrido", label: "Híbrido" },
+  { id: "relevo", label: "Relevo" },
+];
 
 function haversineMeters(a: Position, b: Position): number {
   const earthRadius = 6371008.8;
@@ -63,6 +96,18 @@ function pathPerimeterMeters(points: Position[], closed: boolean): number {
     total += haversineMeters(points[points.length - 1], points[0]);
   }
   return total;
+}
+
+function downloadText(filename: string, content: string, mime: string): void {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 type MappingModuleProps = {
@@ -95,6 +140,11 @@ export function MappingModule({
 }: MappingModuleProps) {
   const { state, selectedProperty } = agriculture;
   const [basemap, setBasemap] = useState<Basemap>("satelite");
+  const [measureMode, setMeasureMode] = useState<MeasureMode>("area");
+  const [areaUnit, setAreaUnit] = useState<AreaUnit>("ha");
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>("m");
+  const [precision, setPrecision] = useState(false);
+  const [mapCenter, setMapCenter] = useState<Position>([-46.99, -18.94]);
   const [drawing, setDrawing] = useState(false);
   const [points, setPoints] = useState<Position[]>([]);
   const [focusTarget, setFocusTarget] = useState<FocusTarget>(null);
@@ -113,6 +163,14 @@ export function MappingModule({
   const [gpsMessage, setGpsMessage] = useState("");
   const watchIdRef = useRef<number | null>(null);
   const boundaryFileRef = useRef<HTMLInputElement>(null);
+
+  // A mira só atualiza o centro no estado quando o modo de precisão está ligado
+  // (evita re-render a cada quadro de pan quando não é necessário).
+  const precisionRef = useRef(precision);
+  precisionRef.current = precision;
+  const handleCenterChange = useCallback((center: Position) => {
+    if (precisionRef.current) setMapCenter(center);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -133,24 +191,53 @@ export function MappingModule({
   const plan = resolvePlan(planId);
   const plotAllowed = canAddPlot(plan, propertyPlots.length);
 
+  const isDistance = measureMode === "distancia";
+
   const liveArea = useMemo(() => {
-    if (points.length < 3) return null;
+    if (isDistance || points.length < 3) return null;
     try {
       return polygonAreaHectares(closePolygon(points));
     } catch {
       return null;
     }
-  }, [points]);
+  }, [points, isDistance]);
+
+  const lineDistance = useMemo(
+    () => (isDistance ? pathPerimeterMeters(points, false) : 0),
+    [points, isDistance],
+  );
 
   const geometryIssue = useMemo(
-    () => (points.length > 0 ? polygonValidationIssue(points) : null),
-    [points],
+    () => (!isDistance && points.length > 0 ? polygonValidationIssue(points) : null),
+    [points, isDistance],
   );
 
   function focusPlot(plot: FarmPlot) {
     agriculture.selectPlot(plot.id);
     if (plot.geometry) {
       setFocusTarget({ bounds: plot.geometry.coordinates[0] });
+    }
+  }
+
+  function exportPlot(plot: FarmPlot, format: "geojson" | "kml") {
+    if (!plot.geometry) return;
+    const ring = plot.geometry.coordinates[0];
+    const base = safeFileName(plot.name);
+    if (format === "kml") {
+      downloadText(`${base}.kml`, toKML(plot.name, ring), "application/vnd.google-earth.kml+xml");
+    } else {
+      downloadText(`${base}.geojson`, toGeoJSON(plot.name, ring), "application/geo+json");
+    }
+    setFeedback(`Limite de ${plot.name} exportado (${format.toUpperCase()}).`);
+  }
+
+  function exportDrawing(format: "geojson" | "kml") {
+    if (points.length < 3) return;
+    const name = newPlotName.trim() || "Medição AGRYN";
+    if (format === "kml") {
+      downloadText(`${safeFileName(name)}.kml`, toKML(name, points), "application/vnd.google-earth.kml+xml");
+    } else {
+      downloadText(`${safeFileName(name)}.geojson`, toGeoJSON(name, points), "application/geo+json");
     }
   }
 
@@ -218,7 +305,13 @@ export function MappingModule({
     setDrawing(false);
     setPoints([]);
     setSaveMode("idle");
+    setPrecision(false);
     stopWalking();
+  }
+
+  /** Adiciona o ponto sob a mira (centro do mapa) no modo de precisão. */
+  function addCenterPoint() {
+    setPoints((current) => [...current, mapCenter]);
   }
 
   function startWalking() {
@@ -228,6 +321,8 @@ export function MappingModule({
     }
     setWalking(true);
     setDrawing(false);
+    setPrecision(false);
+    setMeasureMode("area");
     setSaveMode("idle");
     setFeedback("");
     setFollow(true);
@@ -311,6 +406,7 @@ export function MappingModule({
         ring[0][1] === ring[ring.length - 1][1]
           ? ring.slice(0, -1)
           : ring;
+      setMeasureMode("area");
       setPoints(openRing);
       setDrawing(true);
       setFocusTarget({ bounds: ring });
@@ -333,7 +429,7 @@ export function MappingModule({
     agriculture.updatePlotBoundary(targetPlotId, geometry, areaHectares);
     const plot = propertyPlots.find((candidate) => candidate.id === targetPlotId);
     setFeedback(
-      `Limite salvo em ${plot?.name ?? "talhão"}: ${areaHectares.toLocaleString("pt-BR")} ha.`,
+      `Limite salvo em ${plot?.name ?? "talhão"}: ${formatArea(areaHectares, areaUnit)}.`,
     );
     cancelDrawing();
   }
@@ -357,7 +453,7 @@ export function MappingModule({
       geometry,
     });
     setFeedback(
-      `Talhão ${newPlotName} criado com ${areaHectares.toLocaleString("pt-BR")} ha.`,
+      `Talhão ${newPlotName} criado com ${formatArea(areaHectares, areaUnit)}.`,
     );
     setNewPlotName("");
     setNewPlotSeason("");
@@ -386,6 +482,8 @@ export function MappingModule({
     );
   }
 
+  const canDraw = !walking;
+
   return (
     <div className="page-stack platform-page mapping-page">
       <header className="page-header context-page-header">
@@ -393,26 +491,21 @@ export function MappingModule({
           <span className="eyebrow">Medição por satélite</span>
           <h1>Mapeamento</h1>
           <p>
-            Desenhe o limite dos talhões sobre a imagem de satélite. A área é calculada na hora e
+            Desenhe, meça e exporte talhões sobre imagem de satélite. A área é calculada na hora e
             fica vinculada ao talhão — disponível no NDVI, custos e relatório.
           </p>
         </div>
-        <div className="mapping-basemap-toggle" role="group" aria-label="Estilo do mapa">
-          <button
-            type="button"
-            data-active={basemap === "satelite"}
-            onClick={() => setBasemap("satelite")}
-          >
-            Satélite
-          </button>
-          <button
-            type="button"
-            data-active={basemap === "mapa"}
-            onClick={() => setBasemap("mapa")}
-          >
-            Mapa
-          </button>
-        </div>
+        <label className="mapping-basemap-select">
+          <Layers size={15} aria-hidden="true" />
+          <span className="sr-only">Tipo de mapa</span>
+          <select value={basemap} onChange={(event) => setBasemap(event.target.value as Basemap)}>
+            {BASEMAP_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
 
       <div className="mapping-workspace">
@@ -434,7 +527,7 @@ export function MappingModule({
                     <small>
                       {propertyLocation(property)} · {plots.length}{" "}
                       {plots.length === 1 ? "talhão" : "talhões"} ·{" "}
-                      {totalArea.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ha
+                      {formatArea(totalArea, areaUnit)}
                     </small>
                   </span>
                   {active && <Check size={16} aria-label="Selecionada" />}
@@ -448,14 +541,38 @@ export function MappingModule({
                           data-selected={plot.id === state.selectedPlotId}
                           onClick={() => focusPlot(plot)}
                         >
-                          <LandPlot size={15} />
+                          <span
+                            className="mapping-plot-swatch"
+                            style={{ background: plotColor(plot.id) }}
+                            aria-hidden="true"
+                          />
                           <span>
                             <strong>{plot.name}</strong>
                             <small>
-                              {plot.crop} · {plot.areaHectares.toLocaleString("pt-BR")} ha
+                              {plot.crop} · {formatArea(plot.areaHectares, areaUnit)}
                             </small>
                           </span>
-                          {!plot.geometry && (
+                          {plot.geometry ? (
+                            <span
+                              className="mapping-plot-export"
+                              role="button"
+                              tabIndex={0}
+                              title="Exportar limite (KML — Google Earth)"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                exportPlot(plot, "kml");
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  exportPlot(plot, "kml");
+                                }
+                              }}
+                            >
+                              <Download size={14} />
+                            </span>
+                          ) : (
                             <em className="mapping-no-boundary">sem limite</em>
                           )}
                         </button>
@@ -471,6 +588,60 @@ export function MappingModule({
               </section>
             );
           })}
+
+          {/* Unidades (área/distância) e modo de medição. */}
+          <div className="mapping-units">
+            <label>
+              <span>Área em</span>
+              <select value={areaUnit} onChange={(event) => setAreaUnit(event.target.value as AreaUnit)}>
+                {AREA_UNITS.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Distância em</span>
+              <select
+                value={distanceUnit}
+                onChange={(event) => setDistanceUnit(event.target.value as DistanceUnit)}
+              >
+                {DISTANCE_UNITS.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {canDraw && (
+            <div className="mapping-mode-toggle" role="group" aria-label="Modo de medição">
+              <button
+                type="button"
+                data-active={measureMode === "area"}
+                onClick={() => {
+                  setMeasureMode("area");
+                  if (drawing) resetDrawing();
+                }}
+              >
+                <LandPlot size={15} /> Área
+              </button>
+              <button
+                type="button"
+                data-active={measureMode === "distancia"}
+                onClick={() => {
+                  setMeasureMode("distancia");
+                  setSaveMode("idle");
+                  setPoints([]);
+                  setDrawing(true);
+                }}
+              >
+                <Ruler size={15} /> Distância
+              </button>
+            </div>
+          )}
 
           <div className="mapping-sidebar-actions">
             {!drawing && !walking ? (
@@ -523,6 +694,15 @@ export function MappingModule({
                 <button
                   className="secondary-button"
                   type="button"
+                  data-active={precision}
+                  onClick={() => setPrecision((current) => !current)}
+                  title="Mira central para cravar pontos com precisão"
+                >
+                  <Target size={16} /> {precision ? "Mira ativa" : "Modo mira"}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
                   disabled={points.length === 0}
                   onClick={() => setPoints((current) => current.slice(0, -1))}
                 >
@@ -546,26 +726,36 @@ export function MappingModule({
           {(drawing || walking) && points.length > 0 && (
             <div className="mapping-stats" aria-live="polite">
               <span>
-                <small>Perímetro</small>
+                <small>{isDistance ? "Distância" : "Perímetro"}</small>
                 <strong>
-                  {pathPerimeterMeters(points, points.length >= 3).toLocaleString("pt-BR", {
-                    maximumFractionDigits: 0,
-                  })}{" "}
-                  m
+                  {isDistance
+                    ? formatDistance(lineDistance, distanceUnit)
+                    : formatDistance(pathPerimeterMeters(points, points.length >= 3), distanceUnit)}
                 </strong>
               </span>
-              <span>
-                <small>Área</small>
-                <strong>
-                  {liveArea !== null
-                    ? `${liveArea.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha`
-                    : "—"}
-                </strong>
-              </span>
+              {!isDistance && (
+                <span>
+                  <small>Área</small>
+                  <strong>{liveArea !== null ? formatArea(liveArea, areaUnit) : "—"}</strong>
+                </span>
+              )}
               <span>
                 <small>Pontos</small>
                 <strong>{points.length}</strong>
               </span>
+            </div>
+          )}
+
+          {/* Exportar a medição atual (área com 3+ pontos). */}
+          {drawing && !isDistance && points.length >= 3 && !geometryIssue && (
+            <div className="mapping-export-row">
+              <span>Exportar medição:</span>
+              <button type="button" className="text-button" onClick={() => exportDrawing("geojson")}>
+                <Download size={14} /> GeoJSON
+              </button>
+              <button type="button" className="text-button" onClick={() => exportDrawing("kml")}>
+                <Download size={14} /> KML
+              </button>
             </div>
           )}
 
@@ -595,11 +785,10 @@ export function MappingModule({
             </p>
           )}
 
-          {drawing && points.length >= 3 && !geometryIssue && saveMode === "idle" && (
+          {drawing && !isDistance && points.length >= 3 && !geometryIssue && saveMode === "idle" && (
             <div className="mapping-save-panel">
               <strong>
-                Medição pronta:{" "}
-                {liveArea?.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha
+                Medição pronta: {liveArea !== null ? formatArea(liveArea, areaUnit) : "—"}
               </strong>
               <button
                 className="primary-button"
@@ -622,7 +811,7 @@ export function MappingModule({
             </div>
           )}
 
-          {drawing && geometryIssue && points.length >= 3 && (
+          {drawing && !isDistance && geometryIssue && points.length >= 3 && (
             <p className="mapping-feedback mapping-feedback-error" role="alert">
               {geometryIssue}
             </p>
@@ -759,6 +948,8 @@ export function MappingModule({
 
           <MappingMap
             basemap={basemap}
+            mode={measureMode}
+            precision={precision}
             plots={propertyPlots}
             selectedPlotId={state.selectedPlotId}
             drawing={drawing}
@@ -773,7 +964,27 @@ export function MappingModule({
               )
             }
             onSelectPlot={(plotId) => agriculture.selectPlot(plotId)}
+            onCenterChange={handleCenterChange}
           />
+
+          {/* Mira central (modo precisão): pino fixo + coordenada do centro. */}
+          {drawing && precision && (
+            <>
+              <div className="mapping-crosshair" aria-hidden="true">
+                <span className="mapping-crosshair-dot" />
+              </div>
+              <div className="mapping-center-coords" aria-live="polite">
+                {mapCenter[1].toFixed(6)}, {mapCenter[0].toFixed(6)}
+              </div>
+              <button
+                className="mapping-capture-button"
+                type="button"
+                onClick={addCenterPoint}
+              >
+                <MapPin size={20} /> Adicionar ponto na mira
+              </button>
+            </>
+          )}
 
           {walking && (
             <button
@@ -786,9 +997,17 @@ export function MappingModule({
             </button>
           )}
 
-          {drawing && (
+          {drawing && !precision && (
             <div className="mapping-area-badge" aria-live="polite">
-              {points.length < 3 ? (
+              {isDistance ? (
+                points.length < 2 ? (
+                  <span>Toque em dois ou mais pontos para medir a distância</span>
+                ) : (
+                  <span>
+                    Distância: <strong>{formatDistance(lineDistance, distanceUnit)}</strong>
+                  </span>
+                )
+              ) : points.length < 3 ? (
                 <span>
                   {points.length === 0
                     ? "Toque no mapa para começar a medir"
@@ -797,11 +1016,7 @@ export function MappingModule({
               ) : (
                 <span>
                   Área medida:{" "}
-                  <strong>
-                    {liveArea !== null
-                      ? `${liveArea.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha`
-                      : "—"}
-                  </strong>
+                  <strong>{liveArea !== null ? formatArea(liveArea, areaUnit) : "—"}</strong>
                 </span>
               )}
             </div>

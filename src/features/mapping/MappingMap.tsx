@@ -19,9 +19,11 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { FarmPlot } from "../../domain/agriculturalContext";
+import { plotColor } from "../../domain/plotColor";
 import type { Position } from "../ndvi/types";
 
-export type Basemap = "satelite" | "mapa";
+export type Basemap = "satelite" | "mapa" | "hibrido" | "relevo";
+export type MeasureMode = "area" | "distancia";
 
 export type LiveLocation = {
   position: Position;
@@ -30,6 +32,8 @@ export type LiveLocation = {
 
 type MappingMapProps = {
   basemap: Basemap;
+  mode: MeasureMode;
+  precision: boolean;
   plots: FarmPlot[];
   selectedPlotId: string;
   drawing: boolean;
@@ -40,6 +44,7 @@ type MappingMapProps = {
   onAddPoint: (position: Position) => void;
   onMovePoint: (index: number, position: Position) => void;
   onSelectPlot: (plotId: string) => void;
+  onCenterChange: (center: Position) => void;
 };
 
 const vertexIcon = divIcon({
@@ -53,9 +58,37 @@ const ESRI_IMAGERY_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const ESRI_ATTRIBUTION =
   "&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community";
+const ESRI_REFERENCE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+const OPENTOPO_URL = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
+const OPENTOPO_ATTRIBUTION =
+  '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), &copy; OpenStreetMap';
+
+function Basemaps({ basemap }: { basemap: Basemap }) {
+  if (basemap === "mapa") {
+    return (
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+    );
+  }
+  if (basemap === "relevo") {
+    return <TileLayer attribution={OPENTOPO_ATTRIBUTION} url={OPENTOPO_URL} maxZoom={17} />;
+  }
+  // satelite e hibrido usam a imagem Esri; o híbrido adiciona rótulos por cima.
+  return (
+    <>
+      <TileLayer attribution={ESRI_ATTRIBUTION} url={ESRI_IMAGERY_URL} maxZoom={19} />
+      {basemap === "hibrido" && <TileLayer url={ESRI_REFERENCE_URL} maxZoom={19} />}
+    </>
+  );
+}
 
 export function MappingMap({
   basemap,
+  mode,
+  precision,
   plots,
   selectedPlotId,
   drawing,
@@ -66,7 +99,9 @@ export function MappingMap({
   onAddPoint,
   onMovePoint,
   onSelectPlot,
+  onCenterChange,
 }: MappingMapProps) {
+  const isDistance = mode === "distancia";
   return (
     <MapContainer
       center={[-18.94, -46.99]}
@@ -77,16 +112,10 @@ export function MappingMap({
       className="mapping-leaflet-map"
       aria-label="Mapa de talhões da propriedade"
     >
-      {basemap === "satelite" ? (
-        <TileLayer attribution={ESRI_ATTRIBUTION} url={ESRI_IMAGERY_URL} maxZoom={19} />
-      ) : (
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-      )}
+      <Basemaps basemap={basemap} />
 
-      <DrawingEvents enabled={drawing} onAddPoint={onAddPoint} />
+      <DrawingEvents enabled={drawing && !precision} onAddPoint={onAddPoint} />
+      <CenterTracker onCenterChange={onCenterChange} />
       <FocusController target={focusTarget} />
       <FollowController location={liveLocation} follow={follow} />
 
@@ -96,14 +125,15 @@ export function MappingMap({
           ([longitude, latitude]) => [latitude, longitude] as LatLngExpression,
         );
         const selected = plot.id === selectedPlotId;
+        const color = plotColor(plot.id);
         return (
           <Polygon
             key={plot.id}
             positions={ring}
             pathOptions={{
-              color: selected ? "#fbbf24" : "#10b981",
-              fillColor: selected ? "#fbbf24" : "#22c55e",
-              fillOpacity: selected ? 0.25 : 0.15,
+              color: selected ? "#fbbf24" : color,
+              fillColor: selected ? "#fbbf24" : color,
+              fillOpacity: selected ? 0.28 : 0.18,
               weight: selected ? 4 : 3,
             }}
             eventHandlers={{ click: () => onSelectPlot(plot.id) }}
@@ -115,18 +145,26 @@ export function MappingMap({
         );
       })}
 
-      {points.length >= 2 && (
-        <Polygon
-          positions={points.map(([longitude, latitude]) => [latitude, longitude])}
-          pathOptions={{
-            color: "#0ea5e9",
-            fillColor: "#0ea5e9",
-            fillOpacity: 0.18,
-            weight: 3,
-            dashArray: "6 4",
-          }}
-        />
-      )}
+      {/* Desenho em andamento: polígono (área) ou linha (distância). */}
+      {isDistance
+        ? points.length >= 2 && (
+            <Polyline
+              positions={points.map(([longitude, latitude]) => [latitude, longitude])}
+              pathOptions={{ color: "#0ea5e9", weight: 4 }}
+            />
+          )
+        : points.length >= 2 && (
+            <Polygon
+              positions={points.map(([longitude, latitude]) => [latitude, longitude])}
+              pathOptions={{
+                color: "#0ea5e9",
+                fillColor: "#0ea5e9",
+                fillOpacity: 0.18,
+                weight: 3,
+                dashArray: "6 4",
+              }}
+            />
+          )}
 
       {points.map(([longitude, latitude], index) => (
         <Marker
@@ -187,6 +225,21 @@ export function MappingMap({
       )}
     </MapContainer>
   );
+}
+
+function CenterTracker({ onCenterChange }: { onCenterChange: (center: Position) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    const center = map.getCenter();
+    onCenterChange([center.lng, center.lat]);
+  }, [map, onCenterChange]);
+  useMapEvents({
+    move() {
+      const center = map.getCenter();
+      onCenterChange([center.lng, center.lat]);
+    },
+  });
+  return null;
 }
 
 function FollowController({
