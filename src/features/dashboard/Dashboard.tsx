@@ -21,6 +21,8 @@ import { ModuleCard } from "../../components/ui/ModuleCard";
 import { AlertsPanel } from "../alerts/AlertsPanel";
 import { NotificationsToggle } from "../alerts/NotificationsToggle";
 import { buildAlerts } from "../../domain/alerts";
+import { buildWeatherAlerts } from "../../domain/weatherAlerts";
+import { useWeather } from "../weather/weatherStore";
 import { computeSoilIndices, indexLabel } from "../../domain/soilHealth";
 import { propertyLocation } from "../../domain/agriculturalContext";
 import { summarizeCosts, type FieldRecord } from "../../domain/fieldRecords";
@@ -153,6 +155,7 @@ function HealthGauge({ label, value }: { label: string; value: number | null }) 
 }
 
 export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistory, soilAnalyses, name }: DashboardProps) {
+  const weather = useWeather(agriculture);
   const hour = new Date().getHours();
   const salutation = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const isNewAccount = agriculture.state.properties.length === 0 || agriculture.state.plots.length === 0;
@@ -197,7 +200,18 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
   const propertyPlots = agriculture.state.plots.filter(
     (plot) => plot.propertyId === agriculture.selectedProperty?.id,
   );
-  const alerts = buildAlerts(propertyPlots, records, ndviHistory, soilAnalyses);
+  const severityOrder = { alta: 0, media: 1, info: 2 } as const;
+  const alerts = [
+    ...buildAlerts(propertyPlots, records, ndviHistory, soilAnalyses),
+    ...buildWeatherAlerts(
+      weather.forecast,
+      weather.sprayWindows,
+      weather.locationLabel ||
+        (agriculture.selectedProperty
+          ? propertyLocation(agriculture.selectedProperty)
+          : "sua região"),
+    ),
+  ].sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
   const latestSoil = soilAnalyses
     .filter((analysis) => analysis.plotId === agriculture.selectedPlot?.id)
     .sort(
