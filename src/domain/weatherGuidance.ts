@@ -13,7 +13,22 @@ export type WeatherGuidance = {
   id: string;
   tone: GuidanceTone;
   /** categoria para escolher o ícone na tela */
-  kind: "geada" | "chuva" | "seca" | "calor" | "pulverizacao" | "colheita" | "doenca" | "adubacao";
+  kind:
+    | "geada"
+    | "chuva"
+    | "seca"
+    | "calor"
+    | "pulverizacao"
+    | "colheita"
+    | "doenca"
+    | "adubacao"
+    | "analise"
+    | "calagem"
+    | "poda"
+    | "manejo"
+    | "plantio"
+    | "foliar"
+    | "desbrota";
   title: string;
   detail: string;
 };

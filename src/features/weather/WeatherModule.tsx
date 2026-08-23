@@ -1,14 +1,19 @@
 import {
   ArrowRight,
   Bug,
+  CalendarDays,
   CloudRain,
   Droplets,
+  FlaskConical,
   Flame,
   Leaf,
   MapPin,
+  Mountain,
   RefreshCw,
+  Scissors,
   Snowflake,
   SprayCan,
+  Sprout,
   Sun,
   Wheat,
   Wind,
@@ -18,6 +23,11 @@ import type { AppView } from "../../app/navigation";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { SPRAY_RATING_LABEL, type SprayHour } from "../../domain/weather";
 import { buildWeatherGuidance, type WeatherGuidance } from "../../domain/weatherGuidance";
+import {
+  activitiesForMonth,
+  calendarWeatherGuidance,
+  monthLabel,
+} from "../../domain/coffeeCalendar";
 import { useWeather, type WeatherSource } from "./weatherStore";
 import "./weather.css";
 
@@ -30,6 +40,20 @@ const GUIDANCE_ICON: Record<WeatherGuidance["kind"], LucideIcon> = {
   colheita: Wheat,
   doenca: Bug,
   adubacao: Leaf,
+  analise: FlaskConical,
+  calagem: Mountain,
+  poda: Scissors,
+  manejo: Sprout,
+  plantio: Sprout,
+  foliar: Leaf,
+  desbrota: Scissors,
+};
+
+const TONE_ORDER: Record<WeatherGuidance["tone"], number> = {
+  critico: 0,
+  atencao: 1,
+  bom: 2,
+  info: 3,
 };
 
 type WeatherModuleProps = {
@@ -51,7 +75,12 @@ const SOURCE_LABEL: Record<WeatherSource, string> = {
  */
 export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
   const weather = useWeather(agriculture);
-  const guidance = buildWeatherGuidance(weather.forecast, weather.sprayWindows);
+  const month = new Date().getMonth() + 1;
+  const monthActivities = activitiesForMonth(month);
+  const guidance = [
+    ...buildWeatherGuidance(weather.forecast, weather.sprayWindows),
+    ...calendarWeatherGuidance(month, weather.forecast),
+  ].sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
 
   return (
     <div className="page-stack platform-page">
@@ -97,6 +126,33 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
           </button>
         </div>
       </div>
+
+      <section className="weather-block calendar-block">
+        <div className="calendar-head">
+          <CalendarDays size={18} aria-hidden="true" />
+          <div>
+            <h2>Calendário do cafeicultor</h2>
+            <p className="weather-block-note">
+              Atividades recomendadas para <strong>{monthLabel(month)}</strong> (referência do Sul de
+              Minas — as datas variam por região e cultivar).
+            </p>
+          </div>
+        </div>
+        {monthActivities.length === 0 ? (
+          <p className="weather-status">Nenhuma atividade típica registrada para este mês.</p>
+        ) : (
+          <div className="calendar-chips">
+            {monthActivities.map((activity) => {
+              const Icon = GUIDANCE_ICON[activity.kind];
+              return (
+                <span className="calendar-chip" key={activity.id}>
+                  <Icon size={14} aria-hidden="true" /> {activity.label}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {weather.status === "loading" && <p className="weather-status">Buscando previsão…</p>}
 
