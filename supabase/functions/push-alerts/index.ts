@@ -25,6 +25,7 @@ const GEADA_DIAS_A_FRENTE = 2;
 const CHUVA_FORTE_MM = 30; // >= 30 mm/dia
 const CALOR_MAX_C = 34; // >= 34 °C
 const CLIMA_DIAS_A_FRENTE = 3; // janela p/ chuva/calor/veranico
+const ATIV_PROXIMA_DIAS = 3; // avisa atividade planejada (adubação etc.) chegando
 
 const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -168,6 +169,26 @@ function buildAlerts(plots: any[], records: any[], ndvi: any[], soil: any[], tod
       view: "caderno",
     });
   }
+
+  // Atividades planejadas CHEGANDO (adubação, pulverização, colheita etc.):
+  // avisa nos próximos dias, uma por atividade (dedup por id evita repetir).
+  const plotName = new Map<string, string>();
+  for (const p of plots) plotName.set(String(p.id), p.name ?? "talhão");
+  for (const r of records) {
+    if (r.status !== "planejada" || !r.date) continue;
+    const dias = diasEntre(today, r.date);
+    if (dias < 0 || dias > ATIV_PROXIMA_DIAS) continue;
+    const quando = dias === 0 ? "hoje" : dias === 1 ? "amanhã" : `em ${dias} dias`;
+    const nome = String(r.title || r.type || "Atividade").trim() || "Atividade";
+    const onde = r.plot_id && plotName.get(String(r.plot_id)) ? ` em ${plotName.get(String(r.plot_id))}` : "";
+    alerts.push({
+      key: `atividade-proxima-${r.id}`,
+      severity: "media",
+      title: `📌 ${nome} ${quando}`,
+      body: `${nome} planejada${onde} para ${dm(r.date)} (${quando}). Abra o caderno para confirmar.`,
+      view: "caderno",
+    });
+  }
   for (const plot of plots) {
     const nome = plot.name ?? "talhão";
     const ndviPlot = ndvi
@@ -307,7 +328,7 @@ Deno.serve(async (req) => {
 
   const [plotsRes, recordsRes, ndviRes, soilRes, deliveriesRes] = await Promise.all([
     supabase.from("plots").select("id,user_id,name,geometry").in("user_id", userIds),
-    supabase.from("field_records").select("user_id,plot_id,status,date").in("user_id", userIds),
+    supabase.from("field_records").select("id,user_id,plot_id,status,date,title,type").in("user_id", userIds),
     supabase.from("ndvi_results").select("user_id,plot_id,acquired_at,result").in("user_id", userIds),
     supabase.from("soil_analyses").select("user_id,plot_id,analysis_date,created_at").in("user_id", userIds),
     supabase.from("alert_deliveries").select("user_id,alert_key,sent_at").in("user_id", userIds),
