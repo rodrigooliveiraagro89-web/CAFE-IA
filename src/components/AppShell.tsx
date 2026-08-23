@@ -24,6 +24,7 @@ import { propertyLocation, type FarmPlot, type FarmProperty } from "../domain/ag
 import type { Profile } from "../lib/useAuth";
 import type { ThemePreference } from "../lib/preferences";
 import { AgrynBrand } from "./brand/AgrynBrand";
+import { InstallButton } from "../features/pwa/InstallButton";
 
 type AppShellProps = PropsWithChildren<{
   activeView: AppView;
@@ -153,6 +154,7 @@ export function AppShell({
         {!online && <div className="offline-banner" role="status"><WifiOff size={16} /> Modo offline: registros ficam neste aparelho e serão sincronizados quando a conexão voltar.</div>}
         <header className="topbar">
           <div className="mobile-brand"><AgrynBrand compact /></div>
+          <InstallButton />
           <div className="property-context" aria-label="Contexto da propriedade">
             <span className="context-icon"><Sprout size={19} aria-hidden="true" /></span>
             <span>

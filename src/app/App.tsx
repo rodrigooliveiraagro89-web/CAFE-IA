@@ -7,7 +7,6 @@ import { evaluateRecommendationReadiness } from "../domain/safety";
 // Dashboard é a tela inicial — fica eager para o primeiro paint ser instantâneo.
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { ImportLocalDataDialog } from "../features/onboarding/ImportLocalDataDialog";
-import { InstallPrompt } from "../features/pwa/InstallPrompt";
 import { WelcomeScreen } from "../features/onboarding/WelcomeScreen";
 import { AreaOnboarding } from "../features/onboarding/AreaOnboarding";
 import { useNdviHistory } from "../features/ndvi/historyStore";
@@ -215,7 +214,6 @@ export function App() {
       onSignOut={auth.signOut}
     >
       <ImportLocalDataDialog userId={auth.userId} onDone={() => window.location.reload()} />
-      <InstallPrompt />
       {agriculture.demoActive && (
         <div className="demo-banner" role="status">
           <span>🧪 <strong>Modo demonstração</strong> — dados fictícios, nada é salvo.</span>
