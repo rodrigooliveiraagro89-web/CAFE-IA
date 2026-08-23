@@ -4,6 +4,7 @@ import type { SoilValues } from "../../domain/soilAnalysis";
 
 // Mapeia o JSON do backend (snake_case) para o SoilValues do domínio (camelCase).
 type RawSoilValues = {
+  label?: string | null;
   ph?: number | null;
   p?: number | null;
   k?: number | null;
@@ -24,6 +25,7 @@ type RawSoilValues = {
 };
 
 export type SoilExtraction = {
+  label: string | null;
   values: SoilValues;
   analysisDate: string | null;
   laboratory: string | null;
@@ -31,6 +33,7 @@ export type SoilExtraction = {
 
 function fromRaw(raw: RawSoilValues): SoilExtraction {
   return {
+    label: raw.label ?? null,
     values: {
       ph: raw.ph ?? null,
       p: raw.p ?? null,
@@ -65,7 +68,7 @@ async function responseMessage(response: Response, fallback: string): Promise<st
 export async function extractSoilFromFile(
   file: File,
   accessToken: string,
-): Promise<SoilExtraction> {
+): Promise<SoilExtraction[]> {
   const apiUrl = getProcessingApiUrl();
   if (!apiUrl) {
     throw new Error(
@@ -90,6 +93,18 @@ export async function extractSoilFromFile(
     throw new Error(await responseMessage(response, "Não foi possível ler o laudo."));
   }
 
-  const payload = (await response.json()) as { values: RawSoilValues };
-  return fromRaw(payload.values);
+  const payload = (await response.json()) as {
+    samples?: RawSoilValues[];
+    values?: RawSoilValues;
+  };
+  // Novo formato: lista de amostras. Compat.: `values` como amostra única.
+  const raw = payload.samples?.length
+    ? payload.samples
+    : payload.values
+      ? [payload.values]
+      : [];
+  if (raw.length === 0) {
+    throw new Error("A leitura do laudo não retornou amostras. Tente outra foto.");
+  }
+  return raw.map(fromRaw);
 }

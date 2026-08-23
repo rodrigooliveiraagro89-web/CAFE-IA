@@ -20,7 +20,7 @@ import {
   type SoilValues,
 } from "../../domain/soilAnalysis";
 import { parseNumberBR } from "../../domain/parseNumber";
-import { extractSoilFromFile } from "./soilClient";
+import { extractSoilFromFile, type SoilExtraction } from "./soilClient";
 import { useSoilAnalyses, type SoilAnalysis, type SoilSource } from "./soilStore";
 import "./soil.css";
 
@@ -53,6 +53,9 @@ type UploadState =
 export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilModuleProps) {
   const plot = agriculture.selectedPlot;
   const [draft, setDraft] = useState<DraftState | null>(null);
+  const [samples, setSamples] = useState<SoilExtraction[] | null>(null);
+  const [sampleIndex, setSampleIndex] = useState<number | null>(null);
+  const [sampleSource, setSampleSource] = useState<SoilSource>("pdf");
   const [uploadState, setUploadState] = useState<UploadState>({ status: "idle" });
   const [saved, setSaved] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -69,18 +72,30 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
   );
   const plotAnalyses = soil.analyses.filter((item) => item.plotId === plot?.id);
 
+  function applySample(list: SoilExtraction[], index: number, source: SoilSource) {
+    const chosen = list[index];
+    setSampleIndex(index);
+    setDraft({
+      values: chosen.values,
+      analysisDate: chosen.analysisDate ?? "",
+      laboratory: chosen.laboratory ?? "",
+      source,
+    });
+  }
+
   async function handleFile(file: File | undefined, source: SoilSource) {
     if (!file) return;
     setSaved(false);
+    setDraft(null);
+    setSamples(null);
+    setSampleIndex(null);
     setUploadState({ status: "reading", message: "Lendo o laudo com IA…" });
     try {
-      const extraction = await extractSoilFromFile(file, accessToken);
-      setDraft({
-        values: extraction.values,
-        analysisDate: extraction.analysisDate ?? "",
-        laboratory: extraction.laboratory ?? "",
-        source,
-      });
+      const list = await extractSoilFromFile(file, accessToken);
+      setSampleSource(source);
+      setSamples(list);
+      // Uma amostra: já abre a conferência. Várias: mostra o seletor primeiro.
+      if (list.length === 1) applySample(list, 0, source);
       setUploadState({ status: "idle" });
     } catch (error) {
       setUploadState({
@@ -93,6 +108,8 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
   function startManual() {
     setSaved(false);
     setUploadState({ status: "idle" });
+    setSamples(null);
+    setSampleIndex(null);
     setDraft({ ...emptyDraft });
   }
 
@@ -119,6 +136,8 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
     });
     setSaved(true);
     setDraft(null);
+    setSamples(null);
+    setSampleIndex(null);
     setUploadState({ status: "idle" });
   }
 
@@ -153,7 +172,7 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
         </div>
       </header>
 
-      {!draft && (
+      {!draft && !samples && (
         <section className="soil-source-grid">
           <button className="soil-source-card" type="button" onClick={() => photoRef.current?.click()}>
             <Camera size={26} />
@@ -206,13 +225,59 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
         </div>
       )}
 
+      {samples && samples.length > 1 && (
+        <section className="panel-card soil-sample-picker">
+          <div className="panel-title">
+            <FlaskConical size={21} />
+            <div>
+              <span className="eyebrow">
+                {samples.length} análises neste laudo · aplicar em {plot.name}
+              </span>
+              <h2>Selecione qual análise usar</h2>
+            </div>
+          </div>
+          <p className="soil-review-note">
+            O laudo tem mais de uma amostra. Escolha a que corresponde a este talhão —
+            você confere e salva; depois pode voltar, trocar o talhão no topo e aplicar outra.
+          </p>
+          <div className="soil-sample-chips" role="group" aria-label="Amostras do laudo">
+            {samples.map((sample, index) => (
+              <button
+                key={`${index}-${sample.label ?? ""}`}
+                type="button"
+                data-active={index === sampleIndex}
+                onClick={() => applySample(samples, index, sampleSource)}
+              >
+                {sample.label?.trim() || `Amostra ${index + 1}`}
+              </button>
+            ))}
+          </div>
+          {sampleIndex !== null && (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => {
+                setDraft(null);
+                setSampleIndex(null);
+              }}
+            >
+              Trocar de amostra
+            </button>
+          )}
+        </section>
+      )}
+
       {draft && (
         <section className="panel-card">
           <div className="panel-title">
             <FlaskConical size={21} />
             <div>
               <span className="eyebrow">
-                {draft.source === "manual" ? "Digitação manual" : "Confira os valores extraídos"}
+                {draft.source === "manual"
+                  ? "Digitação manual"
+                  : samples && sampleIndex !== null && samples.length > 1
+                    ? `Amostra: ${samples[sampleIndex].label?.trim() || `Amostra ${sampleIndex + 1}`}`
+                    : "Confira os valores extraídos"}
               </span>
               <h2>Valores do laudo</h2>
             </div>

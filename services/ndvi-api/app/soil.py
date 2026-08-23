@@ -40,33 +40,27 @@ NUMERIC_FIELDS = [
     "cu",
 ]
 
-_NUMBER_OR_NULL = {"type": ["number", "null"]}
-_STRING_OR_NULL = {"type": ["string", "null"]}
-
-EXTRACTION_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        **{field: _NUMBER_OR_NULL for field in NUMERIC_FIELDS},
-        "analysis_date": _STRING_OR_NULL,  # ISO 8601 (YYYY-MM-DD) quando legível
-        "laboratory": _STRING_OR_NULL,
-    },
-    "required": [*NUMERIC_FIELDS, "analysis_date", "laboratory"],
-}
-
 SYSTEM_PROMPT = (
     "Você extrai os valores numéricos de um laudo de análise de solo brasileiro. "
     "Retorne exatamente os números impressos no laudo, sem converter unidades e "
     "sem interpretar. Unidades usuais: pH sem unidade; P, K, S e micronutrientes "
     "(Zn, B, Fe, Mn, Cu) em mg/dm³; Ca, Mg e CTC em cmolc/dm³; V% e m% em "
     "porcentagem; matéria orgânica (M.O.) em dag/kg ou %. Use null para qualquer "
-    "valor que não estiver claramente legível no laudo — nunca invente ou estime. "
-    "Se o laudo tiver várias amostras/áreas, extraia a primeira.\n\n"
+    "valor que não estiver claramente legível no laudo — nunca invente ou estime.\n\n"
+    "IMPORTANTE: um laudo costuma trazer VÁRIAS amostras/áreas (ex.: 'CASA 1 - "
+    "AMOSTRA 1', 'PINHEIRO 2', etc.), cada uma numa coluna com seu código de "
+    "laboratório. Extraia TODAS as amostras — uma entrada por amostra. Para cada "
+    "amostra, preencha 'label' com a identificação legível dela (nome da amostra "
+    "e, se houver, o código do laboratório). A data e o laboratório costumam ser "
+    "comuns ao laudo inteiro; repita-os em cada amostra.\n\n"
     "Responda APENAS com um objeto JSON válido (sem texto antes ou depois, sem "
-    "blocos de markdown) contendo exatamente estas chaves: "
-    "ph, p, k, ca, mg, s, ctc, v_percent, m_percent, organic_matter, zn, b, fe, "
-    "mn, cu, analysis_date (ISO YYYY-MM-DD ou null), laboratory (string ou null). "
-    "Os valores numéricos devem ser número ou null."
+    "blocos de markdown) no formato: "
+    '{"samples": [ {"label": "...", "ph": num|null, "p": num|null, "k": num|null, '
+    '"ca": num|null, "mg": num|null, "s": num|null, "ctc": num|null, '
+    '"v_percent": num|null, "m_percent": num|null, "organic_matter": num|null, '
+    '"zn": num|null, "b": num|null, "fe": num|null, "mn": num|null, "cu": num|null, '
+    '"analysis_date": "YYYY-MM-DD"|null, "laboratory": "..."|null } ] }. '
+    "Se houver só uma amostra, devolva a lista com um único item."
 )
 
 
@@ -121,8 +115,8 @@ def _document_block(media_type: str, data: bytes) -> dict:
     }
 
 
-async def extract_soil_values(media_type: str, data: bytes) -> dict:
-    """Chama o Claude para extrair os números do laudo e devolve um dict validado."""
+async def extract_soil_values(media_type: str, data: bytes) -> list[dict]:
+    """Chama o Claude e devolve a LISTA de amostras do laudo (uma ou várias)."""
     _require_anthropic_config()
     validate_upload(media_type, data)
 
@@ -130,7 +124,7 @@ async def extract_soil_values(media_type: str, data: bytes) -> dict:
     try:
         response = await client.messages.create(
             model=MODEL,
-            max_tokens=2048,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
             messages=[
                 {
@@ -162,7 +156,7 @@ async def extract_soil_values(media_type: str, data: bytes) -> dict:
             detail="A leitura do laudo não retornou dados. Tente outra foto.",
         )
     try:
-        values = json.loads(_strip_fences(text))
+        parsed = json.loads(_strip_fences(text))
     except json.JSONDecodeError as error:
         logger.error("JSON inesperado na extração de solo: %r", text[:400])
         raise HTTPException(
@@ -170,6 +164,23 @@ async def extract_soil_values(media_type: str, data: bytes) -> dict:
             detail="A leitura do laudo veio em formato inesperado. Tente novamente.",
         ) from error
 
-    # Mantém só as chaves conhecidas do schema — defensivo.
-    allowed = set(NUMERIC_FIELDS) | {"analysis_date", "laboratory"}
-    return {key: value for key, value in values.items() if key in allowed}
+    # Aceita tanto {"samples": [...]} quanto uma amostra única (compat.).
+    if isinstance(parsed, dict) and isinstance(parsed.get("samples"), list):
+        raw_samples = parsed["samples"]
+    elif isinstance(parsed, list):
+        raw_samples = parsed
+    else:
+        raw_samples = [parsed]
+
+    allowed = set(NUMERIC_FIELDS) | {"analysis_date", "laboratory", "label"}
+    samples: list[dict] = []
+    for item in raw_samples:
+        if not isinstance(item, dict):
+            continue
+        samples.append({key: value for key, value in item.items() if key in allowed})
+    if not samples:
+        raise HTTPException(
+            status_code=502,
+            detail="A leitura do laudo não retornou amostras. Tente outra foto.",
+        )
+    return samples

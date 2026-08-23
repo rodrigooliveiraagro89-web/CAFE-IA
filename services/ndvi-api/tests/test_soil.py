@@ -65,11 +65,32 @@ async def test_happy_path_returns_validated_values(monkeypatch):
         '"analysis_date": "2026-07-20", "laboratory": "BASLAB", "lixo": 99}'
     )
     _patch_client(monkeypatch, _fake_response(payload))
-    values = await soil.extract_soil_values("image/png", PNG_1x1)
-    assert values["ph"] == 5.8
-    assert values["laboratory"] == "BASLAB"
+    samples = await soil.extract_soil_values("image/png", PNG_1x1)
+    # Amostra única também vem como lista (compat.).
+    assert isinstance(samples, list) and len(samples) == 1
+    assert samples[0]["ph"] == 5.8
+    assert samples[0]["laboratory"] == "BASLAB"
     # chave desconhecida é descartada
-    assert "lixo" not in values
+    assert "lixo" not in samples[0]
+
+
+@pytest.mark.asyncio
+async def test_multiple_samples(monkeypatch):
+    payload = (
+        '{"samples": ['
+        '{"label": "CASA 1 - AMOSTRA 1", "ph": 4.66, "v_percent": 41.4, '
+        '"analysis_date": "2026-06-19", "laboratory": "PROFERT"},'
+        '{"label": "PINHEIRO 2", "ph": 5.67, "v_percent": 71.9, '
+        '"analysis_date": "2026-06-19", "laboratory": "PROFERT"}'
+        ']}'
+    )
+    _patch_client(monkeypatch, _fake_response(payload))
+    samples = await soil.extract_soil_values("image/png", PNG_1x1)
+    assert len(samples) == 2
+    assert samples[0]["label"] == "CASA 1 - AMOSTRA 1"
+    assert samples[0]["ph"] == 4.66
+    assert samples[1]["label"] == "PINHEIRO 2"
+    assert samples[1]["v_percent"] == 71.9
 
 
 @pytest.mark.asyncio

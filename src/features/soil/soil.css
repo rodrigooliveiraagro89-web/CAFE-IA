@@ -77,6 +77,31 @@
   line-height: 1.5;
 }
 
+.soil-sample-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.soil-sample-chips button {
+  min-height: 44px;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong, var(--line));
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.soil-sample-chips button[data-active="true"] {
+  background: var(--info);
+  border-color: var(--info);
+  color: #fff;
+}
+
 .soil-values-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

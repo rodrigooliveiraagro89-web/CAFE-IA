@@ -166,8 +166,9 @@ async def extract_soil(
 
     data = await file.read()
     media_type = (file.content_type or "").split(";")[0].strip().lower()
-    values = await extract_soil_values(media_type, data)
-    return {"values": values}
+    samples = await extract_soil_values(media_type, data)
+    # `samples` = todas as amostras; `values` = a primeira (compat. com clientes antigos).
+    return {"samples": samples, "values": samples[0]}
 
 
 @app.post("/v1/chat")
