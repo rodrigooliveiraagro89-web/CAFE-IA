@@ -15,7 +15,6 @@ import {
   Satellite,
   ShieldCheck,
   Sprout,
-  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,7 +53,6 @@ export const moduleCatalog: AgrynModule[] = [
   { id: "relatorios", label: "Relatórios", description: "Documentos técnicos e exportação", icon: FileText, accent: "violet", group: "Relatórios", href: "./?view=relatorios", badge: "Novo" },
   { id: "ia", label: "AGRYN IA", description: "Assistente agronômico contextual", icon: Bot, accent: "emerald", group: "Inteligência Artificial", href: "./?view=assistente", badge: "IA" },
   { id: "calc", label: "Calculadoras", description: "Área, aplicação e conversões", icon: Calculator, accent: "amber", group: "Manejo", href: "./?view=calculadoras", badge: "Novo" },
-  { id: "mercado", label: "Mercado agrícola", description: "Cotações e leitura de cenário", icon: TrendingUp, accent: "amber", group: "Monitoramento", href: "./?view=mercado", badge: "Novo" },
   { id: "adubacao", label: "Calagem e adubação", description: "Doses pelo Boletim 100 (IAC)", icon: Mountain, accent: "amber", group: "Manejo", href: "./?view=adubacao", badge: "Novo" },
   { id: "governanca", label: "Governança", description: "Segurança técnica e validações", icon: ShieldCheck, accent: "violet", group: "Relatórios", href: "./?view=seguranca" },
 ];

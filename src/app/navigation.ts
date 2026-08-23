@@ -7,7 +7,6 @@ import {
   LayoutGrid,
   Mountain,
   Satellite,
-  TrendingUp,
 } from "lucide-react";
 
 export type AppView =
@@ -23,7 +22,6 @@ export type AppView =
   | "assistente"
   | "diagnostico"
   | "clima"
-  | "mercado"
   | "calculadoras"
   | "caderno"
   | "custos"
@@ -57,7 +55,6 @@ export const navigationItems: NavigationItem[] = [
     icon: Mountain,
   },
   { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },
-  { id: "mercado", label: "Mercado", description: "Cotações, médias e projeção", icon: TrendingUp },
   {
     id: "assistente",
     label: "AGRYN IA",

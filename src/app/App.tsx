@@ -39,7 +39,6 @@ const FertilizationModule = lazy(() => retryImport(() => import("../features/fer
 const AssistantModule = lazy(() => retryImport(() => import("../features/assistant/AssistantModule")).then((m) => ({ default: m.AssistantModule })));
 const DiagnosisModule = lazy(() => retryImport(() => import("../features/diagnosis/DiagnosisModule")).then((m) => ({ default: m.DiagnosisModule })));
 const PrivacyModule = lazy(() => retryImport(() => import("../features/privacy/PrivacyModule")).then((m) => ({ default: m.PrivacyModule })));
-const MarketModule = lazy(() => retryImport(() => import("../features/market/MarketModule")).then((m) => ({ default: m.MarketModule })));
 const WeatherModule = lazy(() => retryImport(() => import("../features/weather/WeatherModule")).then((m) => ({ default: m.WeatherModule })));
 const FieldNotebook = lazy(() => retryImport(() => import("../features/fieldbook/FieldNotebook")).then((m) => ({ default: m.FieldNotebook })));
 const ModuleHub = lazy(() => retryImport(() => import("../features/modules/ModuleHub")).then((m) => ({ default: m.ModuleHub })));
@@ -75,7 +74,6 @@ const validViews: AppView[] = [
   "assistente",
   "diagnostico",
   "clima",
-  "mercado",
   "calculadoras",
   "caderno",
   "custos",
@@ -352,13 +350,6 @@ export function App() {
         <DiagnosisModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />
       )}
       {activeView === "clima" && <WeatherModule agriculture={agriculture} onNavigate={navigate} />}
-      {activeView === "mercado" && (
-        <MarketModule
-          agriculture={agriculture}
-          records={fieldBook.records}
-          onNavigate={navigate}
-        />
-      )}
       {activeView === "calculadoras" && (
         <CalculatorsModule agriculture={agriculture} onNavigate={navigate} />
       )}
