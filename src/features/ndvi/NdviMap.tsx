@@ -6,6 +6,7 @@ import {
 } from "leaflet";
 import { useEffect } from "react";
 import {
+  Circle,
   CircleMarker,
   ImageOverlay,
   MapContainer,
@@ -33,6 +34,7 @@ type NdviMapProps = {
   trueColorLayer?: NdviLayer;
   publicLayerDate: string;
   currentLocation: Position | null;
+  locationAccuracy: number | null;
   onAddPoint: (position: Position) => void;
   onMovePoint: (index: number, position: Position) => void;
 };
@@ -54,6 +56,7 @@ export function NdviMap({
   trueColorLayer,
   publicLayerDate,
   currentLocation,
+  locationAccuracy,
   onAddPoint,
   onMovePoint,
 }: NdviMapProps) {
@@ -126,16 +129,30 @@ export function NdviMap({
       )}
 
       {currentLocation && (
-        <CircleMarker
-          center={[currentLocation[1], currentLocation[0]]}
-          radius={8}
-          pathOptions={{
-            color: "#ffffff",
-            fillColor: "#0ea5e9",
-            fillOpacity: 1,
-            weight: 3,
-          }}
-        />
+        <>
+          {locationAccuracy && locationAccuracy > 1 && (
+            <Circle
+              center={[currentLocation[1], currentLocation[0]]}
+              radius={locationAccuracy}
+              pathOptions={{
+                color: "#0ea5e9",
+                fillColor: "#0ea5e9",
+                fillOpacity: 0.12,
+                weight: 1,
+              }}
+            />
+          )}
+          <CircleMarker
+            center={[currentLocation[1], currentLocation[0]]}
+            radius={8}
+            pathOptions={{
+              color: "#ffffff",
+              fillColor: "#0ea5e9",
+              fillOpacity: 1,
+              weight: 3,
+            }}
+          />
+        </>
       )}
 
       {points.length >= 2 && (

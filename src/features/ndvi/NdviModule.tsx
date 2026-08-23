@@ -126,6 +126,7 @@ export function NdviModule({
   );
   const [opacity, setOpacity] = useState(0.78);
   const [currentLocation, setCurrentLocation] = useState<Position | null>(null);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationState, setLocationState] = useState<LocationState>({
     status: "idle",
     message: "A localização só é acessada quando você autorizar.",
@@ -493,6 +494,7 @@ export function NdviModule({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+        setLocationAccuracy(position.coords.accuracy);
         setActiveLayer("ndvi");
         setLocationState({
           status: "success",
@@ -868,6 +870,7 @@ export function NdviModule({
               trueColorLayer={currentResult?.trueColorLayer}
               publicLayerDate={publicLayerDate}
               currentLocation={currentLocation}
+              locationAccuracy={locationAccuracy}
               onAddPoint={(position) => setPoints((current) => [...current, position])}
               onMovePoint={(index, position) =>
                 setPoints((current) =>
