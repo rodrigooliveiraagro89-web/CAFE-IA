@@ -1,9 +1,36 @@
-import { ArrowRight, Droplets, MapPin, RefreshCw, Wind } from "lucide-react";
+import {
+  ArrowRight,
+  Bug,
+  CloudRain,
+  Droplets,
+  Flame,
+  Leaf,
+  MapPin,
+  RefreshCw,
+  Snowflake,
+  SprayCan,
+  Sun,
+  Wheat,
+  Wind,
+  type LucideIcon,
+} from "lucide-react";
 import type { AppView } from "../../app/navigation";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { SPRAY_RATING_LABEL, type SprayHour } from "../../domain/weather";
+import { buildWeatherGuidance, type WeatherGuidance } from "../../domain/weatherGuidance";
 import { useWeather, type WeatherSource } from "./weatherStore";
 import "./weather.css";
+
+const GUIDANCE_ICON: Record<WeatherGuidance["kind"], LucideIcon> = {
+  geada: Snowflake,
+  chuva: CloudRain,
+  seca: Sun,
+  calor: Flame,
+  pulverizacao: SprayCan,
+  colheita: Wheat,
+  doenca: Bug,
+  adubacao: Leaf,
+};
 
 type WeatherModuleProps = {
   agriculture: AgriculturalController;
@@ -24,6 +51,7 @@ const SOURCE_LABEL: Record<WeatherSource, string> = {
  */
 export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
   const weather = useWeather(agriculture);
+  const guidance = buildWeatherGuidance(weather.forecast, weather.sprayWindows);
 
   return (
     <div className="page-stack platform-page">
@@ -107,6 +135,21 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
             </section>
           )}
 
+          {guidance.length > 0 && (
+            <section className="weather-block">
+              <h2>O que fazer nos próximos dias</h2>
+              <p className="weather-block-note">
+                Orientações de manejo a partir da previsão — apoio à decisão do cafeicultor, não
+                substitui a observação de campo e o parecer do responsável técnico.
+              </p>
+              <div className="guidance-grid">
+                {guidance.map((item) => (
+                  <GuidanceCard key={item.id} item={item} />
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="weather-block">
             <h2>Próximos 7 dias</h2>
             <div className="weather-days">
@@ -149,6 +192,21 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
       <p className="weather-note">
         <span>Dados meteorológicos de fonte pública (Open-Meteo). Atualizados a cada acesso.</span>
       </p>
+    </div>
+  );
+}
+
+function GuidanceCard({ item }: { item: WeatherGuidance }) {
+  const Icon = GUIDANCE_ICON[item.kind];
+  return (
+    <div className={`guidance-card guidance-card--${item.tone}`}>
+      <span className="guidance-card-icon" aria-hidden="true">
+        <Icon size={20} />
+      </span>
+      <div>
+        <strong>{item.title}</strong>
+        <p>{item.detail}</p>
+      </div>
     </div>
   );
 }
