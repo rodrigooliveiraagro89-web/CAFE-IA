@@ -15,6 +15,77 @@ const NDVI_QUEDA_RELEVANTE = 0.08;
 const SOLO_DIAS_VALIDADE = 365;
 const REENVIO_DIAS = 7;
 
+// Geada — o push mais crítico p/ café de montanha. Mínima prevista para as
+// próximas madrugadas: ≤ 3 °C é risco alto; ≤ 5 °C é atenção. Só olhamos os
+// próximos dias (a janela acionável), e a chave inclui a DATA da madrugada
+// para que uma nova noite fria dispare de novo sem repetir a mesma.
+const GEADA_SEVERA_C = 3;
+const GEADA_ATENCAO_C = 5;
+const GEADA_DIAS_A_FRENTE = 2;
+
+const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+function weekdayLabel(isoDate: string): string {
+  const d = new Date(`${isoDate.slice(0, 10)}T12:00:00Z`);
+  return Number.isNaN(d.getTime()) ? "" : WEEKDAYS[d.getUTCDay()];
+}
+
+// Centro do talhão a partir da geometria GeoJSON (anel [lng,lat]).
+function plotCentroid(geometry: any): { lat: number; lon: number } | null {
+  const ring = geometry?.coordinates?.[0];
+  if (!Array.isArray(ring) || ring.length === 0) return null;
+  const pts =
+    ring.length > 1 &&
+    ring[0]?.[0] === ring[ring.length - 1]?.[0] &&
+    ring[0]?.[1] === ring[ring.length - 1]?.[1]
+      ? ring.slice(0, -1)
+      : ring;
+  if (pts.length === 0) return null;
+  let sumLon = 0;
+  let sumLat = 0;
+  for (const [lon, lat] of pts) {
+    sumLon += Number(lon);
+    sumLat += Number(lat);
+  }
+  return { lat: sumLat / pts.length, lon: sumLon / pts.length };
+}
+
+// Consulta a previsão pública Open-Meteo (sem chave) e, se alguma madrugada
+// próxima ficar no limite, devolve o alerta de geada (senão null).
+async function fetchFrostAlert(
+  lat: number,
+  lon: number,
+): Promise<Alert | null> {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&daily=temperature_2m_min&timezone=auto&forecast_days=${GEADA_DIAS_A_FRENTE + 1}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    daily?: { time?: string[]; temperature_2m_min?: number[] };
+  };
+  const times = data.daily?.time ?? [];
+  const mins = data.daily?.temperature_2m_min ?? [];
+  let coldest: { date: string; min: number } | null = null;
+  // Olha as próximas madrugadas (ignora o índice 0 = hoje, já em curso).
+  for (let i = 1; i <= GEADA_DIAS_A_FRENTE && i < times.length; i += 1) {
+    const min = Math.round(mins[i]);
+    if (!Number.isFinite(min) || min > GEADA_ATENCAO_C) continue;
+    if (!coldest || min < coldest.min) coldest = { date: times[i], min };
+  }
+  if (!coldest) return null;
+  const severa = coldest.min <= GEADA_SEVERA_C;
+  return {
+    key: `geada-${coldest.date}`,
+    severity: severa ? "alta" : "media",
+    title: severa
+      ? `❄️ Risco de geada (${coldest.min}°C)`
+      : `❄️ Atenção a geada (${coldest.min}°C)`,
+    body: `Mínima de ${coldest.min}°C prevista para a madrugada de ${weekdayLabel(coldest.date)} (${coldest.date.slice(8, 10)}/${coldest.date.slice(5, 7)}). Avalie proteção da lavoura.`,
+    view: "clima",
+  };
+}
+
 function diasEntre(deISO: string, ateISO: string): number {
   const de = new Date(`${deISO.slice(0, 10)}T00:00:00Z`).getTime();
   const ate = new Date(`${ateISO.slice(0, 10)}T00:00:00Z`).getTime();
@@ -142,7 +213,7 @@ Deno.serve(async (req) => {
   const userIds = [...new Set(subs.map((s) => s.user_id))];
 
   const [plotsRes, recordsRes, ndviRes, soilRes, deliveriesRes] = await Promise.all([
-    supabase.from("plots").select("id,user_id,name").in("user_id", userIds),
+    supabase.from("plots").select("id,user_id,name,geometry").in("user_id", userIds),
     supabase.from("field_records").select("user_id,plot_id,status,date").in("user_id", userIds),
     supabase.from("ndvi_results").select("user_id,plot_id,acquired_at,result").in("user_id", userIds),
     supabase.from("soil_analyses").select("user_id,plot_id,analysis_date,created_at").in("user_id", userIds),
@@ -166,13 +237,28 @@ Deno.serve(async (req) => {
   let removed = 0;
 
   for (const userId of userIds) {
+    const userPlots = plotsByUser.get(userId) ?? [];
     const alerts = buildAlerts(
-      plotsByUser.get(userId) ?? [],
+      userPlots,
       recordsByUser.get(userId) ?? [],
       ndviByUser.get(userId) ?? [],
       soilByUser.get(userId) ?? [],
       today,
     ).filter((a) => a.severity === "alta" || a.severity === "media");
+
+    // Geada: usa o centro do primeiro talhão mapeado do usuário. Se não houver
+    // limite desenhado, não dá para localizar o clima — segue sem geada.
+    const centroid = userPlots
+      .map((p) => plotCentroid(p.geometry))
+      .find((c): c is { lat: number; lon: number } => c !== null);
+    if (centroid) {
+      try {
+        const geada = await fetchFrostAlert(centroid.lat, centroid.lon);
+        if (geada) alerts.unshift(geada);
+      } catch (_) {
+        // Falha na previsão não pode derrubar o envio dos demais alertas.
+      }
+    }
 
     for (const alert of alerts) {
       const anterior = jaEnviado.get(`${userId}:${alert.key}`);
