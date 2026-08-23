@@ -289,6 +289,40 @@ function groupBy<T>(rows: T[], key: (r: T) => string): Map<string, T[]> {
   return map;
 }
 
+// Envio por WhatsApp via Cloud API (Meta). Usa um TEMPLATE aprovado com dois
+// parâmetros no corpo: {{1}} = título, {{2}} = mensagem. Só envia se as
+// credenciais estiverem configuradas nos secrets da função.
+async function sendWhatsapp(to: string, alert: Alert): Promise<boolean> {
+  const token = Deno.env.get("WHATSAPP_TOKEN") ?? "";
+  const phoneId = Deno.env.get("WHATSAPP_PHONE_ID") ?? "";
+  if (!token || !phoneId) return false;
+  const template = Deno.env.get("WHATSAPP_TEMPLATE") ?? "agryn_alerta";
+  const lang = Deno.env.get("WHATSAPP_LANG") ?? "pt_BR";
+  const res = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: template,
+        language: { code: lang },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: alert.title },
+              { type: "text", text: alert.body },
+            ],
+          },
+        ],
+      },
+    }),
+  });
+  return res.ok;
+}
+
 Deno.serve(async (req) => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -354,12 +388,21 @@ Deno.serve(async (req) => {
   }
 
   const { data: subs } = await supabase.from("push_subscriptions").select("*");
-  if (!subs || subs.length === 0) {
-    return new Response(JSON.stringify({ ok: true, sent: 0, note: "sem assinaturas" }), {
+  const { data: waProfiles } = await supabase
+    .from("profiles")
+    .select("id,whatsapp,whatsapp_opt_in")
+    .eq("whatsapp_opt_in", true);
+  const whatsappByUser = new Map<string, string>();
+  for (const p of waProfiles ?? []) {
+    if (p.whatsapp) whatsappByUser.set(p.id, String(p.whatsapp));
+  }
+  const subsList = subs ?? [];
+  const userIds = [...new Set([...subsList.map((s) => s.user_id), ...whatsappByUser.keys()])];
+  if (userIds.length === 0) {
+    return new Response(JSON.stringify({ ok: true, sent: 0, note: "sem assinantes" }), {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const userIds = [...new Set(subs.map((s) => s.user_id))];
 
   const [plotsRes, recordsRes, ndviRes, soilRes, deliveriesRes] = await Promise.all([
     supabase.from("plots").select("id,user_id,name,geometry").in("user_id", userIds),
@@ -373,7 +416,7 @@ Deno.serve(async (req) => {
   const recordsByUser = groupBy(recordsRes.data ?? [], (r) => r.user_id);
   const ndviByUser = groupBy(ndviRes.data ?? [], (r) => r.user_id);
   const soilByUser = groupBy(soilRes.data ?? [], (r) => r.user_id);
-  const subsByUser = groupBy(subs, (r) => r.user_id);
+  const subsByUser = groupBy(subsList, (r) => r.user_id);
   const today = new Date().toISOString().slice(0, 10);
   const now = Date.now();
 
@@ -437,6 +480,17 @@ Deno.serve(async (req) => {
           }
         }
       }
+
+      // WhatsApp (Meta Cloud API) para quem autorizou. Mesmo dedup do push.
+      const waNumber = whatsappByUser.get(userId);
+      if (waNumber) {
+        try {
+          if (await sendWhatsapp(waNumber, alert)) entregou = true;
+        } catch (_) {
+          // Falha no WhatsApp não derruba o restante.
+        }
+      }
+
       if (entregou) {
         await supabase
           .from("alert_deliveries")

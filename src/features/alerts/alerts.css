@@ -190,3 +190,18 @@
     justify-content: center;
   }
 }
+
+/* Opt-in de alertas por WhatsApp */
+.whatsapp-fields { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+.whatsapp-fields input[type="tel"] {
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  max-width: 240px;
+}
+.whatsapp-consent { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.76rem; color: var(--text-soft); line-height: 1.4; cursor: pointer; }
+.whatsapp-consent input { margin-top: 0.15rem; flex-shrink: 0; }
