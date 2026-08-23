@@ -204,6 +204,43 @@ Deno.serve(async (req) => {
 
   const appUrl = Deno.env.get("APP_URL") ?? "https://rodrigooliveiraagro89-web.github.io/CAFE-IA/";
 
+  // Modo TESTE: envia um push imediato para as assinaturas de um usuário
+  // (ignora cálculo de alertas e dedup). Serve para conferir o canal fim a fim.
+  // Invoque com body {"test": true, "userId": "..."} + o mesmo x-cron-secret.
+  const reqBody = await req.json().catch(() => ({} as Record<string, unknown>));
+  if (reqBody?.test) {
+    const uid = String(reqBody.userId ?? "");
+    const { data: testSubs } = await supabase
+      .from("push_subscriptions")
+      .select("*")
+      .eq("user_id", uid);
+    let n = 0;
+    let gone = 0;
+    for (const sub of testSubs ?? []) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify({
+            title: "✅ Teste AGRYN",
+            body: "Se você recebeu isto, os alertas por push estão funcionando.",
+            url: appUrl,
+            tag: "agryn-teste",
+          }),
+        );
+        n += 1;
+      } catch (err) {
+        const status = (err as { statusCode?: number })?.statusCode;
+        if (status === 404 || status === 410) {
+          await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+          gone += 1;
+        }
+      }
+    }
+    return new Response(JSON.stringify({ ok: true, test: true, sent: n, expired: gone }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const { data: subs } = await supabase.from("push_subscriptions").select("*");
   if (!subs || subs.length === 0) {
     return new Response(JSON.stringify({ ok: true, sent: 0, note: "sem assinaturas" }), {
