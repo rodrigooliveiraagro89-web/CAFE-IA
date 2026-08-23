@@ -919,3 +919,43 @@ input[aria-invalid="true"] {
 .onboarding-err { color: var(--danger, #dc2626); font-size: .8rem; font-weight: 600; }
 .onboarding-actions { display: flex; align-items: center; justify-content: space-between; margin-top: .3rem; }
 .onboarding-foot { text-align: center; color: var(--text-faint); font-size: .8rem; margin: 0; }
+
+/* Banner de instalação do app (PWA) */
+.install-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  width: min(560px, calc(100vw - 1.5rem));
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+.install-prompt-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+}
+.install-prompt-body > svg { flex-shrink: 0; margin-top: 0.15rem; color: var(--agryn-emerald-deep, var(--success)); }
+.install-prompt-body strong { display: block; font-size: 0.9rem; }
+.install-prompt-body p { margin: 0.15rem 0 0; font-size: 0.76rem; color: var(--text-soft); line-height: 1.35; }
+.install-prompt-body p svg { vertical-align: -2px; }
+.install-prompt-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+.install-prompt-actions .primary-button { padding: 0.5rem 0.9rem; min-height: 44px; }
+.install-prompt-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: transparent; color: var(--text-soft); cursor: pointer;
+}
+@media (max-width: 480px) {
+  .install-prompt { flex-direction: column; align-items: stretch; }
+  .install-prompt-actions .primary-button { flex: 1; }
+}
