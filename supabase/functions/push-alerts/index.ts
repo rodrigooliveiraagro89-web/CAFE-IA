@@ -29,6 +29,36 @@ const ATIV_PROXIMA_DIAS = 3; // avisa atividade planejada (adubação etc.) cheg
 
 const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
+// Calendário do cafeicultor (Sul de Minas) — atividades por mês. Espelha
+// src/domain/coffeeCalendar.ts; serve para o resumo mensal por push.
+const MESES = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const CALENDAR: { label: string; months: number[] }[] = [
+  { label: "Análise de solo", months: [4, 5, 6, 7] },
+  { label: "Análise foliar", months: [1, 2, 11, 12] },
+  { label: "Calagem/Gessagem", months: [3, 4, 7, 8, 9] },
+  { label: "Podas", months: [6, 7, 8] },
+  { label: "Manejo do mato", months: [1, 2, 3, 4, 10, 11, 12] },
+  { label: "Adubação via solo", months: [1, 2, 9, 10, 11, 12] },
+  { label: "Adubação foliar", months: [1, 2, 3, 9, 10, 11, 12] },
+  { label: "Plantio das mudas", months: [1, 2, 10, 11, 12] },
+  { label: "Desbrotas", months: [1, 2, 3, 4, 5, 6, 12] },
+  { label: "Colheita", months: [4, 5, 6, 7, 8] },
+];
+
+// Resumo mensal do calendário — uma notificação por mês (chave YYYY-MM).
+function calendarSummary(today: string): Alert | null {
+  const month = Number(today.slice(5, 7));
+  const labels = CALENDAR.filter((a) => a.months.includes(month)).map((a) => a.label);
+  if (labels.length === 0) return null;
+  return {
+    key: `calendario-${today.slice(0, 7)}`,
+    severity: "media",
+    title: `📅 Calendário de ${MESES[month] ?? ""}`,
+    body: `Época de: ${labels.join(", ")}. Veja no Clima o que fazer e a melhor janela.`,
+    view: "clima",
+  };
+}
+
 function weekdayLabel(isoDate: string): string {
   const d = new Date(`${isoDate.slice(0, 10)}T12:00:00Z`);
   return Number.isNaN(d.getTime()) ? "" : WEEKDAYS[d.getUTCDay()];
@@ -157,6 +187,11 @@ function ultimoPorData<T>(itens: T[], dataDe: (i: T) => string): T | null {
 
 function buildAlerts(plots: any[], records: any[], ndvi: any[], soil: any[], today: string): Alert[] {
   const alerts: Alert[] = [];
+
+  // Resumo do calendário do cafeicultor (uma vez por mês).
+  const cal = calendarSummary(today);
+  if (cal) alerts.push(cal);
+
   const atrasadas = records.filter(
     (r) => r.status === "planejada" && r.date && diasEntre(r.date, today) > 0,
   );
