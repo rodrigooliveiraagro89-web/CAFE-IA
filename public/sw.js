@@ -1,5 +1,5 @@
 /* global self, caches, fetch, Response, clients */
-const CACHE = "agryn-shell-v4";
+const CACHE = "agryn-shell-v5";
 const BASE = "/CAFE-IA/";
 const SHELL = [BASE, `${BASE}landing.html`, `${BASE}manifest.webmanifest`, `${BASE}brand/agryn-mark.svg`];
 
