@@ -22,6 +22,9 @@ const REENVIO_DIAS = 7;
 const GEADA_SEVERA_C = 3;
 const GEADA_ATENCAO_C = 5;
 const GEADA_DIAS_A_FRENTE = 2;
+const CHUVA_FORTE_MM = 30; // >= 30 mm/dia
+const CALOR_MAX_C = 34; // >= 34 °C
+const CLIMA_DIAS_A_FRENTE = 3; // janela p/ chuva/calor/veranico
 
 const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -50,40 +53,93 @@ function plotCentroid(geometry: any): { lat: number; lon: number } | null {
   return { lat: sumLat / pts.length, lon: sumLon / pts.length };
 }
 
-// Consulta a previsão pública Open-Meteo (sem chave) e, se alguma madrugada
-// próxima ficar no limite, devolve o alerta de geada (senão null).
-async function fetchFrostAlert(
-  lat: number,
-  lon: number,
-): Promise<Alert | null> {
+function dm(date: string): string {
+  return `${weekdayLabel(date)} (${date.slice(8, 10)}/${date.slice(5, 7)})`;
+}
+
+// Consulta a previsão pública Open-Meteo (sem chave) e devolve os alertas de
+// clima (geada, chuva forte, calor extremo, veranico) — os mesmos do Início.
+async function fetchWeatherAlerts(lat: number, lon: number): Promise<Alert[]> {
+  const days = CLIMA_DIAS_A_FRENTE + 1;
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-    `&daily=temperature_2m_min&timezone=auto&forecast_days=${GEADA_DIAS_A_FRENTE + 1}`;
+    `&daily=temperature_2m_min,temperature_2m_max,precipitation_sum&timezone=auto&forecast_days=${days}`;
   const res = await fetch(url);
-  if (!res.ok) return null;
+  if (!res.ok) return [];
   const data = (await res.json()) as {
-    daily?: { time?: string[]; temperature_2m_min?: number[] };
+    daily?: {
+      time?: string[];
+      temperature_2m_min?: number[];
+      temperature_2m_max?: number[];
+      precipitation_sum?: number[];
+    };
   };
-  const times = data.daily?.time ?? [];
-  const mins = data.daily?.temperature_2m_min ?? [];
+  const time = data.daily?.time ?? [];
+  const tmin = data.daily?.temperature_2m_min ?? [];
+  const tmax = data.daily?.temperature_2m_max ?? [];
+  const prec = data.daily?.precipitation_sum ?? [];
+  const alerts: Alert[] = [];
+
+  // Geada — próximas madrugadas (ignora hoje, já em curso).
   let coldest: { date: string; min: number } | null = null;
-  // Olha as próximas madrugadas (ignora o índice 0 = hoje, já em curso).
-  for (let i = 1; i <= GEADA_DIAS_A_FRENTE && i < times.length; i += 1) {
-    const min = Math.round(mins[i]);
+  for (let i = 1; i <= GEADA_DIAS_A_FRENTE && i < time.length; i += 1) {
+    const min = Math.round(tmin[i]);
     if (!Number.isFinite(min) || min > GEADA_ATENCAO_C) continue;
-    if (!coldest || min < coldest.min) coldest = { date: times[i], min };
+    if (!coldest || min < coldest.min) coldest = { date: time[i], min };
   }
-  if (!coldest) return null;
-  const severa = coldest.min <= GEADA_SEVERA_C;
-  return {
-    key: `geada-${coldest.date}`,
-    severity: severa ? "alta" : "media",
-    title: severa
-      ? `❄️ Risco de geada (${coldest.min}°C)`
-      : `❄️ Atenção a geada (${coldest.min}°C)`,
-    body: `Mínima de ${coldest.min}°C prevista para a madrugada de ${weekdayLabel(coldest.date)} (${coldest.date.slice(8, 10)}/${coldest.date.slice(5, 7)}). Avalie proteção da lavoura.`,
-    view: "clima",
-  };
+  if (coldest) {
+    const severa = coldest.min <= GEADA_SEVERA_C;
+    alerts.push({
+      key: `geada-${coldest.date}`,
+      severity: severa ? "alta" : "media",
+      title: severa ? `❄️ Risco de geada (${coldest.min}°C)` : `❄️ Atenção a geada (${coldest.min}°C)`,
+      body: `Mínima de ${coldest.min}°C na madrugada de ${dm(coldest.date)}. Avalie proteção da lavoura.`,
+      view: "clima",
+    });
+  }
+
+  // Chuva forte e calor extremo — próximos dias (inclui hoje).
+  let hasRain = false;
+  for (let i = 0; i < days && i < time.length; i += 1) {
+    const rain = Math.round((prec[i] ?? 0) * 10) / 10;
+    if (rain >= 1) hasRain = true;
+    if (rain >= CHUVA_FORTE_MM) {
+      alerts.push({
+        key: `chuva-forte-${time[i]}`,
+        severity: "media",
+        title: `🌧️ Chuva forte (${rain} mm)`,
+        body: `${rain} mm previstos para ${dm(time[i])}. Evite adubação em cobertura antes (lixiviação) e planeje colheita/drenagem.`,
+        view: "clima",
+      });
+      break;
+    }
+  }
+  for (let i = 0; i < days && i < time.length; i += 1) {
+    const max = Math.round(tmax[i]);
+    if (Number.isFinite(max) && max >= CALOR_MAX_C) {
+      alerts.push({
+        key: `calor-${time[i]}`,
+        severity: "media",
+        title: `🔥 Calor extremo (${max}°C)`,
+        body: `Máxima de ${max}°C para ${dm(time[i])}. Evite pulverizar nas horas quentes; atenção ao estresse na florada/granação.`,
+        view: "clima",
+      });
+      break;
+    }
+  }
+
+  // Veranico — nenhuma chuva relevante na janela toda.
+  if (!hasRain && time.length >= days) {
+    alerts.push({
+      key: "veranico",
+      severity: "media",
+      title: "☀️ Sem chuva nos próximos dias",
+      body: `Nenhuma chuva relevante prevista para os próximos ${days} dias. Atenção ao déficit hídrico e programe irrigação.`,
+      view: "clima",
+    });
+  }
+
+  return alerts;
 }
 
 function diasEntre(deISO: string, ateISO: string): number {
@@ -290,8 +346,8 @@ Deno.serve(async (req) => {
       .find((c): c is { lat: number; lon: number } => c !== null);
     if (centroid) {
       try {
-        const geada = await fetchFrostAlert(centroid.lat, centroid.lon);
-        if (geada) alerts.unshift(geada);
+        const clima = await fetchWeatherAlerts(centroid.lat, centroid.lon);
+        for (const a of clima) alerts.unshift(a);
       } catch (_) {
         // Falha na previsão não pode derrubar o envio dos demais alertas.
       }
