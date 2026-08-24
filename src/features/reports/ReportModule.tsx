@@ -2,7 +2,7 @@ import { Check, Copy, Crown, Download, Link2, MapPinned, Share2 } from "lucide-r
 import { useEffect, useMemo, useState } from "react";
 import type { AppView } from "../../app/navigation";
 import { propertyLocation } from "../../domain/agriculturalContext";
-import { CENARIOS } from "../../domain/fertilization";
+import { CENARIOS, type CenarioId } from "../../domain/fertilization";
 import { PRECO_PADRAO_KG } from "../../domain/fertilizerProgram";
 import type { FieldRecord } from "../../domain/fieldRecords";
 import { parseNumberBR } from "../../domain/parseNumber";
@@ -329,6 +329,7 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
   const { property, plots, executiveSummary, conclusion, ndviChart, costByPlotChart, costByCategoryChart, totalCost, generatedAt } =
     report;
   const location = propertyLocation(property);
+  const [cenario5a, setCenario5a] = useState<CenarioId>("media");
 
   return (
     <article className="report-print-area">
@@ -462,12 +463,28 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
       {plots.some((row) => row.soilAnalysis) && (
         <>
           <h2>Recomendação 5ª Aproximação (Emater-MG)</h2>
+          <div className="report-fert5a-prod no-print" role="group" aria-label="Produção esperada">
+            <span>Produção esperada:</span>
+            {CENARIOS.map((cen) => (
+              <button
+                key={cen.id}
+                type="button"
+                data-active={cen.id === cenario5a}
+                onClick={() => setCenario5a(cen.id)}
+              >
+                {cen.label} · {cen.sacasPorHectare} sc/ha
+              </button>
+            ))}
+          </div>
           {plots
             .filter((row) => row.soilAnalysis)
             .map((row) => (
               <div className="report-soil-block" key={`fert5a-${row.plot.id}`}>
                 <h3>{row.plot.name}</h3>
-                <Fertility5aReport analysis={row.soilAnalysis!} sacas={45} />
+                <Fertility5aReport
+                  analysis={row.soilAnalysis!}
+                  sacas={CENARIOS.find((c) => c.id === cenario5a)?.sacasPorHectare ?? 45}
+                />
               </div>
             ))}
         </>

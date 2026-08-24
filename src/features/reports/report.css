@@ -364,3 +364,9 @@
   font-style: italic;
   color: var(--text-soft);
 }
+
+/* Seletor de produção da recomendação 5ª Aproximação no relatório */
+.report-fert5a-prod { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.2rem 0 0.9rem; font-size: 0.85rem; }
+.report-fert5a-prod > span { color: var(--text-soft); font-weight: 600; }
+.report-fert5a-prod button { padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid var(--line-strong, var(--line)); background: var(--surface); color: var(--text); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.report-fert5a-prod button[data-active="true"] { background: color-mix(in srgb, var(--success, #16a34a) 16%, var(--surface)); border-color: var(--success, #16a34a); }
