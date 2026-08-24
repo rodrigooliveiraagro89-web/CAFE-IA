@@ -356,6 +356,48 @@ export function doseEnxofre(N_kg_ha: number | null, classeS: ClasseGeral | null)
   return 0;
 }
 
+// ----------------------------------------- conversão para fertilizantes ------
+
+export type FertilizanteItem = { produto: string; formula: string; kg_ha: number; obs?: string };
+
+/**
+ * Converte a necessidade em NUTRIENTE para fontes comerciais usuais, de forma
+ * transparente (o RT pode trocar por outra fonte/formulado). P via MAP, o N que
+ * sobra via ureia, K via KCl e S via gesso agrícola. Micros ficam como dose do
+ * elemento (a fonte varia muito). Parcelar N e K em 3–4 vezes (out–mar).
+ */
+export function converterFertilizantes(
+  n: Recomendacao5a["necessidade_nutrientes"],
+): FertilizanteItem[] {
+  const itens: FertilizanteItem[] = [];
+  const N = n.N_kg_ha_ano ?? 0;
+  const p2o5 = n.P2O5_kg_ha_ano ?? 0;
+  const k2o = n.K2O_kg_ha_ano ?? 0;
+  const s = n.S_kg_ha_ano ?? 0;
+  let nRestante = N;
+  if (p2o5 > 0) {
+    const kgMap = p2o5 / 0.52;
+    const nDoMap = kgMap * 0.11;
+    nRestante = Math.max(0, N - nDoMap);
+    itens.push({
+      produto: "MAP",
+      formula: "11-52-00",
+      kg_ha: Math.round(kgMap),
+      obs: `fornece ~${Math.round(nDoMap)} kg de N`,
+    });
+  }
+  if (nRestante > 0) {
+    itens.push({ produto: "Ureia", formula: "45-00-00", kg_ha: Math.round(nRestante / 0.45) });
+  }
+  if (k2o > 0) {
+    itens.push({ produto: "Cloreto de potássio (KCl)", formula: "00-00-60", kg_ha: Math.round(k2o / 0.6) });
+  }
+  if (s > 0) {
+    itens.push({ produto: "Gesso agrícola", formula: "~15% S, 16% Ca", kg_ha: Math.round(s / 0.15) });
+  }
+  return itens;
+}
+
 // --------------------------------------------------------------- motor -------
 
 export function recomendarNutrientes5a(input: {

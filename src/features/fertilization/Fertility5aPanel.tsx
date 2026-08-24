@@ -1,6 +1,7 @@
-import { FlaskConical } from "lucide-react";
+import { Download, FlaskConical } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
+  converterFertilizantes,
   recomendarNutrientes5a,
   type ExtratorB,
   type ExtratorMetalico,
@@ -149,18 +150,36 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
 
   const c = rec.classificacoes;
   const n = rec.necessidade_nutrientes;
+  const fertilizantes = converterFertilizantes(n);
+  const hoje = new Date().toLocaleDateString("pt-BR");
+
+  function baixarPdf() {
+    document.body.classList.add("printing-fert5a");
+    const limpar = () => {
+      document.body.classList.remove("printing-fert5a");
+      window.removeEventListener("afterprint", limpar);
+    };
+    window.addEventListener("afterprint", limpar);
+    window.print();
+    // Fallback caso afterprint não dispare (alguns navegadores).
+    window.setTimeout(limpar, 1000);
+  }
 
   return (
-    <section className="panel-card fert5a">
+    <section className="panel-card fert5a fert5a-print-area">
       <div className="panel-title">
         <FlaskConical size={20} />
         <div>
           <span className="eyebrow">5ª Aproximação — MG (Emater)</span>
           <h2>Recomendação de nutrientes {plotName ? `· ${plotName}` : ""}</h2>
+          <small className="fert5a-print-date">Emitido em {hoje}</small>
         </div>
+        <button className="secondary-button no-print" type="button" onClick={baixarPdf}>
+          <Download size={16} aria-hidden="true" /> Baixar PDF
+        </button>
       </div>
 
-      <div className="fert5a-form">
+      <div className="fert5a-form no-print">
         <label>
           Fase
           <select value={fase} onChange={(e) => setFase(e.target.value as Fase)}>
@@ -267,6 +286,27 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
           </p>
         </div>
       </div>
+
+      {fertilizantes.length > 0 && (
+        <div className="fert5a-fertilizantes">
+          <h3>Sugestão de fertilizantes (kg/ha)</h3>
+          <table>
+            <tbody>
+              {fertilizantes.map((item) => (
+                <tr key={item.produto}>
+                  <td><strong>{item.produto}</strong> <em>{item.formula}</em></td>
+                  <td className="fert5a-kg">{fmt(item.kg_ha, 0)} kg/ha</td>
+                  <td className="fert5a-obs">{item.obs ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="fert5a-parcelamento">
+            Parcele o N e o K em 3–4 vezes de outubro a março (a cada 40–60 dias). Uma fonte é só
+            uma opção — o responsável técnico pode trocar por outro formulado equivalente.
+          </p>
+        </div>
+      )}
 
       {rec.alertas.length > 0 && (
         <div className="fert5a-alertas">

@@ -333,3 +333,28 @@
 .fert5a-alertas ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
 .fert5a-alertas li { font-size: 0.76rem; color: var(--text-soft); line-height: 1.45; }
 .fert5a-fonte { margin: 0.9rem 0 0; font-size: 0.72rem; color: var(--text-faint); line-height: 1.4; }
+
+/* Fertilizantes sugeridos + PDF do painel 5ª Aproximação */
+.fert5a .panel-title { display: flex; align-items: flex-start; gap: 0.6rem; }
+.fert5a .panel-title > div { flex: 1; }
+.fert5a-print-date { display: none; color: var(--text-faint); font-size: 0.75rem; }
+.fert5a-fertilizantes { margin-top: 1rem; }
+.fert5a-fertilizantes h3 { font-size: 0.9rem; margin: 0 0 0.5rem; }
+.fert5a-fertilizantes table { width: 100%; border-collapse: collapse; }
+.fert5a-fertilizantes td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--line); font-size: 0.85rem; vertical-align: top; }
+.fert5a-fertilizantes em { font-style: normal; color: var(--text-faint); font-size: 0.78rem; }
+.fert5a-kg { white-space: nowrap; font-weight: 700; text-align: right; }
+.fert5a-obs { color: var(--text-soft); font-size: 0.78rem; }
+.fert5a-parcelamento { margin: 0.6rem 0 0; font-size: 0.76rem; color: var(--text-soft); line-height: 1.45; }
+
+@media print {
+  body.printing-fert5a * { visibility: hidden !important; }
+  body.printing-fert5a .fert5a-print-area,
+  body.printing-fert5a .fert5a-print-area * { visibility: visible !important; }
+  body.printing-fert5a .fert5a-print-area {
+    position: absolute; left: 0; top: 0; width: 100%;
+    padding: 1.2rem; box-shadow: none; border: none;
+  }
+  body.printing-fert5a .fert5a-print-area .no-print { display: none !important; }
+  body.printing-fert5a .fert5a-print-date { display: block !important; }
+}

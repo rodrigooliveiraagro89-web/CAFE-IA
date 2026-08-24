@@ -3,6 +3,7 @@ import {
   calcularCalagem,
   classificarP,
   classificarS,
+  converterFertilizantes,
   doseEnxofre,
   gessagemIndicada,
   produtividadeCalculo,
@@ -105,6 +106,18 @@ describe("recomendarNutrientes5a — exemplo seção 13 (produção, 40 sc/ha)",
     expect(n.Cu_kg_ha).toBe(1);
     expect(n.Mn_kg_ha).toBe(10);
     expect(n.Zn_kg_ha).toBe(6);
+  });
+
+  it("converte em fertilizantes (MAP, ureia, KCl, gesso)", () => {
+    const itens = converterFertilizantes(rec.necessidade_nutrientes);
+    const map = itens.find((i) => i.produto === "MAP");
+    const ureia = itens.find((i) => i.produto === "Ureia");
+    const kcl = itens.find((i) => i.produto.includes("KCl"));
+    const gesso = itens.find((i) => i.produto === "Gesso agrícola");
+    expect(map?.kg_ha).toBe(48); // 25 / 0,52
+    expect(kcl?.kg_ha).toBe(250); // 150 / 0,60
+    expect(gesso?.kg_ha).toBe(250); // 37,5 / 0,15
+    expect(ureia && ureia.kg_ha).toBeGreaterThan(600); // N restante / 0,45
   });
 
   it("N cai com análise foliar alta (3,3 → coluna 3,1–3,5)", () => {
