@@ -1,10 +1,16 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FertilizationModule } from "./FertilizationModule";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import type { FarmPlot } from "../../domain/agriculturalContext";
 import type { SoilAnalysis } from "../soil/soilStore";
+
+// Sem rede: o histórico salvo não é o foco destes testes.
+vi.mock("./fert5aClient", () => ({
+  listRecommendations: vi.fn(async () => []),
+  saveRecommendation: vi.fn(async () => null),
+}));
 
 function plot(): FarmPlot {
   return {
@@ -25,7 +31,7 @@ function plot(): FarmPlot {
   };
 }
 
-// Laudo Casa 1 (Profert): P 12 mg/dm³, K 100 mg/dm³, CTC 7 cmolc, V% 41.
+// Laudo Casa 1 (Profert): P 12 mg/dm³, K 100 mg/dm³, CTC 7 cmolc, Ca/Mg presentes.
 function soil(): SoilAnalysis {
   return {
     id: "soil-1",
@@ -53,60 +59,37 @@ function renderModule(withSoil = true) {
   );
 }
 
-describe("FertilizationModule (integração)", () => {
+describe("FertilizationModule (integração · 5ª Aproximação)", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("mostra calagem, NPK, programa recomendado e custo a partir do laudo", () => {
+  it("mostra a recomendação da 5ª Aproximação a partir do laudo (sem Boletim 100)", () => {
     renderModule();
-    // Calagem para elevar V% 41 -> 60 (não dispensada).
-    expect(screen.getByText(/Calcário dolomítico/i)).toBeInTheDocument();
-    // NPK do Boletim 100.
-    expect(screen.getByRole("heading", { name: "Adubação NPK" })).toBeInTheDocument();
-    // Programa: fórmula recomendada 27-00-10 aparece na tabela.
-    expect(screen.getAllByText(/27-00-10/).length).toBeGreaterThan(0);
-    // Custo por saca presente.
-    expect(screen.getByRole("heading", { name: /Quanto custa a adubação/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/\/sc|\/ha/).length).toBeGreaterThan(0);
+    // Cabeçalho da tela.
+    expect(screen.getByRole("heading", { name: "Calagem e adubação" })).toBeInTheDocument();
+    // Painel da 5ª Aproximação com o nome do talhão.
+    expect(screen.getByRole("heading", { name: /Recomendação de nutrientes · Casa 1/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Necessidade de nutrientes/i })).toBeInTheDocument();
+    // Correção do solo: calagem calculada (V% baixo).
+    expect(screen.getByText(/t\/ha \(produto\)/i)).toBeInTheDocument();
+    // Fonte técnica: 5ª Aproximação (não Boletim 100).
+    expect(screen.getAllByText(/5ª Aproximação de Minas Gerais/i).length).toBeGreaterThan(0);
+    // Não deve existir mais o antigo Boletim 100.
+    expect(screen.queryByRole("heading", { name: "Adubação NPK" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Boletim 100/i)).not.toBeInTheDocument();
   });
 
-  it("avisa potássio em excesso ao escolher 20-00-20 (solo com K alto)", async () => {
+  it("permite escolher a produção e guarda o cenário do talhão", async () => {
     const user = userEvent.setup();
     renderModule();
-    expect(screen.queryByText(/Potássio em excesso/i)).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/Fórmula de cobertura/i), "200020");
-    expect(screen.getByText(/Potássio em excesso/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Alta\s*70 sc\/ha/i }));
+    expect(window.localStorage.getItem("agryn.fert5a.plot-1")).toBe("alta");
   });
 
-  it("recalcula o alvo de V% pelo slider e reflete na proveniência", () => {
-    renderModule();
-    const slider = screen.getByLabelText("Alvo de V%");
-    // Sobe o alvo para 70% — a proveniência passa a citar V% alvo 70.
-    fireChange(slider, "70");
-    const prov = screen.getByRole("heading", { name: /Proveniência da recomendação/i }).closest("section");
-    expect(prov).not.toBeNull();
-    expect(within(prov as HTMLElement).getAllByText(/V% alvo 70/).length).toBeGreaterThan(0);
-  });
-
-  it("registra a proveniência com o laudo de origem (lab e data)", () => {
-    renderModule();
-    const prov = screen.getByRole("heading", { name: /Proveniência da recomendação/i }).closest("section") as HTMLElement;
-    expect(within(prov).getAllByText(/Profert/).length).toBeGreaterThan(0);
-    expect(within(prov).getAllByText(/19\/06\/2026/).length).toBeGreaterThan(0);
-    expect(within(prov).getAllByText(/b100\./).length).toBeGreaterThan(0);
-  });
-
-  it("sem laudo, avisa e ainda calcula pelas classes médias", () => {
+  it("sem laudo, avisa e pede o envio da análise (não calcula por suposição)", () => {
     renderModule(false);
     expect(screen.getByText(/Sem laudo de solo/i)).toBeInTheDocument();
-    // NPK ainda é calculado (com suposições).
-    expect(screen.getByRole("heading", { name: "Adubação NPK" })).toBeInTheDocument();
-    expect(screen.getByText(/Suposições feitas por falta de dado/i)).toBeInTheDocument();
+    expect(screen.getByText(/Envie a análise de solo do talhão/i)).toBeInTheDocument();
+    // Nada de NPK do Boletim 100.
+    expect(screen.queryByRole("heading", { name: "Adubação NPK" })).not.toBeInTheDocument();
   });
 });
-
-function fireChange(element: HTMLElement, value: string) {
-  const input = element as HTMLInputElement;
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-  setter?.call(input, value);
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-}
