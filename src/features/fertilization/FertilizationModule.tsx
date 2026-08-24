@@ -49,6 +49,7 @@ import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { buildManagementZones } from "../ndvi/managementZones";
 import type { NdviResult } from "../ndvi/types";
 import type { SoilAnalysis } from "../soil/soilStore";
+import { Fertility5aPanel } from "./Fertility5aPanel";
 import "./fertilization.css";
 
 type FertilizationModuleProps = {
@@ -343,6 +344,8 @@ export function FertilizationModule({
           </div>
         </section>
       )}
+
+      <Fertility5aPanel analysis={soil} plotName={plot.name} />
 
       <section className="panel-card">
         <div className="panel-title">

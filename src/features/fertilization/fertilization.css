@@ -301,3 +301,35 @@
 .fert-emit-list ul { list-style: none; margin: .6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
 .fert-emit-list li { color: var(--text-soft); }
 .fert-emit-list li span { font-weight: 600; color: var(--text); }
+
+/* Painel 5ª Aproximação (Emater-MG) */
+.fert5a .fert5a-hint { margin: 0; font-size: 0.85rem; color: var(--text-soft); line-height: 1.5; }
+.fert5a-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.7rem;
+  margin: 0.8rem 0 1rem;
+}
+.fert5a-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; font-weight: 600; color: var(--text-soft); }
+.fert5a-form input, .fert5a-form select {
+  min-height: 44px; padding: 0.45rem 0.6rem; font-size: 0.95rem;
+  border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text);
+}
+.fert5a-opt { font-weight: 500; color: var(--text-faint); }
+.fert5a-indices { display: flex; flex-wrap: wrap; gap: 1.2rem; padding: 0.7rem 0.9rem; border-radius: var(--radius-sm); background: var(--surface-muted, rgba(0,0,0,0.04)); margin-bottom: 1rem; }
+.fert5a-indices span { display: flex; flex-direction: column; }
+.fert5a-indices small { font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.03em; }
+.fert5a-indices strong { font-size: 1.05rem; }
+.fert5a-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.fert5a-doses h3, .fert5a-correcao h3 { font-size: 0.9rem; margin: 0 0 0.5rem; }
+.fert5a-doses table { width: 100%; border-collapse: collapse; }
+.fert5a-doses td { padding: 0.3rem 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+.fert5a-doses td:first-child { font-weight: 700; width: 3rem; }
+.fert5a-doses em { color: var(--text-faint); font-style: normal; font-size: 0.78rem; }
+.fert5a-correcao p { margin: 0 0 0.5rem; font-size: 0.85rem; line-height: 1.4; }
+.fert5a-alertas { margin-top: 1rem; padding: 0.7rem 0.9rem; border-radius: var(--radius-sm); background: var(--warning-soft, rgba(217,119,6,0.1)); }
+.fert5a-alertas strong { font-size: 0.82rem; }
+.fert5a-alertas ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+.fert5a-alertas li { font-size: 0.76rem; color: var(--text-soft); line-height: 1.45; }
+.fert5a-fonte { margin: 0.9rem 0 0; font-size: 0.72rem; color: var(--text-faint); line-height: 1.4; }
