@@ -129,3 +129,71 @@ describe("recomendarNutrientes5a — exemplo seção 13 (produção, 40 sc/ha)",
     expect(comFoliar.necessidade_nutrientes.N_kg_ha_ano).toBe(140);
   });
 });
+
+describe("fases de formação e campo (g/planta → kg/ha)", () => {
+  const soloBase = { K_mg_dm3: 100, P_mg_dm3: 8, P_rem_mg_L: 15 }; // K médio (60–120)
+
+  it("formação 1º ano: N 10 g/planta × 3 parcelas e K2O 20 g/planta (K médio), com 4.000 plantas/ha", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "formacao_1_ano", plantas_ha: 4000 },
+      solo: soloBase,
+    });
+    expect(rec.doses_por_planta?.N_g_planta_aplicacao).toBe(10);
+    expect(rec.doses_por_planta?.N_aplicacoes).toBe(3);
+    expect(rec.doses_por_planta?.K2O_g_planta_ano).toBe(20);
+    // N anual = 10 × 3 × 4000 / 1000 = 120; K2O = 20 × 4000 / 1000 = 80.
+    expect(rec.necessidade_nutrientes.N_kg_ha_ano).toBe(120);
+    expect(rec.necessidade_nutrientes.K2O_kg_ha_ano).toBe(80);
+    expect(rec.necessidade_nutrientes.P2O5_kg_ha_ano).toBeNull();
+  });
+
+  it("formação 2º ano: N 20 g/planta e K2O 40 g/planta (K médio)", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "formacao_2_ano", plantas_ha: 4000 },
+      solo: soloBase,
+    });
+    expect(rec.doses_por_planta?.N_g_planta_aplicacao).toBe(20);
+    expect(rec.doses_por_planta?.K2O_g_planta_ano).toBe(40);
+    expect(rec.necessidade_nutrientes.N_kg_ha_ano).toBe(240); // 20×3×4000/1000
+    expect(rec.necessidade_nutrientes.K2O_kg_ha_ano).toBe(160);
+  });
+
+  it("recepa 1º ano usa as regras do 2º ano de formação", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "recepado_1_ano", plantas_ha: 4000 },
+      solo: soloBase,
+    });
+    expect(rec.doses_por_planta?.N_g_planta_aplicacao).toBe(20);
+    expect(rec.doses_por_planta?.K2O_g_planta_ano).toBe(40);
+    expect(rec.alertas.some((a) => /Zn nas brotações/i.test(a))).toBe(true);
+  });
+
+  it("pós-plantio: K2O 20 g/planta (K médio) e S 12 g/planta", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "pos_plantio", plantas_ha: 4000 },
+      solo: soloBase,
+    });
+    expect(rec.doses_por_planta?.K2O_g_planta_ano).toBe(20);
+    expect(rec.doses_por_planta?.S_g_planta).toBe(12);
+  });
+
+  it("sem população, N/K2O em kg/ha ficam nulos e há alerta", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "formacao_1_ano" },
+      solo: soloBase,
+    });
+    expect(rec.necessidade_nutrientes.N_kg_ha_ano).toBeNull();
+    expect(rec.necessidade_nutrientes.K2O_kg_ha_ano).toBeNull();
+    expect(rec.alertas.some((a) => /plantas\/ha/i.test(a))).toBe(true);
+  });
+
+  it("implantação: P2O5 na cova por classe de implantação (P-rem)", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "implantacao", plantas_ha: 4000 },
+      solo: { P_mg_dm3: 20, P_rem_mg_L: 15 }, // faixa 10–19: 20 → baixo → 65 g/cova
+    });
+    expect(rec.doses_por_planta?.P2O5_g_cova).toBe(65);
+    expect(rec.doses_por_planta?.P2O5_g_m_sulco).toBe(163); // 65 × 2,5
+    expect(rec.necessidade_nutrientes.N_kg_ha_ano).toBeNull();
+  });
+});

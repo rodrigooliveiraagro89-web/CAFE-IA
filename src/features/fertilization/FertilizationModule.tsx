@@ -1,7 +1,9 @@
 import { ArrowRight, FlaskConical, Sprout, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AppView } from "../../app/navigation";
+import type { FarmPlot } from "../../domain/agriculturalContext";
 import type { CenarioId } from "../../domain/fertilization";
+import { parseNumberBR } from "../../domain/parseNumber";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import type { NdviResult } from "../ndvi/types";
 import type { SoilAnalysis } from "../soil/soilStore";
@@ -31,6 +33,21 @@ function latestSoilForPlot(analyses: SoilAnalysis[], plotId: string): SoilAnalys
         new Date(a.analysisDate ?? a.createdAt).getTime(),
     );
   return matches[0] ?? null;
+}
+
+// População efetiva (plantas/ha) a partir do cadastro do talhão: primeiro pelo
+// espaçamento (10.000 / (linha × planta)); senão pela população total / área.
+function plantasHaFromPlot(plot: FarmPlot): number | null {
+  const linha = parseNumberBR(plot.rowSpacing);
+  const planta = parseNumberBR(plot.plantSpacing);
+  if (linha && planta && linha > 0 && planta > 0) {
+    return Math.round(10000 / (linha * planta));
+  }
+  const pop = parseNumberBR(plot.population);
+  if (pop && plot.areaHectares && plot.areaHectares > 0) {
+    return Math.round(pop / plot.areaHectares);
+  }
+  return null;
 }
 
 function loadCenario(plotId?: string | null): CenarioId {
@@ -118,6 +135,7 @@ export function FertilizationModule({ agriculture, soilAnalyses, onNavigate }: F
         analysis={soil}
         plotName={plot.name}
         plotId={plot.id}
+        plantasHa={plantasHaFromPlot(plot)}
         cenario={cenario}
         onCenarioChange={setCenario}
       />

@@ -402,6 +402,18 @@
 .fert5a-opt { font-weight: 500; color: var(--text-faint); }
 .fert5a-media { margin: 0.2rem 0 0.8rem; font-size: 0.8rem; color: var(--warning, #d97706); }
 
+.fert5a-sistema { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); min-width: 140px; }
+.fert5a-sistema select { min-height: 46px; padding: 0.5rem 0.7rem; font-size: 0.95rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+
+/* Doses por planta (fases de campo: formação, recepa, pós-plantio, implantação) */
+.fert5a-planta { margin: 0.4rem 0 1rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft, var(--surface)); }
+.fert5a-planta h3 { font-size: 0.9rem; margin: 0 0 0.6rem; }
+.fert5a-planta table { width: 100%; border-collapse: collapse; }
+.fert5a-planta td { padding: 0.35rem 0; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+.fert5a-planta td:first-child { font-weight: 700; width: 3.5rem; }
+.fert5a-planta em { color: var(--text-faint); font-style: normal; font-size: 0.78rem; }
+.fert5a-planta-obs { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--text-soft); }
+
 /* Gráficos do painel 5ª Aproximação */
 .fert5a-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem; margin: 1rem 0; }
 .fert5a-chart h3 { font-size: 0.88rem; margin: 0 0 0.5rem; }

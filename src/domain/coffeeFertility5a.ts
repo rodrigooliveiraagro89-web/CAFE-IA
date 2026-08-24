@@ -2,7 +2,11 @@
  * Motor de recomendação de nutrientes para café arábica — 5ª Aproximação de
  * Minas Gerais + Manual do Café (Emater-MG). Transcreve as tabelas e regras da
  * base técnica AGRYN/YaCafé. Lógica PURA e auditável: as saídas são em NUTRIENTE
- * (N, P2O5, K2O, S, micros) antes da conversão para fertilizantes comerciais.
+ * (N, P2O5, K2O, Ca, Mg, S, micros) antes da conversão para fertilizantes.
+ *
+ * Cobre TODAS as fases da lavoura (implantação, pós-plantio, formação 1º/2º ano,
+ * recepa e esqueletamento 1º ano, produção). As fases de campo trabalham em
+ * g/planta e g/cova; o motor converte para kg/ha quando a população é informada.
  *
  * Não substitui o parecer do responsável técnico. Toda faixa e dose vem de
  * constante nomeada, com as travas de segurança da seção 14 do documento.
@@ -24,6 +28,18 @@ export type ClasseMicro = "baixo" | "medio" | "adequado" | "alto";
 
 export type ExtratorB = "mehlich1" | "hcl" | "agua_quente";
 export type ExtratorMetalico = "mehlich1" | "dtpa";
+
+export type Sistema = "sequeiro" | "irrigado";
+
+export const FASE_LABEL: Record<Fase, string> = {
+  implantacao: "Implantação (cova/sulco)",
+  pos_plantio: "Pós-plantio (pegamento)",
+  formacao_1_ano: "Formação — 1º ano",
+  formacao_2_ano: "Formação — 2º ano",
+  recepado_1_ano: "Recepa — 1º ano",
+  esqueletado_1_ano: "Esqueletamento — 1º ano",
+  producao: "Lavoura em produção",
+};
 
 export type Solo0a20 = {
   pH_agua?: number | null;
@@ -61,6 +77,9 @@ export type Lavoura = {
   fase: Fase;
   produtividade_esperada_sc_ha?: number | null;
   produtividade_safra_anterior_sc_ha?: number | null;
+  plantas_ha?: number | null; // população efetiva — converte g/planta em kg/ha
+  numero_parcelamentos?: number | null; // parcelas de N por ciclo
+  sistema?: Sistema | null;
   Ve_percentual?: number | null; // alvo de saturação; padrão 60
   PRNT_percentual?: number | null;
   superficie_coberta_percentual?: number | null; // padrão 100
@@ -69,8 +88,21 @@ export type Lavoura = {
 
 export type MicroSaida = { classe: ClasseMicro | null; dose_kg_ha: number | null };
 
+export type DosesPorPlanta = {
+  N_g_planta_aplicacao: number | null;
+  N_aplicacoes: number | null;
+  K2O_g_planta_ano: number | null;
+  P2O5_g_cova: number | null;
+  P2O5_g_m_sulco: number | null;
+  S_g_planta: number | null;
+  B_g_planta: number | null;
+  Zn_g_planta: number | null;
+  plantas_ha: number | null;
+};
+
 export type Recomendacao5a = {
   fase: Fase;
+  fase_label: string;
   produtividade_calculo_sc_ha: number | null;
   indices: {
     K_cmolc_dm3: number | null;
@@ -79,6 +111,7 @@ export type Recomendacao5a = {
     t: number | null;
     V_percentual: number | null;
     m_percentual: number | null;
+    Ca_Mg_ratio: number | null;
   };
   classificacoes: {
     materia_organica: ClasseGeral | null;
@@ -103,6 +136,7 @@ export type Recomendacao5a = {
     Mn_kg_ha: number | null;
     Zn_kg_ha: number | null;
   };
+  doses_por_planta: DosesPorPlanta | null;
   correcao_solo: {
     calagem_t_ha_prnt100: number | null;
     calagem_t_ha_produto: number | null;
@@ -119,6 +153,11 @@ function num(v: number | null | undefined): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+function round(value: number, digits = 1): number {
+  const f = 10 ** digits;
+  return Math.round(value * f) / f;
+}
+
 export function calcularIndices(s: Solo0a20) {
   const Ca = num(s.Ca_cmolc_dm3);
   const Mg = num(s.Mg_cmolc_dm3);
@@ -131,7 +170,8 @@ export function calcularIndices(s: Solo0a20) {
   const t = SB !== null && Al !== null ? SB + Al : null;
   const V = SB !== null && T !== null && T > 0 ? (100 * SB) / T : null;
   const m = t !== null && Al !== null && t > 0 ? (100 * Al) / t : null;
-  return { K_cmolc_dm3: K, SB, T, t, V_percentual: V, m_percentual: m };
+  const CaMg = Ca !== null && Mg !== null && Mg > 0 ? Ca / Mg : null;
+  return { K_cmolc_dm3: K, SB, T, t, V_percentual: V, m_percentual: m, Ca_Mg_ratio: CaMg };
 }
 
 // -------------------------------------------------- classificações gerais ----
@@ -172,6 +212,16 @@ const P_MANUT_ARGILA: { argilaMax: number; lim: [number, number, number, number]
   { argilaMax: 100, lim: [1.9, 4.0, 6.0, 9.0] },
 ];
 
+// Seção 5.1 — thresholds de P para IMPLANTAÇÃO (mais altos que manutenção), por P-rem.
+const P_IMPLANT_PREM: { premMax: number; lim: [number, number, number, number] }[] = [
+  { premMax: 4, lim: [9.0, 13.0, 18.0, 24.0] },
+  { premMax: 10, lim: [12.0, 18.0, 25.0, 37.5] },
+  { premMax: 19, lim: [18.0, 25.0, 34.2, 52.5] },
+  { premMax: 30, lim: [24.0, 34.2, 47.4, 72.0] },
+  { premMax: 44, lim: [33.0, 47.4, 65.4, 99.0] },
+  { premMax: 60, lim: [45.0, 65.4, 90.0, 135.0] },
+];
+
 export function classificarP(
   P: number | null,
   Prem: number | null,
@@ -187,6 +237,13 @@ export function classificarP(
     return classeGeral(P, faixa.lim);
   }
   return null; // trava: sem P-rem nem argila não classifica (seção 14.1)
+}
+
+// Seção 5.1 — classe de P para implantação (só por P-rem; sem P-rem não calcula).
+export function classificarPImplantacao(P: number | null, Prem: number | null): ClasseGeral | null {
+  if (P === null || Prem === null) return null;
+  const faixa = P_IMPLANT_PREM.find((f) => Prem <= f.premMax) ?? P_IMPLANT_PREM[P_IMPLANT_PREM.length - 1];
+  return classeGeral(P, faixa.lim);
 }
 
 // --------------------------------------------------------- enxofre (S) -------
@@ -341,6 +398,56 @@ const CLASSE_P_INDEX: Record<ClasseGeral, number> = {
   muito_bom: 4,
 };
 
+// -------------------------------------- N, K2O g/planta (fases de campo) -----
+
+// N por planta e por APLICAÇÃO (seções 5.2/6/7). Multiplicar por nº de parcelas.
+const N_G_PLANTA_APLIC: Record<Fase, number | null> = {
+  implantacao: null,
+  pos_plantio: 4, // 3–5 g/planta/aplicação
+  formacao_1_ano: 10,
+  formacao_2_ano: 20,
+  recepado_1_ano: 20, // = 2º ano de formação
+  esqueletado_1_ano: 20,
+  producao: null,
+};
+
+// K2O por planta e por ANO (g/planta/ano) por classe de K [<60 | 60–120 | 120–200 | >200].
+const K2O_G_PLANTA_ANO: Record<Fase, [number, number, number, number] | null> = {
+  implantacao: null,
+  pos_plantio: [30, 20, 10, 0],
+  formacao_1_ano: [40, 20, 10, 0],
+  formacao_2_ano: [60, 40, 20, 0],
+  recepado_1_ano: [60, 40, 20, 0],
+  esqueletado_1_ano: [60, 40, 20, 0],
+  producao: null,
+};
+
+// Nº de parcelas de N sugerido por fase (o RT pode ajustar).
+const PARCELAS_PADRAO: Record<Fase, number> = {
+  implantacao: 1,
+  pos_plantio: 4, // do pegamento ao fim das chuvas, a cada 30–45 dias
+  formacao_1_ano: 3,
+  formacao_2_ano: 3,
+  recepado_1_ano: 3,
+  esqueletado_1_ano: 3,
+  producao: 4,
+};
+
+// Seção 5.1 — dose de P2O5 na cova por classe de P (implantação), g/cova.
+const P2O5_COVA_G: Record<ClasseGeral, number> = {
+  muito_baixo: 80,
+  baixo: 65,
+  medio: 50,
+  bom: 35,
+  muito_bom: 20,
+};
+const SULCO_FATOR = 2.5; // g/m de sulco = g/cova × 2,5
+
+function gPlantaParaKgHa(gPorPlanta: number | null, plantasHa: number | null): number | null {
+  if (gPorPlanta === null || plantasHa === null || plantasHa <= 0) return null;
+  return round((gPorPlanta * plantasHa) / 1000, 0);
+}
+
 // Seção 8.1 — ajuste de bienalidade.
 export function produtividadeCalculo(esperada: number | null, anterior: number | null): number | null {
   if (esperada === null) return null;
@@ -354,6 +461,18 @@ export function doseEnxofre(N_kg_ha: number | null, classeS: ClasseGeral | null)
   if (classeS === null || classeS === "muito_baixo" || classeS === "baixo") return Math.round((N_kg_ha / 8) * 10) / 10;
   if (classeS === "medio") return Math.round((N_kg_ha / 16) * 10) / 10;
   return 0;
+}
+
+// B/Zn de plantio (g/planta) só quando o teor indicar necessidade (seção 5.2).
+function boroPlantioGPlanta(classeB: ClasseMicro | null): number | null {
+  if (classeB === "baixo") return 1.0;
+  if (classeB === "medio") return 0.6;
+  return classeB ? 0 : null;
+}
+function zincoPlantioGPlanta(classeZn: ClasseMicro | null): number | null {
+  if (classeZn === "baixo") return 2.0;
+  if (classeZn === "medio") return 1.0;
+  return classeZn ? 0 : null;
 }
 
 // ----------------------------------------- conversão para fertilizantes ------
@@ -407,8 +526,10 @@ export function recomendarNutrientes5a(input: {
   foliar?: Foliar | null;
 }): Recomendacao5a {
   const { lavoura, solo } = input;
+  const fase = lavoura.fase;
   const idx = calcularIndices(solo);
   const alertas: string[] = [];
+  const plantasHa = num(lavoura.plantas_ha);
 
   const classificacoes = {
     materia_organica: classeGeral(num(solo.materia_organica_dag_kg), LIM_MO),
@@ -429,7 +550,7 @@ export function recomendarNutrientes5a(input: {
   const microMn = avaliarMicro(num(solo.Mn_mg_dm3), solo.extrator_Mn, solo.extrator_Mn ? MICRO_MN[solo.extrator_Mn] : undefined);
   const microZn = avaliarMicro(num(solo.Zn_mg_dm3), solo.extrator_Zn, solo.extrator_Zn ? MICRO_ZN[solo.extrator_Zn] : undefined);
 
-  // Calagem e gessagem.
+  // Calagem e gessagem (independem da fase; sempre calculadas quando há dados).
   const calagem = calcularCalagem({
     T: idx.T,
     V: idx.V_percentual,
@@ -440,13 +561,17 @@ export function recomendarNutrientes5a(input: {
   });
   const gessagem = gessagemIndicada(input.sub);
 
-  // Macros em produção (N, K2O, P2O5) — só para lavoura em produção nesta versão.
+  // Macronutrientes por fase.
   let N: number | null = null;
   let K2O: number | null = null;
   let P2O5: number | null = null;
   let prodCalc: number | null = null;
+  let doses: DosesPorPlanta | null = null;
 
-  if (lavoura.fase === "producao") {
+  const Kmg = num(solo.K_mg_dm3);
+  const colK = colunaK(Kmg);
+
+  if (fase === "producao") {
     prodCalc = produtividadeCalculo(
       num(lavoura.produtividade_esperada_sc_ha),
       num(lavoura.produtividade_safra_anterior_sc_ha),
@@ -454,20 +579,81 @@ export function recomendarNutrientes5a(input: {
     if (prodCalc !== null) {
       const linha = faixaProdutividade(prodCalc);
       N = N_PRODUCAO[linha][colunaNfoliar(num(input.foliar?.N_dag_kg))];
-      K2O = K2O_PRODUCAO[linha][colunaK(num(solo.K_mg_dm3))];
+      K2O = K2O_PRODUCAO[linha][colK];
       const classP = classificacoes.P;
       P2O5 = classP ? P2O5_PRODUCAO[linha][CLASSE_P_INDEX[classP]] : null;
       if (!classP) alertas.push("Sem P-rem nem argila: P2O5 não calculado (informe um deles).");
     } else {
       alertas.push("Informe a produtividade esperada para calcular N, K2O e P2O5.");
     }
+  } else if (fase === "implantacao") {
+    // Implantação: P2O5 na cova (g/cova) por classe própria (seção 5.1).
+    const classPImp = classificarPImplantacao(num(solo.P_mg_dm3), num(solo.P_rem_mg_L));
+    const p2o5Cova = classPImp ? P2O5_COVA_G[classPImp] : null;
+    if (!classPImp && num(solo.P_mg_dm3) !== null) {
+      alertas.push("Implantação exige P-rem para a dose de P2O5 na cova (seção 5.1).");
+    }
+    doses = {
+      N_g_planta_aplicacao: null,
+      N_aplicacoes: null,
+      K2O_g_planta_ano: null,
+      P2O5_g_cova: p2o5Cova,
+      P2O5_g_m_sulco: p2o5Cova !== null ? round(p2o5Cova * SULCO_FATOR, 0) : null,
+      S_g_planta: 12, // se N/P não fornecerem S (seção 5.2)
+      B_g_planta: boroPlantioGPlanta(classificacoes.B),
+      Zn_g_planta: zincoPlantioGPlanta(classificacoes.Zn),
+      plantas_ha: plantasHa,
+    };
+    alertas.push("Dose de P na cova/sulco; B e Zn só se o laudo indicar necessidade e houver mistura homogênea.");
   } else {
-    alertas.push(
-      "Fase diferente de produção: N/P/K seguem regras de implantação/formação/recepa (ainda não automatizadas aqui) — use a base técnica.",
-    );
+    // Pós-plantio / formação 1º e 2º ano / recepa / esqueletamento — g/planta.
+    const nAplic = num(N_G_PLANTA_APLIC[fase]);
+    const nParcelas = num(lavoura.numero_parcelamentos) ?? PARCELAS_PADRAO[fase];
+    const k2oTab = K2O_G_PLANTA_ANO[fase];
+    const k2oGPlanta = k2oTab ? k2oTab[colK] : null;
+    const nAnualGPlanta = nAplic !== null ? nAplic * nParcelas : null;
+
+    N = gPlantaParaKgHa(nAnualGPlanta, plantasHa);
+    K2O = gPlantaParaKgHa(k2oGPlanta, plantasHa);
+    // P2O5 dispensado na formação/recepa quando a cova foi bem feita (seção 6).
+    P2O5 = null;
+
+    doses = {
+      N_g_planta_aplicacao: nAplic,
+      N_aplicacoes: nAplic !== null ? nParcelas : null,
+      K2O_g_planta_ano: k2oGPlanta,
+      P2O5_g_cova: null,
+      P2O5_g_m_sulco: null,
+      S_g_planta: fase === "pos_plantio" ? 12 : null,
+      B_g_planta: fase === "pos_plantio" ? boroPlantioGPlanta(classificacoes.B) : null,
+      Zn_g_planta: fase === "pos_plantio" ? zincoPlantioGPlanta(classificacoes.Zn) : null,
+      plantas_ha: plantasHa,
+    };
+
+    if (plantasHa === null) {
+      alertas.push("Informe a população (plantas/ha) para converter as doses por planta em kg/ha.");
+    }
+    alertas.push("N é por aplicação; o total anual usa o nº de parcelas (padrão da fase). Parcele N e K no período chuvoso.");
+    if (fase === "recepado_1_ano" || fase === "esqueletado_1_ano") {
+      alertas.push("Recepa/esqueletamento: monitorar Zn nas brotações (diagnóstico foliar) e P2O5 pode ser dispensado se houve residual.");
+    }
+    if (fase === "formacao_2_ano") {
+      alertas.push("Se houver perspectiva de colheita no 2º ano, migrar para as regras de lavoura em produção.");
+    }
   }
 
+  // Enxofre em kg/ha a partir do N recomendado (quando N em kg/ha é conhecido).
   const S = doseEnxofre(N, classificacoes.S);
+
+  // Alerta de relação Ca:Mg fora de 3:1–5:1 (seção 3).
+  if (idx.Ca_Mg_ratio !== null && (idx.Ca_Mg_ratio < 3 || idx.Ca_Mg_ratio > 5)) {
+    alertas.push(`Relação Ca:Mg ${round(idx.Ca_Mg_ratio, 1)} fora da faixa 3:1–5:1 — considerar na escolha do corretivo.`);
+  }
+
+  // Sistema irrigado: aumentar parcelamentos, não a dose (trava 14.8).
+  if (lavoura.sistema === "irrigado") {
+    alertas.push("Lavoura irrigada: aumentar o número de parcelamentos, não a dose total (trava 14.8).");
+  }
 
   // Travas de segurança (seção 14) e observações.
   if (num(solo.P_rem_mg_L) === null && num(solo.argila_percentual) === null) {
@@ -486,14 +672,15 @@ export function recomendarNutrientes5a(input: {
   if (classificacoes.Mn === "baixo" && num(solo.pH_agua) !== null && (solo.pH_agua as number) >= 6.0) {
     alertas.push("Mn baixo com pH alto: possível supercalagem — avaliar (trava 14.7).");
   }
-  if (calagem.nc_prnt100 !== null && (num(lavoura.PRNT_percentual) === null)) {
+  if (calagem.nc_prnt100 !== null && num(lavoura.PRNT_percentual) === null) {
     alertas.push("Informe o PRNT do calcário para a quantidade comercial exata (usado PRNT 95 padrão).");
   }
   alertas.push("Descontar nutrientes fornecidos por matéria orgânica, calcário, gesso e demais fontes.");
   alertas.push("Validar micronutrientes com análise foliar antes de reaplicar.");
 
   return {
-    fase: lavoura.fase,
+    fase,
+    fase_label: FASE_LABEL[fase],
     produtividade_calculo_sc_ha: prodCalc,
     indices: idx,
     classificacoes,
@@ -507,6 +694,7 @@ export function recomendarNutrientes5a(input: {
       Mn_kg_ha: microMn.dose_kg_ha,
       Zn_kg_ha: microZn.dose_kg_ha,
     },
+    doses_por_planta: doses,
     correcao_solo: {
       calagem_t_ha_prnt100: calagem.nc_prnt100,
       calagem_t_ha_produto: calagem.qc_produto,

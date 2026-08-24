@@ -2,8 +2,10 @@ import { Check, Download, FlaskConical, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   converterFertilizantes,
+  FASE_LABEL,
   recomendarNutrientes5a,
   type Fase,
+  type Sistema,
 } from "../../domain/coffeeFertility5a";
 import { CENARIOS, type CenarioId } from "../../domain/fertilization";
 import { parseNumberBR } from "../../domain/parseNumber";
@@ -27,19 +29,22 @@ type Props = {
   analysis: SoilAnalysis | null;
   plotName?: string;
   plotId?: string;
-  // Cenário de produção controlado pelo módulo (sincroniza com o Boletim 100).
+  // População efetiva do talhão (plantas/ha), quando derivável do cadastro.
+  plantasHa?: number | null;
+  // Cenário de produção controlado pelo módulo (sincroniza os cards).
   cenario: CenarioId;
   onCenarioChange: (id: CenarioId) => void;
 };
 
-const FASES: { id: Fase; label: string }[] = [
-  { id: "producao", label: "Lavoura em produção" },
-  { id: "formacao_1_ano", label: "Formação — 1º ano" },
-  { id: "formacao_2_ano", label: "Formação — 2º ano" },
-  { id: "recepado_1_ano", label: "Recepa — 1º ano" },
-  { id: "esqueletado_1_ano", label: "Esqueletamento — 1º ano" },
-  { id: "implantacao", label: "Implantação" },
-  { id: "pos_plantio", label: "Pós-plantio" },
+// Ordem de exibição das fases (o rótulo vem do motor, fonte única).
+const FASE_ORDEM: Fase[] = [
+  "producao",
+  "formacao_1_ano",
+  "formacao_2_ano",
+  "recepado_1_ano",
+  "esqueletado_1_ano",
+  "implantacao",
+  "pos_plantio",
 ];
 
 const CLASSE_LABEL: Record<string, string> = {
@@ -58,13 +63,19 @@ function fmt(value: number | null, digits = 1): string {
 }
 
 
-export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenarioChange }: Props) {
+export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenario, onCenarioChange }: Props) {
   const v = analysis?.values;
   const [fase, setFase] = useState<Fase>("producao");
   const [safraAnt, setSafraAnt] = useState("");
+  const [plantas, setPlantas] = useState(plantasHa != null ? String(Math.round(plantasHa)) : "");
+  const [sistema, setSistema] = useState<Sistema>("sequeiro");
   const [history, setHistory] = useState<SavedRecommendation[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
+
+  // Fases de campo (não produção) trabalham em g/planta e precisam da população.
+  const emProducao = fase === "producao";
+  const plantasHaNum = parseNumberBR(plantas);
 
   useEffect(() => {
     if (!plotId) return;
@@ -119,11 +130,13 @@ export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenari
           fase,
           produtividade_esperada_sc_ha: prod,
           produtividade_safra_anterior_sc_ha: parseNumberBR(safraAnt),
+          plantas_ha: plantasHaNum,
+          sistema,
           PRNT_percentual: 95,
         },
         solo,
       }),
-    [fase, prod, safraAnt, solo],
+    [fase, prod, safraAnt, plantasHaNum, sistema, solo],
   );
 
   const c = rec.classificacoes;
@@ -238,40 +251,63 @@ export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenari
       </div>
       {savedMsg && <p className="fert5a-saved no-print"><Check size={14} /> {savedMsg}</p>}
 
-      {/* Só duas escolhas: fase e produção. O resto vem do laudo. */}
+      {/* Escolhas mínimas por fase. O resto vem do laudo. */}
       <div className="fert5a-escolhas no-print">
         <label className="fert5a-fase">
           Fase da lavoura
           <select value={fase} onChange={(e) => setFase(e.target.value as Fase)}>
-            {FASES.map((f) => (
-              <option key={f.id} value={f.id}>{f.label}</option>
+            {FASE_ORDEM.map((f) => (
+              <option key={f} value={f}>{FASE_LABEL[f]}</option>
             ))}
           </select>
         </label>
-        <div className="fert5a-prod">
-          <span className="fert5a-prod-label">Produção esperada</span>
-          <div className="fert5a-cenarios">
-            {CENARIOS.map((cen) => (
-              <button
-                key={cen.id}
-                type="button"
-                data-active={cen.id === cenario}
-                onClick={() => onCenarioChange(cen.id)}
-              >
-                <strong>{cen.label}</strong>
-                <small>{cen.sacasPorHectare} sc/ha</small>
-              </button>
-            ))}
-          </div>
-        </div>
-        <label className="fert5a-safra">
-          Safra passada (sc/ha) <span className="fert5a-opt">média/bienalidade</span>
-          <input
-            inputMode="decimal"
-            value={safraAnt}
-            onChange={(e) => setSafraAnt(e.target.value)}
-            placeholder="opcional"
-          />
+
+        {emProducao ? (
+          <>
+            <div className="fert5a-prod">
+              <span className="fert5a-prod-label">Produção esperada</span>
+              <div className="fert5a-cenarios">
+                {CENARIOS.map((cen) => (
+                  <button
+                    key={cen.id}
+                    type="button"
+                    data-active={cen.id === cenario}
+                    onClick={() => onCenarioChange(cen.id)}
+                  >
+                    <strong>{cen.label}</strong>
+                    <small>{cen.sacasPorHectare} sc/ha</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="fert5a-safra">
+              Safra passada (sc/ha) <span className="fert5a-opt">média/bienalidade</span>
+              <input
+                inputMode="decimal"
+                value={safraAnt}
+                onChange={(e) => setSafraAnt(e.target.value)}
+                placeholder="opcional"
+              />
+            </label>
+          </>
+        ) : (
+          <label className="fert5a-safra">
+            População (plantas/ha) <span className="fert5a-opt">converte g/planta → kg/ha</span>
+            <input
+              inputMode="numeric"
+              value={plantas}
+              onChange={(e) => setPlantas(e.target.value)}
+              placeholder="ex.: 4082"
+            />
+          </label>
+        )}
+
+        <label className="fert5a-sistema">
+          Sistema
+          <select value={sistema} onChange={(e) => setSistema(e.target.value as Sistema)}>
+            <option value="sequeiro">Sequeiro</option>
+            <option value="irrigado">Irrigado</option>
+          </select>
         </label>
       </div>
       {rec.produtividade_calculo_sc_ha !== null && rec.produtividade_calculo_sc_ha !== prod && (
@@ -288,9 +324,56 @@ export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenari
         <span><small>SB</small><strong>{fmt(rec.indices.SB, 2)}</strong></span>
       </div>
 
+      {rec.doses_por_planta && (
+        <div className="fert5a-planta">
+          <h3>Doses por planta · {rec.fase_label}</h3>
+          <table>
+            <tbody>
+              {rec.doses_por_planta.N_g_planta_aplicacao !== null && (
+                <tr>
+                  <td>N</td>
+                  <td>
+                    {fmt(rec.doses_por_planta.N_g_planta_aplicacao, 0)} g/planta por aplicação
+                    {rec.doses_por_planta.N_aplicacoes
+                      ? ` · ${rec.doses_por_planta.N_aplicacoes} parcelas`
+                      : ""}
+                  </td>
+                </tr>
+              )}
+              {rec.doses_por_planta.K2O_g_planta_ano !== null && (
+                <tr><td>K₂O</td><td>{fmt(rec.doses_por_planta.K2O_g_planta_ano, 0)} g/planta·ano</td></tr>
+              )}
+              {rec.doses_por_planta.P2O5_g_cova !== null && (
+                <tr>
+                  <td>P₂O₅</td>
+                  <td>
+                    {fmt(rec.doses_por_planta.P2O5_g_cova, 0)} g/cova ·{" "}
+                    {fmt(rec.doses_por_planta.P2O5_g_m_sulco, 0)} g/m de sulco
+                  </td>
+                </tr>
+              )}
+              {rec.doses_por_planta.S_g_planta !== null && (
+                <tr><td>S</td><td>{fmt(rec.doses_por_planta.S_g_planta, 0)} g/planta <em>(se N/P não fornecerem)</em></td></tr>
+              )}
+              {rec.doses_por_planta.B_g_planta !== null && rec.doses_por_planta.B_g_planta > 0 && (
+                <tr><td>B</td><td>{fmt(rec.doses_por_planta.B_g_planta, 1)} g/planta <em>(no plantio, se indicado)</em></td></tr>
+              )}
+              {rec.doses_por_planta.Zn_g_planta !== null && rec.doses_por_planta.Zn_g_planta > 0 && (
+                <tr><td>Zn</td><td>{fmt(rec.doses_por_planta.Zn_g_planta, 1)} g/planta <em>(no plantio, se indicado)</em></td></tr>
+              )}
+            </tbody>
+          </table>
+          <p className="fert5a-planta-obs">
+            {rec.doses_por_planta.plantas_ha
+              ? `Convertido para kg/ha abaixo com ${fmt(rec.doses_por_planta.plantas_ha, 0)} plantas/ha.`
+              : "Informe a população (plantas/ha) para converter em kg/ha."}
+          </p>
+        </div>
+      )}
+
       <div className="fert5a-results">
         <div className="fert5a-doses">
-          <h3>Necessidade de nutrientes</h3>
+          <h3>Necessidade de nutrientes {emProducao ? "" : "(kg/ha·ano)"}</h3>
           <table>
             <tbody>
               <tr><td>N</td><td>{fmt(n.N_kg_ha_ano)} kg/ha·ano</td></tr>
