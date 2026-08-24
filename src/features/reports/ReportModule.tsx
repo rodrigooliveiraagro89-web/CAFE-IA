@@ -21,6 +21,7 @@ import {
   type PropertyReport,
 } from "./buildReport";
 import { BarChart } from "./charts/BarChart";
+import { Fertility5aReport } from "./Fertility5aReport";
 import { renderSharedReportHtml } from "./sharedReport";
 import "./report.css";
 
@@ -453,6 +454,20 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
                     Pontos de atenção: {row.soil.alerts.join(" ")}
                   </p>
                 )}
+              </div>
+            ))}
+        </>
+      )}
+
+      {plots.some((row) => row.soilAnalysis) && (
+        <>
+          <h2>Recomendação 5ª Aproximação (Emater-MG)</h2>
+          {plots
+            .filter((row) => row.soilAnalysis)
+            .map((row) => (
+              <div className="report-soil-block" key={`fert5a-${row.plot.id}`}>
+                <h3>{row.plot.name}</h3>
+                <Fertility5aReport analysis={row.soilAnalysis!} sacas={45} />
               </div>
             ))}
         </>

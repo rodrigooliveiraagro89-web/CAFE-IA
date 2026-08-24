@@ -126,6 +126,7 @@ export type PlotReportRow = {
     rows: SoilInterpretationRow[];
     alerts: string[];
   } | null;
+  soilAnalysis: SoilAnalysis | null;
   fertilizer: FertReportBlock | null;
 };
 
@@ -206,6 +207,7 @@ export function buildPropertyReport(
             alerts: soilAlerts(soilRows),
           }
         : null,
+      soilAnalysis: latestSoil,
       fertilizer: latestSoil
         ? buildFertBlock(
             latestSoil.values,

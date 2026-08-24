@@ -8,6 +8,7 @@ import {
 import { CENARIOS, type CenarioId } from "../../domain/fertilization";
 import { parseNumberBR } from "../../domain/parseNumber";
 import { BarChart } from "../reports/charts/BarChart";
+import { ClassStrip } from "./ClassStrip";
 import type { SoilAnalysis } from "../soil/soilStore";
 import {
   listRecommendations,
@@ -56,32 +57,6 @@ function fmt(value: number | null, digits = 1): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 }
 
-const ESCALA_GERAL = ["muito_baixo", "baixo", "medio", "bom", "muito_bom"];
-const ESCALA_GERAL_LABEL = ["M. baixo", "Baixo", "Médio", "Bom", "M. bom"];
-const ESCALA_MICRO = ["baixo", "medio", "adequado", "alto"];
-const ESCALA_MICRO_LABEL = ["Baixo", "Médio", "Adeq.", "Alto"];
-
-// Cor por classe: baixo → vermelho, médio → âmbar, resto → verde.
-function corClasse(classe: string): "danger" | "warning" | "success" {
-  if (classe === "muito_baixo" || classe === "baixo") return "danger";
-  if (classe === "medio") return "warning";
-  return "success";
-}
-
-function ClassStrip({ escala, classe }: { escala: "geral" | "micro"; classe: string }) {
-  const order = escala === "geral" ? ESCALA_GERAL : ESCALA_MICRO;
-  const labels = escala === "geral" ? ESCALA_GERAL_LABEL : ESCALA_MICRO_LABEL;
-  const idx = order.indexOf(classe);
-  return (
-    <div className="class-strip" data-cor={corClasse(classe)}>
-      {order.map((o, i) => (
-        <span key={o} className="class-cell" data-active={i === idx}>
-          {labels[i]}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenarioChange }: Props) {
   const v = analysis?.values;
