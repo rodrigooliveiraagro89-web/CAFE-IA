@@ -409,3 +409,27 @@
 .fert5a-chart .report-chart-label { fill: var(--text-soft); font-size: 12px; font-weight: 600; }
 .fert5a-chart .report-chart-value { fill: var(--text); font-size: 12px; }
 .fert5a-chart .report-chart-empty { font-size: 0.8rem; color: var(--text-faint); }
+
+/* Interpretação do solo — régua de classes */
+.fert5a-interpret { margin: 1rem 0; }
+.fert5a-interpret h3 { font-size: 0.88rem; margin: 0 0 0.6rem; }
+.interpret-rows { display: flex; flex-direction: column; gap: 0.4rem; }
+.interpret-row { display: grid; grid-template-columns: 3rem minmax(90px, auto) 1fr; align-items: center; gap: 0.6rem; }
+.interpret-nome { font-weight: 700; font-size: 0.85rem; }
+.interpret-valor { font-size: 0.82rem; color: var(--text-soft); white-space: nowrap; }
+.interpret-valor em { font-style: normal; color: var(--text-faint); font-size: 0.72rem; }
+.class-strip { display: flex; gap: 2px; }
+.class-cell {
+  flex: 1; text-align: center; font-size: 0.64rem; font-weight: 600;
+  padding: 0.28rem 0.15rem; border-radius: 4px;
+  background: var(--surface-muted, rgba(255,255,255,0.06)); color: var(--text-faint);
+  border: 1px solid transparent; white-space: nowrap;
+}
+.class-strip[data-cor="danger"] .class-cell[data-active="true"] { background: var(--danger, #dc2626); color: #fff; }
+.class-strip[data-cor="warning"] .class-cell[data-active="true"] { background: var(--warning, #d97706); color: #fff; }
+.class-strip[data-cor="success"] .class-cell[data-active="true"] { background: var(--success, #16a34a); color: #fff; }
+
+/* No PDF, imprimir cores de fundo das barras/células */
+@media print {
+  body.printing-fert5a .fert5a-print-area { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

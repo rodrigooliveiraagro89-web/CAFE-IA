@@ -56,6 +56,33 @@ function fmt(value: number | null, digits = 1): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 }
 
+const ESCALA_GERAL = ["muito_baixo", "baixo", "medio", "bom", "muito_bom"];
+const ESCALA_GERAL_LABEL = ["M. baixo", "Baixo", "Médio", "Bom", "M. bom"];
+const ESCALA_MICRO = ["baixo", "medio", "adequado", "alto"];
+const ESCALA_MICRO_LABEL = ["Baixo", "Médio", "Adeq.", "Alto"];
+
+// Cor por classe: baixo → vermelho, médio → âmbar, resto → verde.
+function corClasse(classe: string): "danger" | "warning" | "success" {
+  if (classe === "muito_baixo" || classe === "baixo") return "danger";
+  if (classe === "medio") return "warning";
+  return "success";
+}
+
+function ClassStrip({ escala, classe }: { escala: "geral" | "micro"; classe: string }) {
+  const order = escala === "geral" ? ESCALA_GERAL : ESCALA_MICRO;
+  const labels = escala === "geral" ? ESCALA_GERAL_LABEL : ESCALA_MICRO_LABEL;
+  const idx = order.indexOf(classe);
+  return (
+    <div className="class-strip" data-cor={corClasse(classe)}>
+      {order.map((o, i) => (
+        <span key={o} className="class-cell" data-active={i === idx}>
+          {labels[i]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenarioChange }: Props) {
   const v = analysis?.values;
   const [fase, setFase] = useState<Fase>("producao");
@@ -140,6 +167,22 @@ export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenari
   )
     .filter((d) => typeof d.value === "number" && d.value > 0)
     .map((d) => ({ label: d.label, value: d.value as number }));
+
+  // Interpretação do solo — teor + classe (régua Muito baixo→Muito bom).
+  const soilRows = (
+    [
+      { nome: "M.O.", valor: v?.organicMatter, unidade: "dag/kg", classe: c.materia_organica, escala: "geral" as const },
+      { nome: "Ca", valor: solo.Ca_cmolc_dm3, unidade: "cmolc", classe: c.Ca, escala: "geral" as const },
+      { nome: "Mg", valor: solo.Mg_cmolc_dm3, unidade: "cmolc", classe: c.Mg, escala: "geral" as const },
+      { nome: "V", valor: rec.indices.V_percentual, unidade: "%", classe: c.V, escala: "geral" as const },
+      { nome: "P", valor: solo.P_mg_dm3, unidade: "mg/dm³", classe: c.P, escala: "geral" as const },
+      { nome: "S", valor: solo.S_mg_dm3, unidade: "mg/dm³", classe: c.S, escala: "geral" as const },
+      { nome: "B", valor: v?.b, unidade: "mg/dm³", classe: c.B, escala: "micro" as const },
+      { nome: "Cu", valor: v?.cu, unidade: "mg/dm³", classe: c.Cu, escala: "micro" as const },
+      { nome: "Mn", valor: v?.mn, unidade: "mg/dm³", classe: c.Mn, escala: "micro" as const },
+      { nome: "Zn", valor: v?.zn, unidade: "mg/dm³", classe: c.Zn, escala: "micro" as const },
+    ] as { nome: string; valor: number | null | undefined; unidade: string; classe: string | null; escala: "geral" | "micro" }[]
+  ).filter((r) => typeof r.valor === "number" && r.classe);
 
   // Gráfico 2 — participação das bases na CTC (%): Ca, Mg, K e H+Al.
   const T = rec.indices.T;
@@ -302,6 +345,23 @@ export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenari
           </p>
         </div>
       </div>
+
+      {soilRows.length > 0 && (
+        <div className="fert5a-interpret">
+          <h3>Interpretação do solo (teor × faixa)</h3>
+          <div className="interpret-rows">
+            {soilRows.map((r) => (
+              <div className="interpret-row" key={r.nome}>
+                <span className="interpret-nome">{r.nome}</span>
+                <span className="interpret-valor">
+                  {fmt(r.valor as number, 2)} <em>{r.unidade}</em>
+                </span>
+                <ClassStrip escala={r.escala} classe={r.classe as string} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {(dosesChart.length > 0 || participacaoChart.length > 0) && (
         <div className="fert5a-charts">
