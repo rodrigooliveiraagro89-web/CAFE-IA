@@ -332,3 +332,33 @@
 .balance-def[data-neg="true"] { color: var(--warning, #d97706); }
 .balance-forecast { display: flex; align-items: center; gap: 0.35rem; margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--text-soft); }
 .balance-forecast svg { color: var(--info); }
+
+/* Previsão horária (72h) */
+.hourly-strip { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.4rem; scroll-snap-type: x proximity; }
+.hour-cell { flex: 0 0 auto; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 0.1rem; min-width: 62px; padding: 0.5rem 0.4rem; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--line); }
+.hour-day { font-size: 0.6rem; color: var(--text-faint); min-height: 0.8rem; white-space: nowrap; }
+.hour-time { font-size: 0.72rem; font-weight: 700; }
+.hour-icon { font-size: 1.05rem; }
+.hour-temp { font-size: 0.95rem; }
+.hour-rain, .hour-wind { display: inline-flex; align-items: center; gap: 0.15rem; font-size: 0.66rem; color: var(--text-soft); }
+.hour-rain svg { color: var(--info); }
+
+/* Riscos climáticos de doença */
+.disease-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.7rem; }
+.disease-card { padding: 0.8rem 0.9rem; border-radius: var(--radius-md, 12px); background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line-strong, var(--line)); }
+.disease-card[data-lido="true"] { opacity: 0.55; }
+.disease-card--alto { border-left-color: var(--danger, #dc2626); }
+.disease-card--medio { border-left-color: var(--warning, #d97706); }
+.disease-card--baixo { border-left-color: var(--success, #16a34a); }
+.disease-head { display: flex; align-items: center; gap: 0.4rem; }
+.disease-head strong { flex: 1; font-size: 0.9rem; }
+.disease-head svg { color: var(--text-soft); }
+.disease-badge { font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; }
+.disease-badge--alto { background: color-mix(in srgb, var(--danger, #dc2626) 18%, transparent); color: var(--danger, #dc2626); }
+.disease-badge--medio { background: color-mix(in srgb, var(--warning, #d97706) 20%, transparent); color: var(--warning, #d97706); }
+.disease-badge--baixo { background: color-mix(in srgb, var(--success, #16a34a) 18%, transparent); color: var(--success, #16a34a); }
+.disease-resumo { margin: 0.4rem 0; font-size: 0.8rem; color: var(--text-soft); line-height: 1.4; }
+.disease-evidencias { margin: 0 0 0.5rem; padding-left: 1rem; }
+.disease-evidencias li { font-size: 0.72rem; color: var(--text-faint); line-height: 1.4; }
+.disease-lido { border: 1px solid var(--line); background: transparent; color: var(--text-soft); font-size: 0.74rem; padding: 0.3rem 0.7rem; border-radius: var(--radius-sm); cursor: pointer; }
+.disease-lido:disabled { color: var(--success, #16a34a); border-color: color-mix(in srgb, var(--success) 40%, var(--line)); cursor: default; }

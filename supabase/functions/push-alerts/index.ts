@@ -404,13 +404,20 @@ Deno.serve(async (req) => {
     });
   }
 
-  const [plotsRes, recordsRes, ndviRes, soilRes, deliveriesRes] = await Promise.all([
+  const [plotsRes, recordsRes, ndviRes, soilRes, deliveriesRes, prefsRes] = await Promise.all([
     supabase.from("plots").select("id,user_id,name,geometry").in("user_id", userIds),
     supabase.from("field_records").select("id,user_id,plot_id,status,date,title,type").in("user_id", userIds),
     supabase.from("ndvi_results").select("user_id,plot_id,acquired_at,result").in("user_id", userIds),
     supabase.from("soil_analyses").select("user_id,plot_id,analysis_date,created_at").in("user_id", userIds),
     supabase.from("alert_deliveries").select("user_id,alert_key,sent_at").in("user_id", userIds),
+    supabase.from("notification_preferences").select("user_id,min_severity,active").in("user_id", userIds),
   ]);
+
+  // Preferência de nível por usuário (padrão: media, ativo).
+  const prefByUser = new Map<string, { min: string; active: boolean }>();
+  for (const p of prefsRes.data ?? []) {
+    prefByUser.set(p.user_id, { min: p.min_severity ?? "media", active: p.active !== false });
+  }
 
   const plotsByUser = groupBy(plotsRes.data ?? [], (r) => r.user_id);
   const recordsByUser = groupBy(recordsRes.data ?? [], (r) => r.user_id);
@@ -429,6 +436,10 @@ Deno.serve(async (req) => {
   let removed = 0;
 
   for (const userId of userIds) {
+    const pref = prefByUser.get(userId) ?? { min: "media", active: true };
+    if (!pref.active) continue; // usuário desativou os alertas
+    // Nível mínimo: 'alta' → só alta; 'media' → alta + média.
+    const aceita = (sev: string) => (pref.min === "alta" ? sev === "alta" : sev === "alta" || sev === "media");
     const userPlots = plotsByUser.get(userId) ?? [];
     const alerts = buildAlerts(
       userPlots,
@@ -436,7 +447,7 @@ Deno.serve(async (req) => {
       ndviByUser.get(userId) ?? [],
       soilByUser.get(userId) ?? [],
       today,
-    ).filter((a) => a.severity === "alta" || a.severity === "media");
+    ).filter((a) => aceita(a.severity));
 
     // Geada: usa o centro do primeiro talhão mapeado do usuário. Se não houver
     // limite desenhado, não dá para localizar o clima — segue sem geada.
@@ -446,7 +457,7 @@ Deno.serve(async (req) => {
     if (centroid) {
       try {
         const clima = await fetchWeatherAlerts(centroid.lat, centroid.lon);
-        for (const a of clima) alerts.unshift(a);
+        for (const a of clima) if (aceita(a.severity)) alerts.unshift(a);
       } catch (_) {
         // Falha na previsão não pode derrubar o envio dos demais alertas.
       }

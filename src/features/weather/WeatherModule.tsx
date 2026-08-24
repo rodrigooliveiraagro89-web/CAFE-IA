@@ -19,10 +19,12 @@ import {
   Wind,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import type { AppView } from "../../app/navigation";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
-import { SPRAY_RATING_LABEL, type SprayHour } from "../../domain/weather";
+import { SPRAY_RATING_LABEL, type HourItem, type SprayHour } from "../../domain/weather";
 import { buildWeatherGuidance, type WeatherGuidance } from "../../domain/weatherGuidance";
+import { diseaseRiskForCrop, type DiseaseRisk, type RiskLevel } from "../../domain/diseaseRisk";
 import {
   activitiesForMonth,
   calendarWeatherGuidance,
@@ -30,6 +32,17 @@ import {
 } from "../../domain/coffeeCalendar";
 import { useWeather, type WeatherSource } from "./weatherStore";
 import "./weather.css";
+
+const RISK_LABEL: Record<RiskLevel, string> = { baixo: "Baixo", medio: "Médio", alto: "Alto" };
+
+function carregarLidos(): Set<string> {
+  try {
+    const raw = localStorage.getItem("agryn:clima-lidos");
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
 
 const GUIDANCE_ICON: Record<WeatherGuidance["kind"], LucideIcon> = {
   geada: Snowflake,
@@ -81,6 +94,21 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
     ...buildWeatherGuidance(weather.forecast, weather.sprayWindows),
     ...calendarWeatherGuidance(month, weather.forecast),
   ].sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
+  const riscosDoenca = diseaseRiskForCrop(agriculture.selectedPlot?.crop, weather.hourly);
+
+  const [lidos, setLidos] = useState<Set<string>>(() => carregarLidos());
+  function marcarLido(id: string) {
+    setLidos((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem("agryn:clima-lidos", JSON.stringify([...next]));
+      } catch {
+        // sem persistência: vale só nesta sessão
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="page-stack platform-page">
@@ -263,6 +291,40 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
             </div>
           </section>
 
+          {weather.hourly.length > 0 && (
+            <section className="weather-block">
+              <h2>Previsão horária (72 h)</h2>
+              <p className="weather-block-note">
+                Previsão determinística — a confiança probabilística não é calculada nesta fonte.
+              </p>
+              <div className="hourly-strip">
+                {weather.hourly.map((hour, i) => (
+                  <HourCell key={hour.time} hour={hour} showDay={i === 0 || hour.hourLabel === "00h"} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {riscosDoenca.length > 0 && (
+            <section className="weather-block">
+              <h2>Riscos climáticos de doença</h2>
+              <p className="weather-block-note">
+                Favorabilidade do TEMPO à doença nas próximas 48 h (não confirma presença). Parâmetros
+                técnicos em rascunho — validar com o responsável agronômico.
+              </p>
+              <div className="disease-grid">
+                {riscosDoenca.map((risco) => (
+                  <DiseaseCard
+                    key={risco.id}
+                    risco={risco}
+                    lido={lidos.has(risco.id)}
+                    onLido={() => marcarLido(risco.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="weather-block">
             <h2>Janela de pulverização</h2>
             <p className="weather-block-note">
@@ -300,6 +362,52 @@ function GuidanceCard({ item }: { item: WeatherGuidance }) {
         <strong>{item.title}</strong>
         <p>{item.detail}</p>
       </div>
+    </div>
+  );
+}
+
+function HourCell({ hour, showDay }: { hour: HourItem; showDay: boolean }) {
+  return (
+    <div className="hour-cell">
+      <span className="hour-day">{showDay ? hour.dayLabel : " "}</span>
+      <span className="hour-time">{hour.hourLabel}</span>
+      <span className="hour-icon" aria-hidden="true">{hour.icon}</span>
+      <strong className="hour-temp">{hour.temp}°</strong>
+      <span className="hour-rain">
+        <Droplets size={11} aria-hidden="true" /> {hour.precipitationProbability}%
+      </span>
+      <span className="hour-wind">
+        <Wind size={11} aria-hidden="true" /> {hour.wind}
+      </span>
+    </div>
+  );
+}
+
+function DiseaseCard({
+  risco,
+  lido,
+  onLido,
+}: {
+  risco: DiseaseRisk;
+  lido: boolean;
+  onLido: () => void;
+}) {
+  return (
+    <div className={`disease-card disease-card--${risco.nivel}`} data-lido={lido}>
+      <div className="disease-head">
+        <Bug size={16} aria-hidden="true" />
+        <strong>{risco.doenca}</strong>
+        <span className={`disease-badge disease-badge--${risco.nivel}`}>{RISK_LABEL[risco.nivel]}</span>
+      </div>
+      <p className="disease-resumo">{risco.resumo}</p>
+      <ul className="disease-evidencias">
+        {risco.evidencias.map((e) => (
+          <li key={e}>{e}</li>
+        ))}
+      </ul>
+      <button type="button" className="disease-lido" onClick={onLido} disabled={lido}>
+        {lido ? "✓ Lido" : "Marcar como lido"}
+      </button>
     </div>
   );
 }

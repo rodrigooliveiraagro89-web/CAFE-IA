@@ -4,9 +4,11 @@ import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import {
   buildSprayWindows,
   mapDailyForecast,
+  mapHourly,
   plotCentroid,
   weatherCodeInfo,
   type DailyForecast,
+  type HourItem,
   type LatLon,
   type OpenMeteoResponse,
   type SprayHour,
@@ -33,6 +35,7 @@ export type WeatherState = {
   source: WeatherSource | null;
   current: CurrentConditions | null;
   forecast: DailyForecast[];
+  hourly: HourItem[];
   sprayWindows: SprayHour[];
   balance: WaterBalance | null;
 };
@@ -44,6 +47,7 @@ const INITIAL: WeatherState = {
   source: null,
   current: null,
   forecast: [],
+  hourly: [],
   sprayWindows: [],
   balance: null,
 };
@@ -87,7 +91,7 @@ async function fetchForecast(location: LatLon): Promise<OpenMeteoResponse> {
   );
   url.searchParams.set(
     "hourly",
-    "temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,weather_code",
+    "temperature_2m,relative_humidity_2m,precipitation,precipitation_probability,wind_speed_10m,weather_code",
   );
   const response = await fetchWithTimeout(url.toString(), {}, 15_000);
   if (!response.ok) throw new Error("Não foi possível obter a previsão do tempo agora.");
@@ -129,6 +133,7 @@ function toState(raw: OpenMeteoResponse, label: string, source: WeatherSource): 
         }
       : null,
     forecast,
+    hourly: mapHourly(raw.hourly, new Date().toISOString(), 72),
     sprayWindows: buildSprayWindows(raw.hourly, new Date().toISOString()),
     balance: balanceDays.length ? computeWaterBalance(balanceDays, today) : null,
   };

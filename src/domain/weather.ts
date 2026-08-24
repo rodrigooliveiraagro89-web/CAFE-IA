@@ -29,9 +29,51 @@ export type OpenMeteoHourly = {
   temperature_2m: number[];
   relative_humidity_2m: number[];
   precipitation_probability: number[];
+  precipitation?: number[];
   wind_speed_10m: number[];
   weather_code: number[];
 };
+
+export type HourItem = {
+  time: string;
+  dayLabel: string;
+  hourLabel: string;
+  temp: number;
+  humidity: number;
+  precipitation: number;
+  precipitationProbability: number;
+  wind: number;
+  code: number;
+  icon: string;
+};
+
+/** Próximas N horas a partir de agora (padrão 72h), para a previsão horária. */
+export function mapHourly(hourly: OpenMeteoHourly | undefined, nowISO: string, maxHours = 72): HourItem[] {
+  if (!hourly?.time?.length) return [];
+  const now = new Date(nowISO).getTime();
+  const out: HourItem[] = [];
+  for (let i = 0; i < hourly.time.length; i += 1) {
+    const time = hourly.time[i];
+    const parsed = new Date(time).getTime();
+    if (Number.isNaN(parsed) || parsed < now) continue;
+    const code = hourly.weather_code?.[i] ?? 0;
+    const hour = time.slice(11, 13);
+    out.push({
+      time,
+      dayLabel: `${weekdayLabel(time)} ${time.slice(8, 10)}/${time.slice(5, 7)}`,
+      hourLabel: `${hour}h`,
+      temp: Math.round(hourly.temperature_2m?.[i] ?? 0),
+      humidity: Math.round(hourly.relative_humidity_2m?.[i] ?? 0),
+      precipitation: Math.round((hourly.precipitation?.[i] ?? 0) * 10) / 10,
+      precipitationProbability: Math.round(hourly.precipitation_probability?.[i] ?? 0),
+      wind: Math.round(hourly.wind_speed_10m?.[i] ?? 0),
+      code,
+      icon: weatherCodeInfo(code).icon,
+    });
+    if (out.length >= maxHours) break;
+  }
+  return out;
+}
 
 export type OpenMeteoResponse = {
   latitude: number;

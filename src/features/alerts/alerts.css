@@ -205,3 +205,7 @@
 }
 .whatsapp-consent { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.76rem; color: var(--text-soft); line-height: 1.4; cursor: pointer; }
 .whatsapp-consent input { margin-top: 0.15rem; flex-shrink: 0; }
+
+/* Preferência de nível de alerta */
+.notif-pref-select { display: block; margin-top: 0.5rem; }
+.notif-pref-select select { min-height: 44px; width: 100%; max-width: 320px; padding: 0.5rem 0.7rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 0.9rem; }

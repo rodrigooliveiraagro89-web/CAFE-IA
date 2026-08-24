@@ -21,6 +21,7 @@ import { ModuleCard } from "../../components/ui/ModuleCard";
 import { AlertsPanel } from "../alerts/AlertsPanel";
 import { NotificationsToggle } from "../alerts/NotificationsToggle";
 import { WhatsappOptIn } from "../alerts/WhatsappOptIn";
+import { NotifPreferences } from "../alerts/NotifPreferences";
 import { buildAlerts } from "../../domain/alerts";
 import { buildWeatherAlerts } from "../../domain/weatherAlerts";
 import { useWeather } from "../weather/weatherStore";
@@ -277,6 +278,7 @@ export function Dashboard({ safety, onNavigate, agriculture, records, ndviHistor
 
       {agriculture.selectedProperty && !isNewAccount && <NotificationsToggle />}
       {agriculture.selectedProperty && !isNewAccount && <WhatsappOptIn />}
+      {agriculture.selectedProperty && !isNewAccount && <NotifPreferences />}
 
       {agriculture.selectedProperty && (
         <section className="active-context-strip">
