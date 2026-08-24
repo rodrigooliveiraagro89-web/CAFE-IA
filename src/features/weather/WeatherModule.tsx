@@ -206,6 +206,43 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
             </section>
           )}
 
+          {weather.balance && (
+            <section className="weather-block">
+              <h2>Chuva e balanço hídrico</h2>
+              <p className="weather-block-note">
+                Chuva observada e balanço (chuva − ET0) por período. Indicativo — para irrigação
+                precisa faltam solo, cultura/fase e eficiência.
+              </p>
+              <div className="balance-grid">
+                {weather.balance.observado.map((o) => (
+                  <div className="balance-card" key={o.dias}>
+                    <span className="balance-title">Últimos {o.dias} dias</span>
+                    <strong className="balance-rain">
+                      {o.chuva.toLocaleString("pt-BR")} mm
+                    </strong>
+                    {o.balanco !== null ? (
+                      <span
+                        className="balance-def"
+                        data-neg={o.balanco < 0}
+                      >
+                        balanço {o.balanco > 0 ? "+" : ""}
+                        {o.balanco.toLocaleString("pt-BR")} mm · ET0 {o.et0?.toLocaleString("pt-BR")} mm
+                      </span>
+                    ) : (
+                      <span className="balance-def">ET0 indisponível</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="balance-forecast">
+                <CloudRain size={14} aria-hidden="true" /> Chuva prevista:{" "}
+                {weather.balance.previsto
+                  .map((p) => `${p.dias} dias ${p.chuva.toLocaleString("pt-BR")} mm`)
+                  .join(" · ")}
+              </p>
+            </section>
+          )}
+
           <section className="weather-block">
             <h2>Próximos 7 dias</h2>
             <div className="weather-days">

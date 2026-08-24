@@ -395,3 +395,9 @@
 .fert5a-alertas summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--text-soft); }
 .fert5a-alertas ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
 .fert5a-alertas li { font-size: 0.76rem; color: var(--text-soft); line-height: 1.45; }
+
+/* Safra passada (média/bienalidade) */
+.fert5a-safra { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); min-width: 160px; }
+.fert5a-safra input { min-height: 46px; padding: 0.5rem 0.7rem; font-size: 0.95rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); max-width: 160px; }
+.fert5a-opt { font-weight: 500; color: var(--text-faint); }
+.fert5a-media { margin: 0.2rem 0 0.8rem; font-size: 0.8rem; color: var(--warning, #d97706); }

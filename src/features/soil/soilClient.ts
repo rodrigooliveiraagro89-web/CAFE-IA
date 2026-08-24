@@ -24,9 +24,28 @@ type RawSoilValues = {
   al?: number | null;
   h_al?: number | null;
   argila?: number | null;
+  extrator_b?: string | null;
+  extrator_micros?: string | null;
   analysis_date?: string | null;
   laboratory?: string | null;
 };
+
+// Normaliza o nome do extrator do laudo (texto livre) para os valores canônicos.
+function normalizarExtratorB(raw?: string | null): "mehlich1" | "hcl" | "agua_quente" | null {
+  const t = (raw ?? "").toLowerCase();
+  if (!t) return null;
+  if (t.includes("quente") || t.includes("água") || t.includes("agua")) return "agua_quente";
+  if (t.includes("hcl")) return "hcl";
+  if (t.includes("mehlich") || t.includes("m-1") || t.includes("m1")) return "mehlich1";
+  return null;
+}
+function normalizarExtratorMicros(raw?: string | null): "mehlich1" | "dtpa" | null {
+  const t = (raw ?? "").toLowerCase();
+  if (!t) return null;
+  if (t.includes("dtpa")) return "dtpa";
+  if (t.includes("mehlich") || t.includes("m-1") || t.includes("m1")) return "mehlich1";
+  return null;
+}
 
 export type SoilExtraction = {
   label: string | null;
@@ -58,6 +77,8 @@ function fromRaw(raw: RawSoilValues): SoilExtraction {
       al: raw.al ?? null,
       hAl: raw.h_al ?? null,
       argila: raw.argila ?? null,
+      extratorB: normalizarExtratorB(raw.extrator_b),
+      extratorMicros: normalizarExtratorMicros(raw.extrator_micros),
     },
     analysisDate: raw.analysis_date ?? null,
     laboratory: raw.laboratory ?? null,

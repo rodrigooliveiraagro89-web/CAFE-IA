@@ -322,3 +322,13 @@
   font-weight: 600;
 }
 .calendar-chip > svg { color: var(--success, #16a34a); }
+
+/* Chuva acumulada e balanço hídrico */
+.balance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.7rem; }
+.balance-card { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.75rem 0.9rem; border-radius: var(--radius-md, 12px); background: var(--surface); border: 1px solid var(--line); }
+.balance-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint); }
+.balance-rain { font-size: 1.25rem; }
+.balance-def { font-size: 0.74rem; color: var(--text-soft); }
+.balance-def[data-neg="true"] { color: var(--warning, #d97706); }
+.balance-forecast { display: flex; align-items: center; gap: 0.35rem; margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--text-soft); }
+.balance-forecast svg { color: var(--info); }

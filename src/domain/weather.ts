@@ -21,6 +21,7 @@ export type OpenMeteoDaily = {
   precipitation_sum: number[];
   precipitation_probability_max: number[];
   wind_speed_10m_max: number[];
+  et0_fao_evapotranspiration?: number[];
 };
 
 export type OpenMeteoHourly = {

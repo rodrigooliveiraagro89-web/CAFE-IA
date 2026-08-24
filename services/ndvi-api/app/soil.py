@@ -64,10 +64,14 @@ SYSTEM_PROMPT = (
     '"v_percent": num|null, "m_percent": num|null, "organic_matter": num|null, '
     '"zn": num|null, "b": num|null, "fe": num|null, "mn": num|null, "cu": num|null, '
     '"p_rem": num|null, "al": num|null, "h_al": num|null, "argila": num|null, '
+    '"extrator_b": "..."|null, "extrator_micros": "..."|null, '
     '"analysis_date": "YYYY-MM-DD"|null, "laboratory": "..."|null } ] }. '
     "Campos extras: p_rem = fósforo remanescente/P-rem em mg/L; al = alumínio "
     "trocável (Al) em cmolc/dm³; h_al = H+Al (acidez potencial) em cmolc/dm³; "
-    "argila = teor de argila em %. Use null quando não aparecerem no laudo. "
+    "argila = teor de argila em %. extrator_b = método de extração do Boro (ex.: "
+    "'Mehlich-1', 'HCl', 'água quente'); extrator_micros = método dos micros "
+    "Cu/Mn/Zn (ex.: 'Mehlich-1' ou 'DTPA') — copie o texto como está no laudo. "
+    "Use null quando não aparecerem no laudo. "
     "Se houver só uma amostra, devolva a lista com um único item."
 )
 
@@ -180,7 +184,7 @@ async def extract_soil_values(media_type: str, data: bytes) -> list[dict]:
     else:
         raw_samples = [parsed]
 
-    allowed = set(NUMERIC_FIELDS) | {"analysis_date", "laboratory", "label"}
+    allowed = set(NUMERIC_FIELDS) | {"analysis_date", "laboratory", "label", "extrator_b", "extrator_micros"}
     samples: list[dict] = []
     for item in raw_samples:
         if not isinstance(item, dict):

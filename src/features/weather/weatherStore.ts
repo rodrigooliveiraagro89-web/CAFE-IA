@@ -11,6 +11,7 @@ import {
   type OpenMeteoResponse,
   type SprayHour,
 } from "../../domain/weather";
+import { computeWaterBalance, type WaterBalance } from "../../domain/weatherBalance";
 
 const FORECAST_API = "https://api.open-meteo.com/v1/forecast";
 const GEOCODE_API = "https://geocoding-api.open-meteo.com/v1/search";
@@ -33,6 +34,7 @@ export type WeatherState = {
   current: CurrentConditions | null;
   forecast: DailyForecast[];
   sprayWindows: SprayHour[];
+  balance: WaterBalance | null;
 };
 
 const INITIAL: WeatherState = {
@@ -43,6 +45,7 @@ const INITIAL: WeatherState = {
   current: null,
   forecast: [],
   sprayWindows: [],
+  balance: null,
 };
 
 async function geocodeCity(city: string, state: string): Promise<LatLon | null> {
@@ -73,13 +76,14 @@ async function fetchForecast(location: LatLon): Promise<OpenMeteoResponse> {
   url.searchParams.set("longitude", String(location.lon));
   url.searchParams.set("timezone", "auto");
   url.searchParams.set("forecast_days", "7");
+  url.searchParams.set("past_days", "31"); // chuva observada e balanço hídrico
   url.searchParams.set(
     "current",
     "temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code",
   );
   url.searchParams.set(
     "daily",
-    "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max",
+    "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,et0_fao_evapotranspiration",
   );
   url.searchParams.set(
     "hourly",
@@ -100,6 +104,16 @@ function toState(raw: OpenMeteoResponse, label: string, source: WeatherSource): 
     };
   };
   const info = weatherCodeInfo(current.current?.weather_code ?? 0);
+  const today = new Date().toISOString().slice(0, 10);
+  // A série vem com dias passados (past_days): a previsão exibida é só de hoje
+  // em diante; os dias passados alimentam a chuva acumulada e o balanço.
+  const forecast = mapDailyForecast(raw.daily).filter((d) => d.date.slice(0, 10) >= today).slice(0, 7);
+  const daily = raw.daily;
+  const balanceDays = (daily?.time ?? []).map((date, i) => ({
+    date,
+    precipitation: daily?.precipitation_sum?.[i] ?? 0,
+    et0: daily?.et0_fao_evapotranspiration?.[i] ?? null,
+  }));
   return {
     status: "ready",
     message: "",
@@ -114,8 +128,9 @@ function toState(raw: OpenMeteoResponse, label: string, source: WeatherSource): 
           icon: info.icon,
         }
       : null,
-    forecast: mapDailyForecast(raw.daily),
+    forecast,
     sprayWindows: buildSprayWindows(raw.hourly, new Date().toISOString()),
+    balance: balanceDays.length ? computeWaterBalance(balanceDays, today) : null,
   };
 }
 

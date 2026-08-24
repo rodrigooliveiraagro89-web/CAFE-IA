@@ -6,6 +6,7 @@ import {
   type Fase,
 } from "../../domain/coffeeFertility5a";
 import { CENARIOS, type CenarioId } from "../../domain/fertilization";
+import { parseNumberBR } from "../../domain/parseNumber";
 import type { SoilAnalysis } from "../soil/soilStore";
 import {
   listRecommendations,
@@ -51,6 +52,7 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
   const v = analysis?.values;
   const [fase, setFase] = useState<Fase>("producao");
   const [cenario, setCenario] = useState<CenarioId>("media");
+  const [safraAnt, setSafraAnt] = useState("");
   const [history, setHistory] = useState<SavedRecommendation[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -89,9 +91,13 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
       H_Al_cmolc_dm3: hAl,
       S_mg_dm3: v?.s ?? null,
       B_mg_dm3: v?.b ?? null,
+      extrator_B: v?.extratorB ?? null,
       Cu_mg_dm3: v?.cu ?? null,
+      extrator_Cu: v?.extratorMicros ?? null,
       Mn_mg_dm3: v?.mn ?? null,
+      extrator_Mn: v?.extratorMicros ?? null,
       Zn_mg_dm3: v?.zn ?? null,
+      extrator_Zn: v?.extratorMicros ?? null,
     };
   }, [v]);
 
@@ -100,10 +106,15 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
   const rec = useMemo(
     () =>
       recomendarNutrientes5a({
-        lavoura: { fase, produtividade_esperada_sc_ha: prod, PRNT_percentual: 95 },
+        lavoura: {
+          fase,
+          produtividade_esperada_sc_ha: prod,
+          produtividade_safra_anterior_sc_ha: parseNumberBR(safraAnt),
+          PRNT_percentual: 95,
+        },
         solo,
       }),
-    [fase, prod, solo],
+    [fase, prod, safraAnt, solo],
   );
 
   const c = rec.classificacoes;
@@ -202,7 +213,22 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
             ))}
           </div>
         </div>
+        <label className="fert5a-safra">
+          Safra passada (sc/ha) <span className="fert5a-opt">média/bienalidade</span>
+          <input
+            inputMode="decimal"
+            value={safraAnt}
+            onChange={(e) => setSafraAnt(e.target.value)}
+            placeholder="opcional"
+          />
+        </label>
       </div>
+      {rec.produtividade_calculo_sc_ha !== null && rec.produtividade_calculo_sc_ha !== prod && (
+        <p className="fert5a-media no-print">
+          Bienalidade: cálculo usando a <strong>média {fmt(rec.produtividade_calculo_sc_ha, 0)} sc/ha</strong>{" "}
+          (ano de baixa &lt; 50% da safra passada).
+        </p>
+      )}
 
       <div className="fert5a-indices">
         <span><small>V</small><strong>{fmt(rec.indices.V_percentual)}%</strong></span>

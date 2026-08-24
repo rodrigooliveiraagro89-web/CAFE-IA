@@ -27,6 +27,8 @@ export type SoilValues = {
   al?: number | null; // Al trocável (cmolc/dm³)
   hAl?: number | null; // H+Al (cmolc/dm³)
   argila?: number | null; // % de argila
+  extratorB?: "mehlich1" | "hcl" | "agua_quente" | null; // extrator do Boro
+  extratorMicros?: "mehlich1" | "dtpa" | null; // extrator de Cu/Mn/Zn
 };
 
 export type SoilFieldKey = keyof SoilValues;
@@ -85,7 +87,7 @@ export function interpretSoil(values: SoilValues): SoilInterpretationRow[] {
   const rows: SoilInterpretationRow[] = [];
   for (const reference of SOIL_REFERENCES) {
     const value = values[reference.key];
-    if (value === null || value === undefined || !Number.isFinite(value)) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
     rows.push({
       key: reference.key,
       label: reference.label,
