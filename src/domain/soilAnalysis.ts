@@ -22,6 +22,11 @@ export type SoilValues = {
   fe?: number | null;
   mn?: number | null;
   cu?: number | null;
+  // Campos usados pela 5ª Aproximação (extraídos do laudo quando disponíveis).
+  pRem?: number | null; // fósforo remanescente (mg/L)
+  al?: number | null; // Al trocável (cmolc/dm³)
+  hAl?: number | null; // H+Al (cmolc/dm³)
+  argila?: number | null; // % de argila
 };
 
 export type SoilFieldKey = keyof SoilValues;
@@ -54,6 +59,10 @@ export const SOIL_REFERENCES: Reference[] = [
   { key: "fe", label: "Ferro (Fe)", unit: "mg/dm³", riskySide: "nenhum" },
   { key: "mn", label: "Manganês (Mn)", unit: "mg/dm³", riskySide: "nenhum" },
   { key: "cu", label: "Cobre (Cu)", unit: "mg/dm³", low: 0.4, high: 1.2, riskySide: "baixo" },
+  { key: "pRem", label: "P remanescente", unit: "mg/L", riskySide: "nenhum" },
+  { key: "argila", label: "Argila", unit: "%", riskySide: "nenhum" },
+  { key: "al", label: "Alumínio (Al)", unit: "cmolc/dm³", riskySide: "nenhum" },
+  { key: "hAl", label: "H + Al", unit: "cmolc/dm³", riskySide: "nenhum" },
 ];
 
 export type SoilInterpretationRow = {

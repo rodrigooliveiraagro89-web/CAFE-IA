@@ -38,6 +38,10 @@ NUMERIC_FIELDS = [
     "fe",
     "mn",
     "cu",
+    "p_rem",
+    "al",
+    "h_al",
+    "argila",
 ]
 
 SYSTEM_PROMPT = (
@@ -59,7 +63,11 @@ SYSTEM_PROMPT = (
     '"ca": num|null, "mg": num|null, "s": num|null, "ctc": num|null, '
     '"v_percent": num|null, "m_percent": num|null, "organic_matter": num|null, '
     '"zn": num|null, "b": num|null, "fe": num|null, "mn": num|null, "cu": num|null, '
+    '"p_rem": num|null, "al": num|null, "h_al": num|null, "argila": num|null, '
     '"analysis_date": "YYYY-MM-DD"|null, "laboratory": "..."|null } ] }. '
+    "Campos extras: p_rem = fósforo remanescente/P-rem em mg/L; al = alumínio "
+    "trocável (Al) em cmolc/dm³; h_al = H+Al (acidez potencial) em cmolc/dm³; "
+    "argila = teor de argila em %. Use null quando não aparecerem no laudo. "
     "Se houver só uma amostra, devolva a lista com um único item."
 )
 

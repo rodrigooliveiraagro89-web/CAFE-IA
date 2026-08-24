@@ -20,6 +20,10 @@ type RawSoilValues = {
   fe?: number | null;
   mn?: number | null;
   cu?: number | null;
+  p_rem?: number | null;
+  al?: number | null;
+  h_al?: number | null;
+  argila?: number | null;
   analysis_date?: string | null;
   laboratory?: string | null;
 };
@@ -50,6 +54,10 @@ function fromRaw(raw: RawSoilValues): SoilExtraction {
       fe: raw.fe ?? null,
       mn: raw.mn ?? null,
       cu: raw.cu ?? null,
+      pRem: raw.p_rem ?? null,
+      al: raw.al ?? null,
+      hAl: raw.h_al ?? null,
+      argila: raw.argila ?? null,
     },
     analysisDate: raw.analysis_date ?? null,
     laboratory: raw.laboratory ?? null,

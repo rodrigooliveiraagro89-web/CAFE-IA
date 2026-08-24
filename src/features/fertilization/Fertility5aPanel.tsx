@@ -57,17 +57,20 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
     const mgC = v?.mg != null ? v.mg / 10 : null;
     const kC = v?.k != null ? v.k / 391 : null;
     const sb = caC != null && mgC != null && kC != null ? caC + mgC + kC : null;
-    const hAl = sb != null && v?.ctc != null ? Math.max(0, v.ctc - sb) : null;
+    const hAlDerivado = sb != null && v?.ctc != null ? Math.max(0, v.ctc - sb) : null;
     const mPct = v?.mPercent ?? null;
-    const al = sb != null && mPct != null && mPct < 100 ? (mPct * sb) / (100 - mPct) : null;
+    const alDerivado = sb != null && mPct != null && mPct < 100 ? (mPct * sb) / (100 - mPct) : null;
     return {
       ca: str(caC),
       mg: str(mgC),
       k: str(v?.k ?? null, 0),
       p: str(v?.p ?? null),
       s: str(v?.s ?? null),
-      hAl: str(hAl),
-      al: str(al),
+      // Prioriza o que veio do laudo; se faltar, usa o derivado do CTC/V/m%.
+      hAl: str(v?.hAl ?? hAlDerivado),
+      al: str(v?.al ?? alDerivado),
+      prem: str(v?.pRem ?? null),
+      argila: str(v?.argila ?? null, 0),
       ph: str(v?.ph ?? null),
       mo: str(v?.organicMatter ?? null),
       b: str(v?.b ?? null),
@@ -81,8 +84,8 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
   const [prod, setProd] = useState("");
   const [prodAnt, setProdAnt] = useState("");
   const [prnt, setPrnt] = useState("95");
-  const [prem, setPrem] = useState("");
-  const [argila, setArgila] = useState("");
+  const [prem, setPrem] = useState<string | null>(null);
+  const [argila, setArgila] = useState<string | null>(null);
   const [nFoliar, setNFoliar] = useState("");
   const [extB, setExtB] = useState<ExtratorB | "">("");
   const [extMetal, setExtMetal] = useState<ExtratorMetalico | "">("");
@@ -104,8 +107,8 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
         pH_agua: parseNumberBR(prefill.ph),
         materia_organica_dag_kg: parseNumberBR(prefill.mo),
         P_mg_dm3: parseNumberBR(prefill.p),
-        P_rem_mg_L: parseNumberBR(prem),
-        argila_percentual: parseNumberBR(argila),
+        P_rem_mg_L: parseNumberBR(prem ?? prefill.prem),
+        argila_percentual: parseNumberBR(argila ?? prefill.argila),
         K_mg_dm3: parseNumberBR(prefill.k),
         Ca_cmolc_dm3: parseNumberBR(ca ?? prefill.ca),
         Mg_cmolc_dm3: parseNumberBR(mg ?? prefill.mg),
@@ -180,11 +183,11 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
         </label>
         <label>
           P-rem (mg/L)
-          <input inputMode="decimal" value={prem} onChange={(e) => setPrem(e.target.value)} placeholder="do laudo" />
+          <input inputMode="decimal" value={prem ?? prefill.prem} onChange={(e) => setPrem(e.target.value)} placeholder="do laudo" />
         </label>
         <label>
           Argila (%) <span className="fert5a-opt">(se não tiver P-rem)</span>
-          <input inputMode="decimal" value={argila} onChange={(e) => setArgila(e.target.value)} />
+          <input inputMode="decimal" value={argila ?? prefill.argila} onChange={(e) => setArgila(e.target.value)} />
         </label>
         <label>
           N foliar (dag/kg) <span className="fert5a-opt">(opcional)</span>
