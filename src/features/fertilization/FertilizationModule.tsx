@@ -317,11 +317,11 @@ export function FertilizationModule({
     <div className="page-stack platform-page">
       <header className="page-header context-page-header">
         <div>
-          <span className="eyebrow">Manejo nutricional · Boletim 100 (IAC)</span>
+          <span className="eyebrow">Manejo nutricional · 5ª Aproximação MG (Emater)</span>
           <h1>Calagem e adubação</h1>
           <p>
-            Doses calculadas por tabela oficial a partir do laudo de solo e da produtividade
-            esperada. Café em produção (a partir do 3º ano).
+            Recomendação pela 5ª Aproximação de Minas Gerais a partir do laudo do talhão e da
+            produtividade esperada. Abaixo, o programa alternativo pelo Boletim 100 (IAC).
           </p>
         </div>
         <button className="secondary-button" type="button" onClick={() => onNavigate("analise-solo")}>
@@ -345,7 +345,7 @@ export function FertilizationModule({
         </section>
       )}
 
-      <Fertility5aPanel analysis={soil} plotName={plot.name} />
+      <Fertility5aPanel analysis={soil} plotName={plot.name} plotId={plot.id} />
 
       <section className="panel-card">
         <div className="panel-title">

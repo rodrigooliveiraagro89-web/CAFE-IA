@@ -358,3 +358,14 @@
   body.printing-fert5a .fert5a-print-area .no-print { display: none !important; }
   body.printing-fert5a .fert5a-print-date { display: block !important; }
 }
+
+/* Ações + histórico do painel 5ª Aproximação */
+.fert5a-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.fert5a-actions .secondary-button { min-height: 40px; }
+.fert5a-saved { display: flex; align-items: center; gap: 0.35rem; margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--success, #16a34a); }
+.fert5a-history { margin-top: 1.1rem; border-top: 1px solid var(--line); padding-top: 0.8rem; }
+.fert5a-history h3 { font-size: 0.88rem; margin: 0 0 0.5rem; }
+.fert5a-history ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.fert5a-history li { display: flex; flex-direction: column; font-size: 0.8rem; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm); background: var(--surface-muted, rgba(0,0,0,0.04)); }
+.fert5a-history li strong { font-size: 0.82rem; }
+.fert5a-history li span { color: var(--text-soft); }

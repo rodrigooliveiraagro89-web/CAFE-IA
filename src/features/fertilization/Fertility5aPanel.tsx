@@ -1,5 +1,5 @@
-import { Download, FlaskConical } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, Download, FlaskConical, Save } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   converterFertilizantes,
   recomendarNutrientes5a,
@@ -9,6 +9,11 @@ import {
 } from "../../domain/coffeeFertility5a";
 import { parseNumberBR } from "../../domain/parseNumber";
 import type { SoilAnalysis } from "../soil/soilStore";
+import {
+  listRecommendations,
+  saveRecommendation,
+  type SavedRecommendation,
+} from "./fert5aClient";
 
 /**
  * Painel que liga o laudo do talhão ao motor da 5ª Aproximação de MG. Puxa a
@@ -17,7 +22,7 @@ import type { SoilAnalysis } from "../soil/soilStore";
  * laudo não traz (P-rem/argila, extratores) e os parâmetros da lavoura.
  */
 
-type Props = { analysis: SoilAnalysis | null; plotName?: string };
+type Props = { analysis: SoilAnalysis | null; plotName?: string; plotId?: string };
 
 const FASES: { id: Fase; label: string }[] = [
   { id: "producao", label: "Lavoura em produção" },
@@ -49,8 +54,22 @@ function str(value: number | null | undefined, digits = 2): string {
   return (Math.round(value * 10 ** digits) / 10 ** digits).toString();
 }
 
-export function Fertility5aPanel({ analysis, plotName }: Props) {
+export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
   const v = analysis?.values;
+  const [history, setHistory] = useState<SavedRecommendation[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  useEffect(() => {
+    if (!plotId) return;
+    let active = true;
+    void listRecommendations(plotId).then((rows) => {
+      if (active) setHistory(rows);
+    });
+    return () => {
+      active = false;
+    };
+  }, [plotId]);
 
   // Pré-preenche a partir do laudo (Ca/Mg mmolc → cmolc; deriva H+Al e Al).
   const prefill = useMemo(() => {
@@ -153,6 +172,20 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
   const fertilizantes = converterFertilizantes(n);
   const hoje = new Date().toLocaleDateString("pt-BR");
 
+  async function salvar() {
+    if (!plotId) return;
+    setSaving(true);
+    setSavedMsg("");
+    const saved = await saveRecommendation(plotId, rec);
+    setSaving(false);
+    if (saved) {
+      setHistory((prev) => [saved, ...prev].slice(0, 10));
+      setSavedMsg("Recomendação salva no histórico do talhão.");
+    } else {
+      setSavedMsg("Não foi possível salvar. Tente novamente.");
+    }
+  }
+
   function baixarPdf() {
     document.body.classList.add("printing-fert5a");
     const limpar = () => {
@@ -174,10 +207,18 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
           <h2>Recomendação de nutrientes {plotName ? `· ${plotName}` : ""}</h2>
           <small className="fert5a-print-date">Emitido em {hoje}</small>
         </div>
-        <button className="secondary-button no-print" type="button" onClick={baixarPdf}>
-          <Download size={16} aria-hidden="true" /> Baixar PDF
-        </button>
+        <div className="fert5a-actions no-print">
+          {plotId && (
+            <button className="secondary-button" type="button" onClick={() => void salvar()} disabled={saving}>
+              <Save size={16} aria-hidden="true" /> {saving ? "Salvando…" : "Salvar recomendação"}
+            </button>
+          )}
+          <button className="secondary-button" type="button" onClick={baixarPdf}>
+            <Download size={16} aria-hidden="true" /> Baixar PDF
+          </button>
+        </div>
       </div>
+      {savedMsg && <p className="fert5a-saved no-print"><Check size={14} /> {savedMsg}</p>}
 
       <div className="fert5a-form no-print">
         <label>
@@ -322,6 +363,31 @@ export function Fertility5aPanel({ analysis, plotName }: Props) {
         Fonte: 5ª Aproximação de Minas Gerais + Manual do Café (Emater-MG). Saída em nutriente; a
         conversão para fertilizante e a decisão final são do responsável técnico.
       </p>
+
+      {history.length > 0 && (
+        <div className="fert5a-history no-print">
+          <h3>Recomendações salvas</h3>
+          <ul>
+            {history.map((h) => {
+              const nn = h.payload?.necessidade_nutrientes;
+              const data = new Date(h.createdAt).toLocaleDateString("pt-BR");
+              return (
+                <li key={h.id}>
+                  <strong>{data}</strong>
+                  <span>
+                    {h.produtividadeSc ? `${fmt(h.produtividadeSc, 0)} sc/ha · ` : ""}
+                    N {fmt(nn?.N_kg_ha_ano ?? null, 0)} · P₂O₅ {fmt(nn?.P2O5_kg_ha_ano ?? null, 0)} ·
+                    K₂O {fmt(nn?.K2O_kg_ha_ano ?? null, 0)} kg/ha
+                    {h.payload?.correcao_solo?.calagem_t_ha_produto
+                      ? ` · calc. ${fmt(h.payload.correcao_solo.calagem_t_ha_produto, 2)} t/ha`
+                      : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
