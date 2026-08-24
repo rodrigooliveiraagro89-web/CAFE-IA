@@ -3,11 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   converterFertilizantes,
   recomendarNutrientes5a,
-  type ExtratorB,
-  type ExtratorMetalico,
   type Fase,
 } from "../../domain/coffeeFertility5a";
-import { parseNumberBR } from "../../domain/parseNumber";
+import { CENARIOS, type CenarioId } from "../../domain/fertilization";
 import type { SoilAnalysis } from "../soil/soilStore";
 import {
   listRecommendations,
@@ -16,10 +14,10 @@ import {
 } from "./fert5aClient";
 
 /**
- * Painel que liga o laudo do talhão ao motor da 5ª Aproximação de MG. Puxa a
- * análise mais recente (Ca/Mg em mmolc → cmolc; K, P, S, micros) e deriva H+Al e
- * Al a partir de CTC/V/m% quando possível. O usuário completa os campos que o
- * laudo não traz (P-rem/argila, extratores) e os parâmetros da lavoura.
+ * Painel enxuto da 5ª Aproximação: o produtor só escolhe a FASE e a PRODUÇÃO
+ * (cards Baixa/Média/Alta). Todos os valores vêm do laudo do talhão — o que não
+ * houver fica nulo (sem calcular, com aviso). Referências técnicas: 5ª
+ * Aproximação de Minas Gerais + Manual do Café (Emater-MG).
  */
 
 type Props = { analysis: SoilAnalysis | null; plotName?: string; plotId?: string };
@@ -45,17 +43,14 @@ const CLASSE_LABEL: Record<string, string> = {
 };
 
 function fmt(value: number | null, digits = 1): string {
-  if (value === null) return "—";
+  if (value === null || value === undefined) return "—";
   return value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
-}
-
-function str(value: number | null | undefined, digits = 2): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return "";
-  return (Math.round(value * 10 ** digits) / 10 ** digits).toString();
 }
 
 export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
   const v = analysis?.values;
+  const [fase, setFase] = useState<Fase>("producao");
+  const [cenario, setCenario] = useState<CenarioId>("media");
   const [history, setHistory] = useState<SavedRecommendation[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -71,101 +66,45 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
     };
   }, [plotId]);
 
-  // Pré-preenche a partir do laudo (Ca/Mg mmolc → cmolc; deriva H+Al e Al).
-  const prefill = useMemo(() => {
+  // Todos os valores vêm do laudo. Ca/Mg em mmolc → cmolc; H+Al e Al são
+  // derivados de CTC/V/m% quando o laudo não os traz explicitamente.
+  const solo = useMemo(() => {
     const caC = v?.ca != null ? v.ca / 10 : null;
     const mgC = v?.mg != null ? v.mg / 10 : null;
     const kC = v?.k != null ? v.k / 391 : null;
     const sb = caC != null && mgC != null && kC != null ? caC + mgC + kC : null;
-    const hAlDerivado = sb != null && v?.ctc != null ? Math.max(0, v.ctc - sb) : null;
+    const hAl = v?.hAl ?? (sb != null && v?.ctc != null ? Math.max(0, v.ctc - sb) : null);
     const mPct = v?.mPercent ?? null;
-    const alDerivado = sb != null && mPct != null && mPct < 100 ? (mPct * sb) / (100 - mPct) : null;
+    const al = v?.al ?? (sb != null && mPct != null && mPct < 100 ? (mPct * sb) / (100 - mPct) : null);
     return {
-      ca: str(caC),
-      mg: str(mgC),
-      k: str(v?.k ?? null, 0),
-      p: str(v?.p ?? null),
-      s: str(v?.s ?? null),
-      // Prioriza o que veio do laudo; se faltar, usa o derivado do CTC/V/m%.
-      hAl: str(v?.hAl ?? hAlDerivado),
-      al: str(v?.al ?? alDerivado),
-      prem: str(v?.pRem ?? null),
-      argila: str(v?.argila ?? null, 0),
-      ph: str(v?.ph ?? null),
-      mo: str(v?.organicMatter ?? null),
-      b: str(v?.b ?? null),
-      cu: str(v?.cu ?? null),
-      mn: str(v?.mn ?? null),
-      zn: str(v?.zn ?? null),
+      pH_agua: v?.ph ?? null,
+      materia_organica_dag_kg: v?.organicMatter ?? null,
+      P_mg_dm3: v?.p ?? null,
+      P_rem_mg_L: v?.pRem ?? null,
+      argila_percentual: v?.argila ?? null,
+      K_mg_dm3: v?.k ?? null,
+      Ca_cmolc_dm3: caC,
+      Mg_cmolc_dm3: mgC,
+      Al_cmolc_dm3: al,
+      H_Al_cmolc_dm3: hAl,
+      S_mg_dm3: v?.s ?? null,
+      B_mg_dm3: v?.b ?? null,
+      Cu_mg_dm3: v?.cu ?? null,
+      Mn_mg_dm3: v?.mn ?? null,
+      Zn_mg_dm3: v?.zn ?? null,
     };
   }, [v]);
 
-  const [fase, setFase] = useState<Fase>("producao");
-  const [prod, setProd] = useState("");
-  const [prodAnt, setProdAnt] = useState("");
-  const [prnt, setPrnt] = useState("95");
-  const [prem, setPrem] = useState<string | null>(null);
-  const [argila, setArgila] = useState<string | null>(null);
-  const [nFoliar, setNFoliar] = useState("");
-  const [extB, setExtB] = useState<ExtratorB | "">("");
-  const [extMetal, setExtMetal] = useState<ExtratorMetalico | "">("");
-  // Campos numéricos editáveis (default = prefill).
-  const [ca, setCa] = useState<string | null>(null);
-  const [mg, setMg] = useState<string | null>(null);
-  const [al, setAl] = useState<string | null>(null);
-  const [hAl, setHAl] = useState<string | null>(null);
+  const prod = CENARIOS.find((c) => c.id === cenario)?.sacasPorHectare ?? 45;
 
-  const rec = useMemo(() => {
-    return recomendarNutrientes5a({
-      lavoura: {
-        fase,
-        produtividade_esperada_sc_ha: parseNumberBR(prod),
-        produtividade_safra_anterior_sc_ha: parseNumberBR(prodAnt),
-        PRNT_percentual: parseNumberBR(prnt),
-      },
-      solo: {
-        pH_agua: parseNumberBR(prefill.ph),
-        materia_organica_dag_kg: parseNumberBR(prefill.mo),
-        P_mg_dm3: parseNumberBR(prefill.p),
-        P_rem_mg_L: parseNumberBR(prem ?? prefill.prem),
-        argila_percentual: parseNumberBR(argila ?? prefill.argila),
-        K_mg_dm3: parseNumberBR(prefill.k),
-        Ca_cmolc_dm3: parseNumberBR(ca ?? prefill.ca),
-        Mg_cmolc_dm3: parseNumberBR(mg ?? prefill.mg),
-        Al_cmolc_dm3: parseNumberBR(al ?? prefill.al),
-        H_Al_cmolc_dm3: parseNumberBR(hAl ?? prefill.hAl),
-        S_mg_dm3: parseNumberBR(prefill.s),
-        B_mg_dm3: parseNumberBR(prefill.b),
-        extrator_B: extB || null,
-        Cu_mg_dm3: parseNumberBR(prefill.cu),
-        extrator_Cu: extMetal || null,
-        Mn_mg_dm3: parseNumberBR(prefill.mn),
-        extrator_Mn: extMetal || null,
-        Zn_mg_dm3: parseNumberBR(prefill.zn),
-        extrator_Zn: extMetal || null,
-      },
-      foliar: { N_dag_kg: parseNumberBR(nFoliar) },
-    });
-  }, [fase, prod, prodAnt, prnt, prem, argila, nFoliar, extB, extMetal, ca, mg, al, hAl, prefill]);
-
-  if (!analysis) {
-    return (
-      <section className="panel-card fert5a">
-        <div className="panel-title">
-          <FlaskConical size={20} />
-          <div>
-            <span className="eyebrow">5ª Aproximação — MG (Emater)</span>
-            <h2>Recomendação de nutrientes</h2>
-          </div>
-        </div>
-        <p className="fert5a-hint">
-          Envie uma análise de solo do talhão {plotName ? `(${plotName})` : ""} para calcular pela
-          5ª Aproximação. Depois é só completar P-rem/argila, os extratores dos micros e a
-          produtividade.
-        </p>
-      </section>
-    );
-  }
+  const rec = useMemo(
+    () =>
+      recomendarNutrientes5a({
+        lavoura: { fase, produtividade_esperada_sc_ha: prod, PRNT_percentual: 95 },
+        solo,
+      }),
+    [fase, prod, solo],
+  );
 
   const c = rec.classificacoes;
   const n = rec.necessidade_nutrientes;
@@ -194,8 +133,25 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
     };
     window.addEventListener("afterprint", limpar);
     window.print();
-    // Fallback caso afterprint não dispare (alguns navegadores).
     window.setTimeout(limpar, 1000);
+  }
+
+  if (!analysis) {
+    return (
+      <section className="panel-card fert5a">
+        <div className="panel-title">
+          <FlaskConical size={20} />
+          <div>
+            <span className="eyebrow">5ª Aproximação — MG (Emater)</span>
+            <h2>Recomendação de nutrientes</h2>
+          </div>
+        </div>
+        <p className="fert5a-hint">
+          Envie a análise de solo do talhão {plotName ? `(${plotName})` : ""} para calcular pela 5ª
+          Aproximação. Aí é só escolher a fase e a produção.
+        </p>
+      </section>
+    );
   }
 
   return (
@@ -210,82 +166,42 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
         <div className="fert5a-actions no-print">
           {plotId && (
             <button className="secondary-button" type="button" onClick={() => void salvar()} disabled={saving}>
-              <Save size={16} aria-hidden="true" /> {saving ? "Salvando…" : "Salvar recomendação"}
+              <Save size={16} aria-hidden="true" /> {saving ? "Salvando…" : "Salvar"}
             </button>
           )}
           <button className="secondary-button" type="button" onClick={baixarPdf}>
-            <Download size={16} aria-hidden="true" /> Baixar PDF
+            <Download size={16} aria-hidden="true" /> PDF
           </button>
         </div>
       </div>
       {savedMsg && <p className="fert5a-saved no-print"><Check size={14} /> {savedMsg}</p>}
 
-      <div className="fert5a-form no-print">
-        <label>
-          Fase
+      {/* Só duas escolhas: fase e produção. O resto vem do laudo. */}
+      <div className="fert5a-escolhas no-print">
+        <label className="fert5a-fase">
+          Fase da lavoura
           <select value={fase} onChange={(e) => setFase(e.target.value as Fase)}>
             {FASES.map((f) => (
               <option key={f.id} value={f.id}>{f.label}</option>
             ))}
           </select>
         </label>
-        <label>
-          Produtividade esperada (sc/ha)
-          <input inputMode="decimal" value={prod} onChange={(e) => setProd(e.target.value)} placeholder="ex.: 40" />
-        </label>
-        <label>
-          Safra anterior (sc/ha)
-          <input inputMode="decimal" value={prodAnt} onChange={(e) => setProdAnt(e.target.value)} placeholder="bienalidade" />
-        </label>
-        <label>
-          PRNT do calcário (%)
-          <input inputMode="decimal" value={prnt} onChange={(e) => setPrnt(e.target.value)} />
-        </label>
-        <label>
-          P-rem (mg/L)
-          <input inputMode="decimal" value={prem ?? prefill.prem} onChange={(e) => setPrem(e.target.value)} placeholder="do laudo" />
-        </label>
-        <label>
-          Argila (%) <span className="fert5a-opt">(se não tiver P-rem)</span>
-          <input inputMode="decimal" value={argila ?? prefill.argila} onChange={(e) => setArgila(e.target.value)} />
-        </label>
-        <label>
-          N foliar (dag/kg) <span className="fert5a-opt">(opcional)</span>
-          <input inputMode="decimal" value={nFoliar} onChange={(e) => setNFoliar(e.target.value)} />
-        </label>
-        <label>
-          Extrator do Boro
-          <select value={extB} onChange={(e) => setExtB(e.target.value as ExtratorB | "")}>
-            <option value="">—</option>
-            <option value="mehlich1">Mehlich-1</option>
-            <option value="hcl">HCl 0,05</option>
-            <option value="agua_quente">Água quente</option>
-          </select>
-        </label>
-        <label>
-          Extrator de Cu/Mn/Zn
-          <select value={extMetal} onChange={(e) => setExtMetal(e.target.value as ExtratorMetalico | "")}>
-            <option value="">—</option>
-            <option value="mehlich1">Mehlich-1</option>
-            <option value="dtpa">DTPA</option>
-          </select>
-        </label>
-        <label>
-          Ca (cmolc/dm³)
-          <input inputMode="decimal" value={ca ?? prefill.ca} onChange={(e) => setCa(e.target.value)} />
-        </label>
-        <label>
-          Mg (cmolc/dm³)
-          <input inputMode="decimal" value={mg ?? prefill.mg} onChange={(e) => setMg(e.target.value)} />
-        </label>
-        <label>
-          Al (cmolc/dm³)
-          <input inputMode="decimal" value={al ?? prefill.al} onChange={(e) => setAl(e.target.value)} />
-        </label>
-        <label>
-          H+Al (cmolc/dm³)
-          <input inputMode="decimal" value={hAl ?? prefill.hAl} onChange={(e) => setHAl(e.target.value)} />
-        </label>
+        <div className="fert5a-prod">
+          <span className="fert5a-prod-label">Produção esperada</span>
+          <div className="fert5a-cenarios">
+            {CENARIOS.map((cen) => (
+              <button
+                key={cen.id}
+                type="button"
+                data-active={cen.id === cenario}
+                onClick={() => setCenario(cen.id)}
+              >
+                <strong>{cen.label}</strong>
+                <small>{cen.sacasPorHectare} sc/ha</small>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="fert5a-indices">
@@ -317,7 +233,7 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
             <strong>Calagem:</strong>{" "}
             {rec.correcao_solo.calagem_t_ha_produto !== null
               ? `${fmt(rec.correcao_solo.calagem_t_ha_produto, 2)} t/ha (produto) · ${fmt(rec.correcao_solo.calagem_t_ha_prnt100, 2)} t/ha PRNT 100%`
-              : "informe Ca, Mg, Al e H+Al"}
+              : "sem dados de Ca/Mg/Al/H+Al no laudo"}
           </p>
           <p>
             <strong>Gessagem:</strong>{" "}
@@ -343,25 +259,26 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
             </tbody>
           </table>
           <p className="fert5a-parcelamento">
-            Parcele o N e o K em 3–4 vezes de outubro a março (a cada 40–60 dias). Uma fonte é só
-            uma opção — o responsável técnico pode trocar por outro formulado equivalente.
+            Parcele o N e o K em 3–4 vezes de outubro a março. Uma fonte é só uma opção — o
+            responsável técnico pode trocar por outro formulado equivalente.
           </p>
         </div>
       )}
 
       {rec.alertas.length > 0 && (
-        <div className="fert5a-alertas">
-          <strong>Observações e travas de segurança</strong>
+        <details className="fert5a-alertas no-print">
+          <summary>Observações e travas de segurança ({rec.alertas.length})</summary>
           <ul>
             {rec.alertas.map((a) => (
               <li key={a}>{a}</li>
             ))}
           </ul>
-        </div>
+        </details>
       )}
       <p className="fert5a-fonte">
-        Fonte: 5ª Aproximação de Minas Gerais + Manual do Café (Emater-MG). Saída em nutriente; a
-        conversão para fertilizante e a decisão final são do responsável técnico.
+        Fonte: 5ª Aproximação de Minas Gerais + Manual do Café (Emater-MG). Valores do laudo; o que
+        não estiver no laudo fica em branco. Decisão final e conversão em fertilizante são do
+        responsável técnico.
       </p>
 
       {history.length > 0 && (
