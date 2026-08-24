@@ -401,3 +401,11 @@
 .fert5a-safra input { min-height: 46px; padding: 0.5rem 0.7rem; font-size: 0.95rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); max-width: 160px; }
 .fert5a-opt { font-weight: 500; color: var(--text-faint); }
 .fert5a-media { margin: 0.2rem 0 0.8rem; font-size: 0.8rem; color: var(--warning, #d97706); }
+
+/* Gráficos do painel 5ª Aproximação */
+.fert5a-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem; margin: 1rem 0; }
+.fert5a-chart h3 { font-size: 0.88rem; margin: 0 0 0.5rem; }
+.fert5a-chart .report-bar-chart { width: 100%; height: auto; }
+.fert5a-chart .report-chart-label { fill: var(--text-soft); font-size: 12px; font-weight: 600; }
+.fert5a-chart .report-chart-value { fill: var(--text); font-size: 12px; }
+.fert5a-chart .report-chart-empty { font-size: 0.8rem; color: var(--text-faint); }

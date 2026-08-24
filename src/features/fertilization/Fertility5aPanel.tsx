@@ -7,6 +7,7 @@ import {
 } from "../../domain/coffeeFertility5a";
 import { CENARIOS, type CenarioId } from "../../domain/fertilization";
 import { parseNumberBR } from "../../domain/parseNumber";
+import { BarChart } from "../reports/charts/BarChart";
 import type { SoilAnalysis } from "../soil/soilStore";
 import {
   listRecommendations,
@@ -21,7 +22,14 @@ import {
  * Aproximação de Minas Gerais + Manual do Café (Emater-MG).
  */
 
-type Props = { analysis: SoilAnalysis | null; plotName?: string; plotId?: string };
+type Props = {
+  analysis: SoilAnalysis | null;
+  plotName?: string;
+  plotId?: string;
+  // Cenário de produção controlado pelo módulo (sincroniza com o Boletim 100).
+  cenario: CenarioId;
+  onCenarioChange: (id: CenarioId) => void;
+};
 
 const FASES: { id: Fase; label: string }[] = [
   { id: "producao", label: "Lavoura em produção" },
@@ -48,10 +56,9 @@ function fmt(value: number | null, digits = 1): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 }
 
-export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
+export function Fertility5aPanel({ analysis, plotName, plotId, cenario, onCenarioChange }: Props) {
   const v = analysis?.values;
   const [fase, setFase] = useState<Fase>("producao");
-  const [cenario, setCenario] = useState<CenarioId>("media");
   const [safraAnt, setSafraAnt] = useState("");
   const [history, setHistory] = useState<SavedRecommendation[]>([]);
   const [saving, setSaving] = useState(false);
@@ -121,6 +128,32 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
   const n = rec.necessidade_nutrientes;
   const fertilizantes = converterFertilizantes(n);
   const hoje = new Date().toLocaleDateString("pt-BR");
+
+  // Gráfico 1 — doses de macronutrientes (kg/ha).
+  const dosesChart = (
+    [
+      { label: "N", value: n.N_kg_ha_ano },
+      { label: "P₂O₅", value: n.P2O5_kg_ha_ano },
+      { label: "K₂O", value: n.K2O_kg_ha_ano },
+      { label: "S", value: n.S_kg_ha_ano },
+    ] as { label: string; value: number | null }[]
+  )
+    .filter((d) => typeof d.value === "number" && d.value > 0)
+    .map((d) => ({ label: d.label, value: d.value as number }));
+
+  // Gráfico 2 — participação das bases na CTC (%): Ca, Mg, K e H+Al.
+  const T = rec.indices.T;
+  const SB = rec.indices.SB;
+  const K = rec.indices.K_cmolc_dm3;
+  const participacaoChart =
+    T && T > 0
+      ? [
+          { label: "Ca", value: (100 * (solo.Ca_cmolc_dm3 ?? 0)) / T },
+          { label: "Mg", value: (100 * (solo.Mg_cmolc_dm3 ?? 0)) / T },
+          { label: "K", value: (100 * (K ?? 0)) / T },
+          { label: "H+Al", value: (100 * Math.max(0, T - (SB ?? 0))) / T },
+        ].map((d) => ({ label: d.label, value: Math.round(d.value * 10) / 10 }))
+      : [];
 
   async function salvar() {
     if (!plotId) return;
@@ -205,7 +238,7 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
                 key={cen.id}
                 type="button"
                 data-active={cen.id === cenario}
-                onClick={() => setCenario(cen.id)}
+                onClick={() => onCenarioChange(cen.id)}
               >
                 <strong>{cen.label}</strong>
                 <small>{cen.sacasPorHectare} sc/ha</small>
@@ -269,6 +302,31 @@ export function Fertility5aPanel({ analysis, plotName, plotId }: Props) {
           </p>
         </div>
       </div>
+
+      {(dosesChart.length > 0 || participacaoChart.length > 0) && (
+        <div className="fert5a-charts">
+          {dosesChart.length > 0 && (
+            <div className="fert5a-chart">
+              <h3>Doses de macronutrientes (kg/ha·ano)</h3>
+              <BarChart
+                data={dosesChart}
+                formatValue={(x) => `${x.toLocaleString("pt-BR")} kg`}
+                color="var(--agryn-emerald, #22c55e)"
+              />
+            </div>
+          )}
+          {participacaoChart.length > 0 && (
+            <div className="fert5a-chart">
+              <h3>Participação das bases na CTC (%)</h3>
+              <BarChart
+                data={participacaoChart}
+                formatValue={(x) => `${x.toLocaleString("pt-BR")}%`}
+                color="var(--info, #2563eb)"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {fertilizantes.length > 0 && (
         <div className="fert5a-fertilizantes">

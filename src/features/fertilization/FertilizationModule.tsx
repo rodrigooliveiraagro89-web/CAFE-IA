@@ -345,7 +345,13 @@ export function FertilizationModule({
         </section>
       )}
 
-      <Fertility5aPanel analysis={soil} plotName={plot.name} plotId={plot.id} />
+      <Fertility5aPanel
+        analysis={soil}
+        plotName={plot.name}
+        plotId={plot.id}
+        cenario={cenarioId}
+        onCenarioChange={setCenarioId}
+      />
 
       <section className="panel-card">
         <div className="panel-title">
