@@ -9,6 +9,7 @@ import {
   produtividadeCalculo,
   recomendarNutrientes5a,
   sugerirFormulacao,
+  agregarCompras,
 } from "./coffeeFertility5a";
 
 describe("classificarP (P-rem)", () => {
@@ -225,6 +226,15 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
   it("usa o catálogo comercial (código FER)", () => {
     const plano = sugerirFormulacao(base, 5);
     expect(plano.principal?.codigo).toMatch(/^FER\d+/);
+  });
+
+  it("agregarCompras soma o mesmo formulado de dois talhões", () => {
+    const p1 = sugerirFormulacao(base, 2); // 20-00-10, 3000 kg
+    const p2 = sugerirFormulacao(base, 3); // 20-00-10, 4500 kg
+    const lista = agregarCompras([p1, p2]);
+    const principal = lista.find((i) => i.formula === "20-00-10");
+    expect(principal?.kg_total).toBe(7500); // 3000 + 4500
+    expect(principal?.sacas_50).toBe(150);
   });
 
   it("N ausente (fase de campo sem população) → sem formulação", () => {

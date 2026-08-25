@@ -2,7 +2,13 @@ import { Check, Copy, Crown, Download, Link2, MapPinned, Share2 } from "lucide-r
 import { useEffect, useMemo, useState } from "react";
 import type { AppView } from "../../app/navigation";
 import { propertyLocation } from "../../domain/agriculturalContext";
+import {
+  agregarCompras,
+  recomendarNutrientes5a,
+  sugerirFormulacao,
+} from "../../domain/coffeeFertility5a";
 import { CENARIOS, type CenarioId } from "../../domain/fertilization";
+import { analysisToSolo, subFromValues } from "../fertilization/soilToSolo";
 import { PRECO_PADRAO_KG } from "../../domain/fertilizerProgram";
 import type { FieldRecord } from "../../domain/fieldRecords";
 import { parseNumberBR } from "../../domain/parseNumber";
@@ -331,6 +337,27 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
   const location = propertyLocation(property);
   const [cenario5a, setCenario5a] = useState<CenarioId>("media");
 
+  // Lista de compras: soma os formulados/corretivos de todos os talhões com laudo.
+  const compras = useMemo(() => {
+    const sacas = CENARIOS.find((c) => c.id === cenario5a)?.sacasPorHectare ?? 45;
+    const planos = [];
+    let calcarioT = 0;
+    let gessoT = 0;
+    for (const row of plots) {
+      if (!row.soilAnalysis) continue;
+      const area = row.plot.areaHectares ?? 0;
+      const rec = recomendarNutrientes5a({
+        lavoura: { fase: "producao", produtividade_esperada_sc_ha: sacas, PRNT_percentual: 95 },
+        solo: analysisToSolo(row.soilAnalysis.values),
+        sub: subFromValues(row.soilAnalysis.values),
+      });
+      planos.push(sugerirFormulacao(rec.necessidade_nutrientes, area));
+      if (rec.correcao_solo.calagem_t_ha_produto) calcarioT += rec.correcao_solo.calagem_t_ha_produto * area;
+      if (rec.correcao_solo.gesso_t_ha) gessoT += rec.correcao_solo.gesso_t_ha * area;
+    }
+    return { itens: agregarCompras(planos), calcarioT, gessoT };
+  }, [plots, cenario5a]);
+
   return (
     <article className="report-print-area">
       <header className="report-doc-header">
@@ -488,6 +515,47 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
                 />
               </div>
             ))}
+
+          {(compras.itens.length > 0 || compras.calcarioT > 0 || compras.gessoT > 0) && (
+            <div className="report-compras">
+              <h3>Lista de compras da propriedade</h3>
+              <p className="report-compras-note">
+                Soma dos formulados e corretivos de todos os talhões com laudo, na produção
+                selecionada acima. Quantidades para planejar a compra.
+              </p>
+              <table className="report-data-table">
+                <thead>
+                  <tr><th>Produto</th><th>Fórmula</th><th>Total</th><th>Sacas 50 kg</th></tr>
+                </thead>
+                <tbody>
+                  {compras.itens.map((item) => (
+                    <tr key={`${item.formula}-${item.produto}`}>
+                      <td>{item.produto}</td>
+                      <td>{item.formula}</td>
+                      <td>{item.kg_total?.toLocaleString("pt-BR")} kg</td>
+                      <td>{item.sacas_50?.toLocaleString("pt-BR")}</td>
+                    </tr>
+                  ))}
+                  {compras.calcarioT > 0 && (
+                    <tr>
+                      <td>Calcário</td>
+                      <td>corretivo</td>
+                      <td>{(Math.round(compras.calcarioT * 100) / 100).toLocaleString("pt-BR")} t</td>
+                      <td>—</td>
+                    </tr>
+                  )}
+                  {compras.gessoT > 0 && (
+                    <tr>
+                      <td>Gesso agrícola</td>
+                      <td>corretivo</td>
+                      <td>{(Math.round(compras.gessoT * 100) / 100).toLocaleString("pt-BR")} t</td>
+                      <td>—</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
 

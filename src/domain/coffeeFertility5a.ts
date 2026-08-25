@@ -745,6 +745,27 @@ export function sugerirFormulacao(
   return { area_ha: areaHa, principal, complementos, observacoes };
 }
 
+// Soma os produtos (principal + complementos) de vários talhões numa lista de
+// compras única, agrupando por produto/fórmula. Ignora itens sem kg total.
+export function agregarCompras(planos: FormulacaoPlano[]): FormulacaoItem[] {
+  const acc = new Map<string, FormulacaoItem>();
+  for (const plano of planos) {
+    const itens = [plano.principal, ...plano.complementos];
+    for (const it of itens) {
+      if (!it || it.kg_total === null) continue;
+      const chave = `${it.formula}|${it.produto}`;
+      const atual = acc.get(chave);
+      if (atual) {
+        atual.kg_total = (atual.kg_total ?? 0) + it.kg_total;
+        atual.sacas_50 = Math.round((((atual.sacas_50 ?? 0) + (it.sacas_50 ?? 0))) * 10) / 10;
+      } else {
+        acc.set(chave, { ...it, kg_ha: 0 }); // kg_ha não faz sentido no agregado
+      }
+    }
+  }
+  return [...acc.values()].sort((a, b) => (b.kg_total ?? 0) - (a.kg_total ?? 0));
+}
+
 // --------------------------------------------------------------- motor -------
 
 export function recomendarNutrientes5a(input: {
