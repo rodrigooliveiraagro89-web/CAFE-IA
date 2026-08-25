@@ -192,6 +192,54 @@
   font-size: 0.84rem;
 }
 
+/* Evolução do solo (tendência entre laudos) */
+.soil-trend {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.soil-trend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.soil-trend-head strong { font-size: 0.92rem; }
+.soil-trend-periodo { margin: 0.2rem 0 0.7rem; font-size: 0.78rem; color: var(--text-faint); }
+.soil-trend-rows { display: grid; gap: 0.1rem; }
+.soil-trend-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.84rem;
+}
+.soil-trend-row:last-child { border-bottom: none; }
+.soil-trend-nome { color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.soil-spark { color: var(--text-faint); }
+.soil-spark polyline { stroke: currentColor; }
+.soil-spark circle { fill: currentColor; }
+.soil-trend-vals { font-variant-numeric: tabular-nums; color: var(--text-soft); white-space: nowrap; }
+.soil-trend-vals strong { color: var(--text); }
+.soil-trend-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 62px;
+  justify-content: flex-end;
+}
+.soil-trend-delta-bom { color: var(--success); }
+.soil-trend-delta-ruim { color: var(--danger); }
+.soil-trend-delta-neutro { color: var(--text-faint); }
+.soil-analise-veredito.neutro { background: var(--surface-soft, var(--line)); color: var(--text-faint); }
+
 .soil-history-list {
   display: grid;
   gap: 0.75rem;

@@ -23,6 +23,7 @@ import {
 } from "../../domain/soilAnalysis";
 import { parseNumberBR } from "../../domain/parseNumber";
 import { extractSoilFromFile, type SoilExtraction } from "./soilClient";
+import { SoilTrend } from "./SoilTrend";
 import { useSoilAnalyses, type SoilAnalysis, type SoilSource } from "./soilStore";
 import "./soil.css";
 
@@ -429,6 +430,7 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
               <h2 id="soil-history-title">Laudos deste talhão</h2>
             </div>
           </div>
+          <SoilTrend analyses={plotAnalyses} />
           <div className="soil-history-list">
             {plotAnalyses.map((analysis) => (
               <SoilHistoryCard key={analysis.id} analysis={analysis} />
