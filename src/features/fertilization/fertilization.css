@@ -404,6 +404,10 @@
 
 .fert5a-sistema { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); min-width: 140px; }
 .fert5a-sistema select { min-height: 46px; padding: 0.5rem 0.7rem; font-size: 0.95rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+.fert5a-valvo { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); min-width: 180px; justify-content: flex-end; }
+.fert5a-valvo strong { color: var(--agryn-emerald, #16a34a); font-size: 0.95rem; margin-left: 0.2rem; }
+.fert5a-valvo input[type="range"] { width: 100%; accent-color: var(--agryn-emerald, #16a34a); }
+.fert5a-valvo-hint { color: var(--text-faint); font-style: normal; font-size: 0.82rem; }
 
 /* Completar o laudo (P-rem, argila, extratores, 20–40 cm, foliar) */
 .fert5a-completar { margin: 0.2rem 0 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.4rem 0.9rem; background: var(--surface-soft, var(--surface)); }

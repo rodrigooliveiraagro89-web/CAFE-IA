@@ -99,6 +99,7 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
   const [safraAnt, setSafraAnt] = useState("");
   const [plantas, setPlantas] = useState(plantasHa != null ? String(Math.round(plantasHa)) : "");
   const [sistema, setSistema] = useState<Sistema>("sequeiro");
+  const [vAlvo, setVAlvo] = useState(60); // alvo de saturação por bases (Ve)
   const [history, setHistory] = useState<SavedRecommendation[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -196,13 +197,14 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
           produtividade_safra_anterior_sc_ha: parseNumberBR(safraAnt),
           plantas_ha: plantasHaNum,
           sistema,
+          Ve_percentual: vAlvo,
           PRNT_percentual: parseNumberBR(comp.prnt ?? "") ?? 95,
         },
         solo,
         sub,
         foliar,
       }),
-    [fase, prod, safraAnt, plantasHaNum, sistema, comp.prnt, solo, sub, foliar],
+    [fase, prod, safraAnt, plantasHaNum, sistema, vAlvo, comp.prnt, solo, sub, foliar],
   );
 
   const c = rec.classificacoes;
@@ -385,6 +387,19 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
             <option value="irrigado">Irrigado</option>
           </select>
         </label>
+
+        <label className="fert5a-valvo">
+          <span>Alvo de V% <strong>{vAlvo}%</strong></span>
+          <input
+            type="range"
+            min={45}
+            max={80}
+            step={1}
+            value={vAlvo}
+            onChange={(e) => setVAlvo(Number(e.target.value))}
+            aria-label="Alvo de V%"
+          />
+        </label>
       </div>
 
       <details className="fert5a-completar no-print" open={faltamCriticos.length > 0}>
@@ -550,6 +565,9 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
             {rec.correcao_solo.calagem_t_ha_produto !== null
               ? `${fmt(rec.correcao_solo.calagem_t_ha_produto, 2)} t/ha (produto) · ${fmt(rec.correcao_solo.calagem_t_ha_prnt100, 2)} t/ha PRNT 100%`
               : "sem dados de Ca/Mg/Al/H+Al no laudo"}
+            {rec.correcao_solo.calagem_t_ha_produto !== null && (
+              <em className="fert5a-valvo-hint"> · alvo V {vAlvo}%</em>
+            )}
           </p>
           <p>
             <strong>Gessagem:</strong>{" "}
