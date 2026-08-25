@@ -1,4 +1,4 @@
-/* global self, caches, fetch, Response, clients */
+/* global self, caches, fetch, Response, clients, URL */
 // Service worker do AGRYN: app abre e funciona offline no talhão. Estratégia:
 // - HTML/navegação: network-first (pega deploy novo; cai pro shell salvo offline).
 // - Assets hasheados (/assets/, /brand/): cache-first + atualização em segundo
