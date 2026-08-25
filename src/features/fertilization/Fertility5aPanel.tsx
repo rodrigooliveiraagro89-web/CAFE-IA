@@ -2,6 +2,7 @@ import { Check, Download, FlaskConical, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   converterFertilizantes,
+  cronogramaAdubacao,
   FASE_LABEL,
   recomendarNutrientes5a,
   sugerirFormulacao,
@@ -215,6 +216,7 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
   const n = rec.necessidade_nutrientes;
   const fertilizantes = converterFertilizantes(n);
   const formulacao = sugerirFormulacao(n, areaHa ?? null);
+  const cronograma = cronogramaAdubacao(n, rec.doses_por_planta?.N_aplicacoes ?? 4);
   const hoje = new Date().toLocaleDateString("pt-BR");
 
   // Campos críticos que faltam para o motor não assumir (guiam o produtor).
@@ -735,6 +737,33 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
           <p className="fert5a-parcelamento">
             Doses de micros têm intervalo estreito entre deficiência e toxidez — validar com análise
             foliar antes de reaplicar.
+          </p>
+        </div>
+      )}
+
+      {cronograma.length > 0 && (
+        <div className="fert5a-cronograma">
+          <h3>Cronograma de aplicação (águas out–mar)</h3>
+          <table>
+            <thead>
+              <tr><th>Parcela</th><th>Época</th><th>N</th><th>P₂O₅</th><th>K₂O</th><th>S</th></tr>
+            </thead>
+            <tbody>
+              {cronograma.map((par) => (
+                <tr key={par.ordem}>
+                  <td>{par.ordem}ª</td>
+                  <td>{par.epoca}</td>
+                  <td>{par.N_kg_ha} kg</td>
+                  <td>{par.P2O5_kg_ha || "—"}{par.P2O5_kg_ha ? " kg" : ""}</td>
+                  <td>{par.K2O_kg_ha} kg</td>
+                  <td>{par.S_kg_ha || "—"}{par.S_kg_ha ? " kg" : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="fert5a-parcelamento">
+            Doses por hectare. Todo o P₂O₅ na 1ª parcela (localizado). Ajuste as datas à chuva —
+            adube com o solo úmido. Se N foliar ≥ 3,5 após a 2ª parcela, cancele a parcela seguinte de N.
           </p>
         </div>
       )}

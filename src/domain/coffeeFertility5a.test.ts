@@ -10,6 +10,7 @@ import {
   recomendarNutrientes5a,
   sugerirFormulacao,
   agregarCompras,
+  cronogramaAdubacao,
 } from "./coffeeFertility5a";
 
 describe("classificarP (P-rem)", () => {
@@ -226,6 +227,16 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
   it("usa o catálogo comercial (código FER)", () => {
     const plano = sugerirFormulacao(base, 5);
     expect(plano.principal?.codigo).toMatch(/^FER\d+/);
+  });
+
+  it("cronograma divide N/K em 4 parcelas e põe todo o P na 1ª", () => {
+    const cron = cronogramaAdubacao({ ...base, P2O5_kg_ha_ano: 40 }, 4);
+    expect(cron).toHaveLength(4);
+    expect(cron[0].N_kg_ha).toBe(75); // 300/4
+    expect(cron[0].K2O_kg_ha).toBe(38); // 150/4 ≈ 38
+    expect(cron[0].P2O5_kg_ha).toBe(40); // todo o P na 1ª
+    expect(cron[1].P2O5_kg_ha).toBe(0);
+    expect(cron[0].epoca).toBe("Outubro");
   });
 
   it("agregarCompras soma o mesmo formulado de dois talhões", () => {
