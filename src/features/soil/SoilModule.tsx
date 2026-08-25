@@ -17,6 +17,8 @@ import {
   soilAlerts,
   soilLevelLabel,
   SOIL_REFERENCES,
+  type SoilFieldKey,
+  type SoilInterpretationRow,
   type SoilValues,
 } from "../../domain/soilAnalysis";
 import { parseNumberBR } from "../../domain/parseNumber";
@@ -30,6 +32,53 @@ type SoilModuleProps = {
   soil: ReturnType<typeof useSoilAnalyses>;
   onNavigate: (view: AppView) => void;
 };
+
+// Agrupamento profissional do laudo: acidez/CTC, macros, micros e referências.
+const SOIL_GROUPS: { title: string; keys: SoilFieldKey[] }[] = [
+  { title: "Acidez e CTC", keys: ["ph", "vPercent", "mPercent", "ctc", "hAl", "al", "organicMatter"] },
+  { title: "Macronutrientes", keys: ["p", "k", "ca", "mg", "s"] },
+  { title: "Micronutrientes", keys: ["b", "zn", "cu", "mn", "fe"] },
+  { title: "Referências do laudo", keys: ["pRem", "argila"] },
+];
+
+// Status direto: verde (ok), vermelho (no lado de risco), cinza (informativo).
+function soilStatus(row: SoilInterpretationRow): "ok" | "ruim" | "info" {
+  if (row.riskySide === "nenhum" || row.level === "informativo") return "info";
+  return row.level === row.riskySide ? "ruim" : "ok";
+}
+
+function SoilResults({ values, dense = false }: { values: SoilValues; dense?: boolean }) {
+  const rows = interpretSoil(values);
+  const byKey = new Map(rows.map((r) => [r.key, r]));
+  const groups = SOIL_GROUPS.map((g) => ({
+    title: g.title,
+    items: g.keys.map((k) => byKey.get(k)).filter((r): r is SoilInterpretationRow => Boolean(r)),
+  })).filter((g) => g.items.length > 0);
+  if (groups.length === 0) return null;
+  return (
+    <div className="soil-results" data-dense={dense || undefined}>
+      {groups.map((g) => (
+        <div className="soil-results-group" key={g.title}>
+          <span className="soil-results-title">{g.title}</span>
+          <div className="soil-results-rows">
+            {g.items.map((row) => (
+              <div className="soil-results-row" key={row.key}>
+                <span className="soil-results-name">{row.label}</span>
+                <span className="soil-results-value">
+                  {row.value.toLocaleString("pt-BR")}
+                  {row.unit && <em> {row.unit}</em>}
+                </span>
+                <span className={`soil-pill soil-pill-${soilStatus(row)}`}>
+                  {soilStatus(row) === "info" ? "registro" : soilLevelLabel(row.level)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type DraftState = {
   values: SoilValues;
@@ -336,6 +385,20 @@ export function SoilModule({ agriculture, accessToken, soil, onNavigate }: SoilM
             })}
           </div>
 
+          {interpretation.length > 0 && (
+            <div className="soil-analise-block">
+              <div className="soil-analise-head">
+                <strong>Análise interpretada</strong>
+                <span className={`soil-analise-veredito ${alerts.length === 0 ? "ok" : "atencao"}`}>
+                  {alerts.length === 0
+                    ? "Sem pontos críticos"
+                    : `${alerts.length} ponto(s) de atenção`}
+                </span>
+              </div>
+              <SoilResults values={draft.values} />
+            </div>
+          )}
+
           {alerts.length > 0 && (
             <div className="soil-alerts">
               <strong>Pontos de atenção</strong>
@@ -391,15 +454,11 @@ function SoilHistoryCard({ analysis }: { analysis: SoilAnalysis }) {
           {analysis.laboratory || "Laboratório não informado"} ·{" "}
           {analysis.source === "manual" ? "digitado" : analysis.source === "pdf" ? "PDF" : "foto"}
         </small>
+        <span className={`soil-analise-veredito ${alerts.length === 0 ? "ok" : "atencao"}`}>
+          {alerts.length === 0 ? "Sem pontos críticos" : `${alerts.length} atenção`}
+        </span>
       </div>
-      <div className="soil-history-values">
-        {rows.slice(0, 6).map((row) => (
-          <span key={row.key}>
-            {row.label.split(" ")[0]}: <strong>{row.value.toLocaleString("pt-BR")}</strong>
-          </span>
-        ))}
-      </div>
-      {alerts.length > 0 && <p className="soil-history-alert">{alerts.length} ponto(s) de atenção</p>}
+      <SoilResults values={analysis.values} dense />
     </article>
   );
 }

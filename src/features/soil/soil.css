@@ -227,6 +227,136 @@
   font-weight: 700;
 }
 
+/* Resultado interpretado — leitura profissional, simples e direta ---------- */
+.soil-analise-block {
+  margin-top: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 0.9rem 1rem;
+}
+
+.soil-analise-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.soil-analise-head strong {
+  font-size: 0.92rem;
+}
+
+.soil-analise-veredito {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.soil-analise-veredito.ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.soil-analise-veredito.atencao {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.soil-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem 1.4rem;
+}
+
+.soil-results-title {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin-bottom: 0.35rem;
+}
+
+.soil-results-rows {
+  display: grid;
+  gap: 0;
+}
+
+.soil-results-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.86rem;
+}
+
+.soil-results-row:last-child {
+  border-bottom: none;
+}
+
+.soil-results-name {
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soil-results-value {
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.soil-results-value em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+}
+
+.soil-pill {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  min-width: 62px;
+  text-align: center;
+}
+
+.soil-pill-ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.soil-pill-ruim {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.soil-pill-info {
+  background: var(--surface-soft, var(--line));
+  color: var(--text-faint);
+}
+
+/* Versão densa (cards do histórico) */
+.soil-results[data-dense] {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem 1.1rem;
+}
+
+.soil-results[data-dense] .soil-results-row {
+  padding: 0.28rem 0;
+  font-size: 0.8rem;
+}
+
 @media (max-width: 720px) {
   .soil-source-grid,
   .soil-values-grid {

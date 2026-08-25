@@ -122,12 +122,17 @@
 
 /* Previsão 7 dias -------------------------------------------------------- */
 .weather-days {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  display: flex;
   gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  scroll-snap-type: x proximity;
 }
 
 .weather-day {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  min-width: 84px;
   display: flex;
   flex-direction: column;
   align-items: center;
