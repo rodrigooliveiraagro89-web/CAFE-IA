@@ -1,6 +1,7 @@
 import {
   converterFertilizantes,
   recomendarNutrientes5a,
+  sugerirFormulacao,
 } from "../../domain/coffeeFertility5a";
 import { ClassStrip } from "../fertilization/ClassStrip";
 import { BarChart } from "./charts/BarChart";
@@ -28,7 +29,15 @@ function fmt(value: number | null | undefined, digits = 1): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 }
 
-export function Fertility5aReport({ analysis, sacas }: { analysis: SoilAnalysis; sacas: number }) {
+export function Fertility5aReport({
+  analysis,
+  sacas,
+  areaHa = null,
+}: {
+  analysis: SoilAnalysis;
+  sacas: number;
+  areaHa?: number | null;
+}) {
   const v = analysis.values;
   const caC = v.ca != null ? v.ca / 10 : null;
   const mgC = v.mg != null ? v.mg / 10 : null;
@@ -66,6 +75,7 @@ export function Fertility5aReport({ analysis, sacas }: { analysis: SoilAnalysis;
   const c = rec.classificacoes;
   const n = rec.necessidade_nutrientes;
   const fertilizantes = converterFertilizantes(n);
+  const formulacao = sugerirFormulacao(n, areaHa);
 
   const soilRows = (
     [
@@ -148,9 +158,51 @@ export function Fertility5aReport({ analysis, sacas }: { analysis: SoilAnalysis;
             {rec.correcao_solo.gessagem_indicada ? " · Gessagem indicada" : ""}
           </p>
         </div>
+        {formulacao.principal && (
+          <div className="fert5a-formulacao">
+            <div className="fert5a-formulacao-head">
+              <h3>Melhor formulação para a área</h3>
+              {formulacao.area_ha ? (
+                <span className="fert5a-area-badge">{fmt(formulacao.area_ha, 2)} ha</span>
+              ) : (
+                <span className="fert5a-area-badge fert5a-area-badge--off">área não informada</span>
+              )}
+            </div>
+            <div className="fert5a-formula-principal">
+              <div className="fert5a-formula-nome">
+                <strong>{formulacao.principal.formula}</strong>
+                <small>{formulacao.principal.produto}</small>
+              </div>
+              <div className="fert5a-formula-num">
+                <span className="fert5a-formula-kgha">{fmt(formulacao.principal.kg_ha, 0)} kg/ha</span>
+                {formulacao.principal.kg_total !== null && (
+                  <span className="fert5a-formula-total">
+                    {fmt(formulacao.principal.kg_total, 0)} kg no talhão · {fmt(formulacao.principal.sacas_50, 1)} sacas de 50 kg
+                  </span>
+                )}
+              </div>
+            </div>
+            {formulacao.complementos.length > 0 && (
+              <table className="fert5a-formula-compl">
+                <tbody>
+                  {formulacao.complementos.map((item) => (
+                    <tr key={item.produto}>
+                      <td><strong>{item.produto}</strong> <em>{item.formula}</em></td>
+                      <td className="fert5a-kg">
+                        {fmt(item.kg_ha, 0)} kg/ha
+                        {item.kg_total !== null && ` · ${fmt(item.kg_total, 0)} kg`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
         {fertilizantes.length > 0 && (
           <div className="fert5a-fertilizantes">
-            <h3>Fertilizantes (kg/ha)</h3>
+            <h3>Fontes separadas (kg/ha)</h3>
             <table>
               <tbody>
                 {fertilizantes.map((item) => (

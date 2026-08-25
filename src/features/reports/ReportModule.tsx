@@ -484,6 +484,7 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
                 <Fertility5aReport
                   analysis={row.soilAnalysis!}
                   sacas={CENARIOS.find((c) => c.id === cenario5a)?.sacasPorHectare ?? 45}
+                  areaHa={row.plot.areaHectares ?? null}
                 />
               </div>
             ))}
