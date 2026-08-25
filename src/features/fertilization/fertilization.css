@@ -359,6 +359,27 @@
 .fert5a-cronograma td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
 .fert5a-cronograma td:first-child { font-weight: 700; }
 
+/* Registro de aplicações (liga a recomendação ao caderno de campo) */
+.fert5a-aplicacoes { margin-top: 1.1rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-md, 12px); background: var(--surface-soft, var(--surface)); }
+.fert5a-aplic-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.fert5a-aplic-head h3 { margin: 0; font-size: 0.92rem; }
+.fert5a-aplic-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; margin: 0.8rem 0; }
+.fert5a-aplic-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.76rem; font-weight: 600; color: var(--text-soft); }
+.fert5a-aplic-form input[type="text"], .fert5a-aplic-form input:not([type]), .fert5a-aplic-form input[type="date"] { min-height: 42px; padding: 0.45rem 0.6rem; font-size: 0.9rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+.fert5a-aplic-produto, .fert5a-aplic-obs { grid-column: 1 / -1; }
+.fert5a-aplic-check { flex-direction: row !important; align-items: center; gap: 0.45rem; grid-column: 1 / -1; }
+.fert5a-aplic-check input { width: 18px; height: 18px; }
+.fert5a-aplic-actions { grid-column: 1 / -1; display: flex; gap: 0.6rem; justify-content: flex-end; }
+.fert5a-aplic-list { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.1rem; }
+.fert5a-aplic-list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+.fert5a-aplic-list li:last-child { border-bottom: none; }
+.fert5a-aplic-data { color: var(--text-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fert5a-aplic-titulo { display: inline-flex; align-items: center; gap: 0.35rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fert5a-aplic-badge { font-size: 0.68rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap; }
+.fert5a-aplic-badge[data-status="concluida"] { background: var(--success-soft); color: var(--success); }
+.fert5a-aplic-badge[data-status="planejada"] { background: var(--surface-soft, var(--line)); color: var(--text-faint); }
+.fert5a-aplic-vazio { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--text-soft); }
+
 @media print {
   body.printing-fert5a * { visibility: hidden !important; }
   body.printing-fert5a .fert5a-print-area,

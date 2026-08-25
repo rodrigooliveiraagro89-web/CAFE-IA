@@ -1,4 +1,4 @@
-import { Check, Download, FlaskConical, Save } from "lucide-react";
+import { Check, Download, FlaskConical, Plus, Save, Sprout } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   converterFertilizantes,
@@ -12,6 +12,7 @@ import {
   type Sistema,
 } from "../../domain/coffeeFertility5a";
 import { CENARIOS, type CenarioId } from "../../domain/fertilization";
+import type { FieldRecord, FieldRecordInput } from "../../domain/fieldRecords";
 import { parseNumberBR } from "../../domain/parseNumber";
 import { BarChart } from "../reports/charts/BarChart";
 import { ClassStrip } from "./ClassStrip";
@@ -37,6 +38,10 @@ type Props = {
   plantasHa?: number | null;
   // Área do talhão (ha), para dimensionar a formulação em kg totais e sacas.
   areaHa?: number | null;
+  propertyId?: string;
+  // Aplicações de adubação já registradas neste talhão (caderno de campo).
+  aplicacoes?: FieldRecord[];
+  onRegistrarAplicacao?: (input: FieldRecordInput) => Promise<void> | void;
   // Cenário de produção controlado pelo módulo (sincroniza os cards).
   cenario: CenarioId;
   onCenarioChange: (id: CenarioId) => void;
@@ -96,8 +101,22 @@ function loadComplementos(plotId?: string): Complementos {
   }
 }
 
+function hojeIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
-export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa, cenario, onCenarioChange }: Props) {
+
+export function Fertility5aPanel({
+  analysis,
+  plotName,
+  plotId,
+  plantasHa,
+  areaHa,
+  aplicacoes,
+  onRegistrarAplicacao,
+  cenario,
+  onCenarioChange,
+}: Props) {
   const v = analysis?.values;
   const [fase, setFase] = useState<Fase>("producao");
   const [safraAnt, setSafraAnt] = useState("");
@@ -108,6 +127,16 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
   const [comp, setComp] = useState<Complementos>(() => loadComplementos(plotId));
+  const [registrando, setRegistrando] = useState(false);
+  const [salvandoAp, setSalvandoAp] = useState(false);
+  const [apForm, setApForm] = useState({
+    produto: "",
+    quantidade: "",
+    unidade: "kg/ha",
+    data: hojeIso(),
+    obs: "",
+    concluida: true,
+  });
 
   // Fases de campo (não produção) trabalham em g/planta e precisam da população.
   const emProducao = fase === "producao";
@@ -294,6 +323,35 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
     window.addEventListener("afterprint", limpar);
     window.print();
     window.setTimeout(limpar, 1000);
+  }
+
+  function abrirRegistro() {
+    setApForm({
+      produto: formulacao.principal?.produto ?? formulacao.principal?.formula ?? "",
+      quantidade: formulacao.principal ? String(formulacao.principal.kg_ha) : "",
+      unidade: "kg/ha",
+      data: hojeIso(),
+      obs: "",
+      concluida: true,
+    });
+    setRegistrando(true);
+  }
+
+  async function registrarAplicacao() {
+    if (!onRegistrarAplicacao) return;
+    setSalvandoAp(true);
+    await onRegistrarAplicacao({
+      type: "Adubação",
+      title: apForm.produto.trim() || "Adubação",
+      date: apForm.data || hojeIso(),
+      notes: apForm.obs.trim(),
+      status: apForm.concluida ? "concluida" : "planejada",
+      cost: 0,
+      quantity: apForm.quantidade.trim(),
+      unit: apForm.unidade.trim(),
+    });
+    setSalvandoAp(false);
+    setRegistrando(false);
   }
 
   if (!analysis) {
@@ -695,6 +753,113 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
           {formulacao.observacoes.map((o) => (
             <p className="fert5a-formula-obs" key={o}>{o}</p>
           ))}
+        </div>
+      )}
+
+      {onRegistrarAplicacao && (
+        <div className="fert5a-aplicacoes no-print">
+          <div className="fert5a-aplic-head">
+            <h3>Aplicações no talhão</h3>
+            {!registrando && (
+              <button className="secondary-button" type="button" onClick={abrirRegistro}>
+                <Plus size={15} aria-hidden="true" /> Registrar aplicação
+              </button>
+            )}
+          </div>
+
+          {registrando && (
+            <div className="fert5a-aplic-form">
+              <label className="fert5a-aplic-produto">
+                Produto / fórmula
+                <input
+                  value={apForm.produto}
+                  onChange={(e) => setApForm((f) => ({ ...f, produto: e.target.value }))}
+                  placeholder="ex.: 20-00-10 (G 20.00.10 TB)"
+                />
+              </label>
+              <label>
+                Quantidade
+                <input
+                  inputMode="decimal"
+                  value={apForm.quantidade}
+                  onChange={(e) => setApForm((f) => ({ ...f, quantidade: e.target.value }))}
+                />
+              </label>
+              <label>
+                Unidade
+                <input
+                  value={apForm.unidade}
+                  onChange={(e) => setApForm((f) => ({ ...f, unidade: e.target.value }))}
+                />
+              </label>
+              <label>
+                Data
+                <input
+                  type="date"
+                  value={apForm.data}
+                  onChange={(e) => setApForm((f) => ({ ...f, data: e.target.value }))}
+                />
+              </label>
+              <label className="fert5a-aplic-obs">
+                Observação
+                <input
+                  value={apForm.obs}
+                  onChange={(e) => setApForm((f) => ({ ...f, obs: e.target.value }))}
+                  placeholder="parcela, talhão, condição…"
+                />
+              </label>
+              <label className="fert5a-aplic-check">
+                <input
+                  type="checkbox"
+                  checked={apForm.concluida}
+                  onChange={(e) => setApForm((f) => ({ ...f, concluida: e.target.checked }))}
+                />
+                Já aplicado (senão fica planejado)
+              </label>
+              <div className="fert5a-aplic-actions">
+                <button className="secondary-button" type="button" onClick={() => setRegistrando(false)}>
+                  Cancelar
+                </button>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => void registrarAplicacao()}
+                  disabled={salvandoAp}
+                >
+                  <Check size={15} /> {salvandoAp ? "Salvando…" : "Salvar no caderno"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {aplicacoes && aplicacoes.length > 0 ? (
+            <ul className="fert5a-aplic-list">
+              {[...aplicacoes]
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 8)
+                .map((r) => (
+                  <li key={r.id}>
+                    <span className="fert5a-aplic-data">
+                      {new Date(`${r.date}T12:00:00`).toLocaleDateString("pt-BR")}
+                    </span>
+                    <span className="fert5a-aplic-titulo">
+                      <Sprout size={13} aria-hidden="true" /> {r.title}
+                      {r.quantity ? ` · ${r.quantity} ${r.unit}` : ""}
+                    </span>
+                    <span className="fert5a-aplic-badge" data-status={r.status}>
+                      {r.status === "concluida" ? "aplicado" : "planejado"}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            !registrando && (
+              <p className="fert5a-aplic-vazio">
+                Nenhuma aplicação registrada. Anote o que foi aplicado para comparar com a
+                recomendação e acompanhar a evolução do solo.
+              </p>
+            )
+          )}
         </div>
       )}
 

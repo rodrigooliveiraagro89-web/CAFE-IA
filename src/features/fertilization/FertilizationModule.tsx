@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { AppView } from "../../app/navigation";
 import type { FarmPlot } from "../../domain/agriculturalContext";
 import type { CenarioId } from "../../domain/fertilization";
+import type { FieldRecord, FieldRecordInput } from "../../domain/fieldRecords";
 import { parseNumberBR } from "../../domain/parseNumber";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import type { NdviResult } from "../ndvi/types";
@@ -21,6 +22,13 @@ type FertilizationModuleProps = {
   soilAnalyses: SoilAnalysis[];
   // Mantido por compatibilidade com quem chama o módulo (não usado aqui).
   ndviHistory?: NdviResult[];
+  fieldRecords?: FieldRecord[];
+  onRegistrarAplicacao?: (
+    propertyId: string,
+    plotId: string,
+    input: FieldRecordInput,
+    files?: File[],
+  ) => Promise<void> | void;
   onNavigate: (view: AppView) => void;
 };
 
@@ -61,7 +69,13 @@ function loadCenario(plotId?: string | null): CenarioId {
   return "media";
 }
 
-export function FertilizationModule({ agriculture, soilAnalyses, onNavigate }: FertilizationModuleProps) {
+export function FertilizationModule({
+  agriculture,
+  soilAnalyses,
+  fieldRecords,
+  onRegistrarAplicacao,
+  onNavigate,
+}: FertilizationModuleProps) {
   const plot = agriculture.selectedPlot;
   // O componente remonta ao trocar de talhão (key no App), então o init reflete
   // o talhão atual.
@@ -137,6 +151,15 @@ export function FertilizationModule({ agriculture, soilAnalyses, onNavigate }: F
         plotId={plot.id}
         plantasHa={plantasHaFromPlot(plot)}
         areaHa={plot.areaHectares ?? null}
+        propertyId={plot.propertyId}
+        aplicacoes={(fieldRecords ?? []).filter(
+          (r) => r.plotId === plot.id && r.type === "Adubação",
+        )}
+        onRegistrarAplicacao={
+          onRegistrarAplicacao
+            ? (input) => onRegistrarAplicacao(plot.propertyId, plot.id, input)
+            : undefined
+        }
         cenario={cenario}
         onCenarioChange={setCenario}
       />

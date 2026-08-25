@@ -335,6 +335,8 @@ export function App() {
           agriculture={agriculture}
           soilAnalyses={soil.analyses}
           ndviHistory={ndviHistory.history}
+          fieldRecords={fieldBook.records}
+          onRegistrarAplicacao={fieldBook.addRecord}
           onNavigate={navigate}
         />
       )}
