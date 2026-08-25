@@ -459,6 +459,18 @@
 .fert5a-npk-motivos p { margin: 0.15rem 0; font-size: 0.82rem; color: var(--text); display: flex; align-items: center; gap: 0.35rem; }
 .fert5a-npk-motivos p svg { color: var(--warning, #d97706); flex: 0 0 auto; }
 .fert5a-npk-motivos button { margin-top: 0.5rem; }
+.fert5a-teores { margin: 0 0 0.9rem; }
+.fert5a-teores-titulo { display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint); margin-bottom: 0.4rem; }
+.fert5a-teores-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.fert5a-teor { display: inline-flex; align-items: baseline; gap: 0.25rem; padding: 0.3rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); }
+.fert5a-teor small { font-size: 0.68rem; font-weight: 800; color: var(--text-faint); }
+.fert5a-teor strong { font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.fert5a-teor em { font-style: normal; font-size: 0.68rem; color: var(--text-faint); }
+.fert5a-teor b { font-size: 0.66rem; font-weight: 800; padding: 0.05rem 0.35rem; border-radius: 999px; margin-left: 0.15rem; }
+.fert5a-teor[data-c="ok"] b { background: var(--success-soft); color: var(--success); }
+.fert5a-teor[data-c="atencao"] b { background: var(--warning-soft); color: var(--warning); }
+.fert5a-teor[data-c="ruim"] b { background: var(--danger-soft); color: var(--danger); }
+.fert5a-teor[data-c="neutro"] b { background: var(--surface-soft, var(--line)); color: var(--text-faint); }
 
 .fert5a-sistema { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); min-width: 140px; }
 .fert5a-sistema select { min-height: 46px; padding: 0.5rem 0.7rem; font-size: 0.95rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }

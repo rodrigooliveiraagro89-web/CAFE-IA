@@ -105,6 +105,23 @@ function hojeIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Cor do teor pela classe (verde ok / amarelo médio / vermelho baixo).
+function corClasseTeor(classe: string | null): "ok" | "atencao" | "ruim" | "neutro" {
+  if (!classe) return "neutro";
+  if (classe === "muito_baixo" || classe === "baixo") return "ruim";
+  if (classe === "medio") return "atencao";
+  return "ok";
+}
+
+// Classe simples do K (mg/dm³) para exibir o teor do laudo.
+function classeK(k: number | null): string | null {
+  if (k == null) return null;
+  if (k < 60) return "baixo";
+  if (k <= 120) return "medio";
+  if (k <= 200) return "bom";
+  return "muito_bom";
+}
+
 // Modo de exibição (preferência global): "simples" esconde o técnico.
 const MODO_KEY = "agryn.fert5a.modo";
 function carregarModoSimples(): boolean {
@@ -321,6 +338,19 @@ export function Fertility5aPanel({
   if (n.K2O_kg_ha_ano === null) {
     npkMotivos.push("Potássio (K₂O): informe o teor de K do laudo (mg/dm³) para calcular.");
   }
+
+  // Teores do laudo que embasam o cálculo (sempre visíveis).
+  const teores = (
+    [
+      { nome: "M.O.", valor: v?.organicMatter, unidade: "dag/kg", classe: rec.classificacoes.materia_organica },
+      { nome: "V", valor: rec.indices.V_percentual, unidade: "%", classe: rec.classificacoes.V },
+      { nome: "P", valor: solo.P_mg_dm3, unidade: "mg/dm³", classe: rec.classificacoes.P },
+      { nome: "K", valor: v?.k, unidade: "mg/dm³", classe: classeK(v?.k ?? null) },
+      { nome: "Ca", valor: solo.Ca_cmolc_dm3, unidade: "cmolc", classe: rec.classificacoes.Ca },
+      { nome: "Mg", valor: solo.Mg_cmolc_dm3, unidade: "cmolc", classe: rec.classificacoes.Mg },
+      { nome: "S", valor: solo.S_mg_dm3, unidade: "mg/dm³", classe: rec.classificacoes.S },
+    ] as { nome: string; valor: number | null | undefined; unidade: string; classe: string | null }[]
+  ).filter((t) => typeof t.valor === "number");
   const hoje = new Date().toLocaleDateString("pt-BR");
 
   // Campos críticos que faltam para o motor não assumir (guiam o produtor).
@@ -390,14 +420,22 @@ export function Fertility5aPanel({
   }
 
   function baixarPdf() {
+    // Imprime o documento COMPLETO (gráficos, teores, tabelas) mesmo no modo
+    // Simples: mostra o técnico, imprime e restaura a preferência.
+    const eraSimples = modoSimples;
+    if (eraSimples) setModoSimples(false);
     document.body.classList.add("printing-fert5a");
     const limpar = () => {
       document.body.classList.remove("printing-fert5a");
+      if (eraSimples) setModoSimples(true);
       window.removeEventListener("afterprint", limpar);
     };
     window.addEventListener("afterprint", limpar);
-    window.print();
-    window.setTimeout(limpar, 1000);
+    // Pequeno atraso para o React renderizar o conteúdo técnico antes de imprimir.
+    window.setTimeout(() => {
+      window.print();
+      window.setTimeout(limpar, 1000);
+    }, eraSimples ? 200 : 0);
   }
 
   function abrirRegistro() {
@@ -550,6 +588,22 @@ export function Fertility5aPanel({
           </span>
         ))}
       </div>
+      {teores.length > 0 && (
+        <div className="fert5a-teores">
+          <span className="fert5a-teores-titulo">Teores do laudo (base do cálculo)</span>
+          <div className="fert5a-teores-chips">
+            {teores.map((t) => (
+              <span className="fert5a-teor" data-c={corClasseTeor(t.classe)} key={t.nome}>
+                <small>{t.nome}</small>
+                <strong>{fmt(t.valor as number, 2)}</strong>
+                <em>{t.unidade}</em>
+                {t.classe && <b>{CLASSE_LABEL[t.classe] ?? t.classe}</b>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {npkMotivos.length > 0 && (
         <div className="fert5a-npk-motivos">
           {npkMotivos.map((mt) => (
