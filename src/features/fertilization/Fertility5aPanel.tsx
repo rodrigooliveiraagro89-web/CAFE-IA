@@ -15,6 +15,8 @@ import { CENARIOS, type CenarioId } from "../../domain/fertilization";
 import type { FieldRecord, FieldRecordInput } from "../../domain/fieldRecords";
 import { parseNumberBR } from "../../domain/parseNumber";
 import { BarChart } from "../reports/charts/BarChart";
+import { RadarChart } from "../reports/charts/RadarChart";
+import { buildMacroRadar, buildMicroRadar, temDadosRadar } from "./radar";
 import { ClassStrip } from "./ClassStrip";
 import type { SoilAnalysis } from "../soil/soilStore";
 import {
@@ -404,6 +406,10 @@ export function Fertility5aPanel({
           { label: "H+Al", value: (100 * Math.max(0, T - (SB ?? 0))) / T },
         ].map((d) => ({ label: d.label, value: Math.round(d.value * 10) / 10 }))
       : [];
+
+  // Radares teor × adequado (estilo Geban).
+  const macroRadar = buildMacroRadar(v, solo);
+  const microRadar = buildMicroRadar(v);
 
   async function salvar() {
     if (!plotId) return;
@@ -915,6 +921,31 @@ export function Fertility5aPanel({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {!modoSimples && (temDadosRadar(macroRadar) || temDadosRadar(microRadar)) && (
+        <div className="fert5a-charts">
+          {temDadosRadar(macroRadar) && (
+            <div className="fert5a-chart">
+              <h3>pH, M.O. e Macronutrientes</h3>
+              <RadarChart data={macroRadar} />
+              <div className="radar-legend">
+                <span><i className="leg-medido" /> Teor do solo</span>
+                <span><i className="leg-adeq" /> Adequado (100%)</span>
+              </div>
+            </div>
+          )}
+          {temDadosRadar(microRadar) && (
+            <div className="fert5a-chart">
+              <h3>Micronutrientes</h3>
+              <RadarChart data={microRadar} />
+              <div className="radar-legend">
+                <span><i className="leg-medido" /> Teor do solo</span>
+                <span><i className="leg-adeq" /> Adequado (100%)</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

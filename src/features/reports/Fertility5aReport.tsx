@@ -4,8 +4,10 @@ import {
   sugerirFormulacao,
 } from "../../domain/coffeeFertility5a";
 import { ClassStrip } from "../fertilization/ClassStrip";
+import { buildMacroRadar, buildMicroRadar, temDadosRadar } from "../fertilization/radar";
 import { analysisToSolo, subFromValues } from "../fertilization/soilToSolo";
 import { BarChart } from "./charts/BarChart";
+import { RadarChart } from "./charts/RadarChart";
 import type { SoilAnalysis } from "../soil/soilStore";
 import "../fertilization/fertilization.css";
 
@@ -53,6 +55,8 @@ export function Fertility5aReport({
   const n = rec.necessidade_nutrientes;
   const fertilizantes = converterFertilizantes(n);
   const formulacao = sugerirFormulacao(n, areaHa);
+  const macroRadar = buildMacroRadar(v, analysisToSolo(v));
+  const microRadar = buildMicroRadar(v);
 
   const soilRows = (
     [
@@ -236,8 +240,34 @@ export function Fertility5aReport({
         </div>
       )}
 
+      {(temDadosRadar(macroRadar) || temDadosRadar(microRadar)) && (
+        <div className="fert5a-charts">
+          {temDadosRadar(macroRadar) && (
+            <div className="fert5a-chart">
+              <h3>pH, M.O. e Macronutrientes</h3>
+              <RadarChart data={macroRadar} />
+              <div className="radar-legend">
+                <span><i className="leg-medido" /> Teor do solo</span>
+                <span><i className="leg-adeq" /> Adequado (100%)</span>
+              </div>
+            </div>
+          )}
+          {temDadosRadar(microRadar) && (
+            <div className="fert5a-chart">
+              <h3>Micronutrientes</h3>
+              <RadarChart data={microRadar} />
+              <div className="radar-legend">
+                <span><i className="leg-medido" /> Teor do solo</span>
+                <span><i className="leg-adeq" /> Adequado (100%)</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="fert5a-fonte">
         5ª Aproximação de Minas Gerais + Manual do Café (Emater-MG) · produção de referência {fmt(sacas, 0)} sc/ha.
+        Radares: teor do solo em % do adequado (referência café).
       </p>
     </div>
   );

@@ -519,6 +519,22 @@
 .fert5a-planta em { color: var(--text-faint); font-style: normal; font-size: 0.78rem; }
 .fert5a-planta-obs { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--text-soft); }
 
+/* Gráficos de radar (teia) — teor × adequado, estilo Geban */
+.radar-chart { width: 100%; height: auto; max-width: 340px; display: block; margin: 0 auto; overflow: visible; }
+.radar-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+.radar-ring--adeq { stroke: color-mix(in srgb, var(--danger, #dc2626) 55%, transparent); stroke-dasharray: 3 3; }
+.radar-axis { stroke: var(--line); stroke-width: 1; }
+.radar-adeq { fill: color-mix(in srgb, var(--danger, #dc2626) 8%, transparent); stroke: var(--danger, #dc2626); stroke-width: 1.4; }
+.radar-medido { fill: color-mix(in srgb, var(--info, #2563eb) 16%, transparent); stroke: var(--info, #2563eb); stroke-width: 2; }
+.radar-dot { fill: var(--info, #2563eb); }
+.radar-label { fill: var(--text-soft); font-size: 11px; font-weight: 700; }
+.radar-label-val { fill: var(--text-faint); font-size: 10px; font-weight: 600; }
+.radar-legend { display: flex; justify-content: center; gap: 1rem; margin-top: 0.3rem; font-size: 0.74rem; color: var(--text-soft); }
+.radar-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.radar-legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.radar-legend .leg-medido { background: var(--info, #2563eb); }
+.radar-legend .leg-adeq { background: var(--danger, #dc2626); }
+
 /* Gráficos do painel 5ª Aproximação */
 .fert5a-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem; margin: 1rem 0; }
 .fert5a-chart h3 { font-size: 0.88rem; margin: 0 0 0.5rem; }
