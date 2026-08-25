@@ -105,6 +105,29 @@ function hojeIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Converte a época do cronograma ("Outubro", "Janeiro/Fevereiro"…) numa data
+// concreta da próxima safra das águas (out→mar), para virar lembrete no caderno.
+const MESES_EPOCA: Record<string, [number, number]> = {
+  Outubro: [10, 0],
+  Novembro: [11, 0],
+  Dezembro: [12, 0],
+  Janeiro: [1, 1],
+  Fevereiro: [2, 1],
+  Março: [3, 1],
+};
+
+function dataDaEpoca(epoca: string): string {
+  const nome = epoca.split("/")[0].trim();
+  const m = MESES_EPOCA[nome];
+  if (!m) return hojeIso();
+  const now = new Date();
+  const mesAtual = now.getMonth() + 1;
+  const anoAtual = now.getFullYear();
+  const base = mesAtual <= 3 ? anoAtual - 1 : anoAtual; // ano-base das águas
+  const ano = base + m[1];
+  return `${ano}-${String(m[0]).padStart(2, "0")}-15`;
+}
+
 
 export function Fertility5aPanel({
   analysis,
@@ -129,6 +152,7 @@ export function Fertility5aPanel({
   const [comp, setComp] = useState<Complementos>(() => loadComplementos(plotId));
   const [registrando, setRegistrando] = useState(false);
   const [salvandoAp, setSalvandoAp] = useState(false);
+  const [agendarMsg, setAgendarMsg] = useState("");
   const [apForm, setApForm] = useState({
     produto: "",
     quantidade: "",
@@ -352,6 +376,30 @@ export function Fertility5aPanel({
     });
     setSalvandoAp(false);
     setRegistrando(false);
+  }
+
+  async function agendarCronograma() {
+    if (!onRegistrarAplicacao || cronograma.length === 0) return;
+    setAgendarMsg("Agendando…");
+    for (const par of cronograma) {
+      const partes = [
+        `N ${par.N_kg_ha}`,
+        par.P2O5_kg_ha ? `P₂O₅ ${par.P2O5_kg_ha}` : "",
+        `K₂O ${par.K2O_kg_ha}`,
+        par.S_kg_ha ? `S ${par.S_kg_ha}` : "",
+      ].filter(Boolean);
+      await onRegistrarAplicacao({
+        type: "Adubação",
+        title: `Adubação — ${par.ordem}ª parcela`,
+        date: dataDaEpoca(par.epoca),
+        notes: `${partes.join(" · ")} kg/ha (${par.epoca}). Gerado do cronograma da 5ª Aproximação.`,
+        status: "planejada",
+        cost: 0,
+        quantity: "",
+        unit: "",
+      });
+    }
+    setAgendarMsg(`${cronograma.length} parcelas agendadas — você será lembrado perto de cada data.`);
   }
 
   if (!analysis) {
@@ -908,7 +956,15 @@ export function Fertility5aPanel({
 
       {cronograma.length > 0 && (
         <div className="fert5a-cronograma">
-          <h3>Cronograma de aplicação (águas out–mar)</h3>
+          <div className="fert5a-cronograma-head">
+            <h3>Cronograma de aplicação (águas out–mar)</h3>
+            {onRegistrarAplicacao && (
+              <button className="secondary-button no-print" type="button" onClick={() => void agendarCronograma()}>
+                <Plus size={15} aria-hidden="true" /> Agendar parcelas
+              </button>
+            )}
+          </div>
+          {agendarMsg && <p className="fert5a-agendar-msg no-print"><Check size={14} /> {agendarMsg}</p>}
           <table>
             <thead>
               <tr><th>Parcela</th><th>Época</th><th>N</th><th>P₂O₅</th><th>K₂O</th><th>S</th></tr>

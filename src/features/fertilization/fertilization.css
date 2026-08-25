@@ -354,6 +354,9 @@
 .fert5a-micros em { font-style: normal; color: var(--text-faint); font-size: 0.78rem; }
 .fert5a-cronograma { margin-top: 1rem; }
 .fert5a-cronograma h3 { font-size: 0.9rem; margin: 0 0 0.5rem; }
+.fert5a-cronograma-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.fert5a-cronograma-head h3 { margin: 0; }
+.fert5a-agendar-msg { margin: 0.5rem 0 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--success, #16a34a); display: inline-flex; align-items: center; gap: 0.3rem; }
 .fert5a-cronograma table { width: 100%; border-collapse: collapse; }
 .fert5a-cronograma th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint); text-align: left; padding: 0.3rem 0.4rem; border-bottom: 1px solid var(--line); }
 .fert5a-cronograma td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
