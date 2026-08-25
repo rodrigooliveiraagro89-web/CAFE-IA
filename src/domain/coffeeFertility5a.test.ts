@@ -205,21 +205,29 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
     B_kg_ha: null, Cu_kg_ha: null, Mn_kg_ha: null, Zn_kg_ha: null,
   };
 
-  it("N 300 / K2O 150 → 30-00-10 dosado ao N, dimensionado para 2 ha", () => {
+  it("N 300 / K2O 150 → 20-00-10 (encaixe exato de K), dimensionado para 2 ha", () => {
     const plano = sugerirFormulacao(base, 2);
-    expect(plano.principal?.formula).toBe("30-00-10");
-    expect(plano.principal?.kg_ha).toBe(1000); // 300 / 0,30
-    expect(plano.principal?.kg_total).toBe(2000); // × 2 ha
-    expect(plano.principal?.sacas_50).toBe(40); // 2000 / 50
-    // Falta de K completada com KCl.
-    const kcl = plano.complementos.find((c) => c.produto.includes("KCl"));
-    expect(kcl?.kg_ha).toBe(83); // 50 / 0,60
+    // 20-00-10 dosado ao N entrega exatamente 150 kg de K₂O (1500 × 10%).
+    expect(plano.principal?.formula).toBe("20-00-10");
+    expect(plano.principal?.kg_ha).toBe(1500); // 300 / 0,20
+    expect(plano.principal?.kg_total).toBe(3000); // × 2 ha
+    expect(plano.principal?.sacas_50).toBe(60);
+    expect(plano.principal?.preco_rs_ton).toBeGreaterThan(0);
+    expect(plano.principal?.preco_total_rs).toBeGreaterThan(0);
+    // Sem falta de K → sem KCl.
+    expect(plano.complementos.find((c) => c.produto.includes("KCl"))).toBeUndefined();
   });
 
-  it("K2O zero (solo rico) → escolhe ureia, sem KCl", () => {
+  it("K2O zero (solo rico) → formulado só de N do catálogo, sem KCl", () => {
     const plano = sugerirFormulacao({ ...base, K2O_kg_ha_ano: 0 }, 1);
-    expect(plano.principal?.formula).toBe("45-00-00");
+    expect(plano.principal?.formula.endsWith("-00-00")).toBe(true); // K = 0
     expect(plano.complementos.find((c) => c.produto.includes("KCl"))).toBeUndefined();
+  });
+
+  it("usa o catálogo comercial (código FER e preço)", () => {
+    const plano = sugerirFormulacao(base, 5);
+    expect(plano.principal?.codigo).toMatch(/^FER\d+/);
+    expect(plano.principal?.preco_rs_ton).toBeGreaterThan(0);
   });
 
   it("N ausente (fase de campo sem população) → sem formulação", () => {
@@ -227,9 +235,10 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
     expect(plano.principal).toBeNull();
   });
 
-  it("sem área informada → kg/ha calculado, total nulo", () => {
+  it("sem área informada → kg/ha calculado, total e custo nulos", () => {
     const plano = sugerirFormulacao(base, null);
-    expect(plano.principal?.kg_ha).toBe(1000);
+    expect(plano.principal?.kg_ha).toBe(1500);
     expect(plano.principal?.kg_total).toBeNull();
+    expect(plano.principal?.preco_total_rs).toBeNull();
   });
 });

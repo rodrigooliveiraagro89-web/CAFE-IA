@@ -12,6 +12,8 @@
  * constante nomeada, com as travas de segurança da seção 14 do documento.
  */
 
+import { FORMULAS_TURBO } from "./formulasTurbo";
+
 // ------------------------------------------------------------------ tipos ----
 
 export type Fase =
@@ -522,9 +524,12 @@ export function converterFertilizantes(
 export type FormulacaoItem = {
   produto: string;
   formula: string;
+  codigo?: string; // código do produto no catálogo comercial
   kg_ha: number;
   kg_total: number | null; // dimensionado para a área do talhão
   sacas_50: number | null; // sacas de 50 kg
+  preco_rs_ton?: number | null; // R$/tonelada (À vista COMBO)
+  preco_total_rs?: number | null; // custo estimado no talhão
   obs?: string;
 };
 
@@ -534,22 +539,6 @@ export type FormulacaoPlano = {
   complementos: FormulacaoItem[];
   observacoes: string[];
 };
-
-// Formulados comuns no café do Sul de Minas (N-P2O5-K2O em %). Inclui a ureia
-// como "formulado" só de N, para quando o K recomendado é zero (solo rico em K).
-const CATALOGO_FORMULAS: { label: string; produto: string; n: number; p: number; k: number }[] = [
-  { label: "45-00-00", produto: "Ureia", n: 45, p: 0, k: 0 },
-  { label: "30-00-10", produto: "Formulado 30-00-10", n: 30, p: 0, k: 10 },
-  { label: "25-00-15", produto: "Formulado 25-00-15", n: 25, p: 0, k: 15 },
-  { label: "20-00-15", produto: "Formulado 20-00-15", n: 20, p: 0, k: 15 },
-  { label: "20-00-20", produto: "Formulado 20-00-20", n: 20, p: 0, k: 20 },
-  { label: "18-00-18", produto: "Formulado 18-00-18", n: 18, p: 0, k: 18 },
-  { label: "22-00-18", produto: "Formulado 22-00-18", n: 22, p: 0, k: 18 },
-  { label: "25-00-25", produto: "Formulado 25-00-25", n: 25, p: 0, k: 25 },
-  { label: "20-05-20", produto: "Formulado 20-05-20", n: 20, p: 5, k: 20 },
-  { label: "20-05-15", produto: "Formulado 20-05-15", n: 20, p: 5, k: 15 },
-  { label: "19-04-19", produto: "Formulado 19-04-19", n: 19, p: 4, k: 19 },
-];
 
 function escalar(kg_ha: number, areaHa: number | null): { kg_total: number | null; sacas_50: number | null } {
   if (areaHa === null || areaHa <= 0) return { kg_total: null, sacas_50: null };
@@ -583,16 +572,24 @@ export function sugerirFormulacao(
     };
   }
 
-  // Escolhe o formulado que melhor cobre N sem desperdiçar K.
-  let melhor = CATALOGO_FORMULAS[0];
+  // Escolhe, no catálogo comercial, o formulado que melhor cobre o N sem
+  // desperdiçar K; premia o S entregue (evita gesso) e desempata pelo preço.
+  const candidatos = FORMULAS_TURBO.filter((f) => f.n > 0);
+  let melhor = candidatos[0];
   let melhorScore = Infinity;
-  for (const f of CATALOGO_FORMULAS) {
+  for (const f of candidatos) {
     const dose = N / (f.n / 100); // kg/ha para entregar todo o N
     const kSup = (dose * f.k) / 100;
     const pSup = (dose * f.p) / 100;
+    const sSup = (dose * f.s) / 100;
     const excessoK = Math.max(0, kSup - K);
     const faltaK = Math.max(0, K - kSup);
-    const score = excessoK * 2 + faltaK + Math.abs(pSup - P) * 0.5;
+    let score = excessoK * 2 + faltaK + Math.abs(pSup - P) * 0.5;
+    if (S > 0) score -= Math.min(sSup, S) * 0.05; // recompensa cobrir o S
+    // Desempate por CUSTO por hectare do formulado (produto de baixa
+    // concentração exige mais quilos), não pelo preço da tonelada.
+    const custoHa = ((f.precoComboRs ?? 4000) * dose) / 1000;
+    score += custoHa / 100000;
     if (score < melhorScore) {
       melhorScore = score;
       melhor = f;
@@ -602,17 +599,25 @@ export function sugerirFormulacao(
   const dose = N / (melhor.n / 100);
   const doseKgHa = Math.round(dose);
   const esc = escalar(doseKgHa, areaHa);
+  const precoTotal =
+    melhor.precoComboRs !== null && esc.kg_total !== null
+      ? Math.round((melhor.precoComboRs * esc.kg_total) / 1000)
+      : null;
   const principal: FormulacaoItem = {
     produto: melhor.produto,
-    formula: melhor.label,
+    formula: melhor.formula,
+    codigo: melhor.codigo,
     kg_ha: doseKgHa,
     kg_total: esc.kg_total,
     sacas_50: esc.sacas_50,
+    preco_rs_ton: melhor.precoComboRs,
+    preco_total_rs: precoTotal,
     obs: `entrega os ${Math.round(N)} kg de N`,
   };
 
   const kSup = (dose * melhor.k) / 100;
   const pSup = (dose * melhor.p) / 100;
+  const sSup = (dose * melhor.s) / 100;
   const complementos: FormulacaoItem[] = [];
 
   const faltaK = Math.max(0, K - kSup);
@@ -629,7 +634,7 @@ export function sugerirFormulacao(
     });
   }
   if (kSup - K > 5) {
-    observacoes.push(`O formulado ${melhor.label} entrega ~${Math.round(kSup)} kg de K₂O — acima dos ${Math.round(K)} recomendados. Considere um formulado com menos K.`);
+    observacoes.push(`O formulado ${melhor.formula} entrega ~${Math.round(kSup)} kg de K₂O — acima dos ${Math.round(K)} recomendados. Considere um formulado com menos K.`);
   }
 
   const faltaP = Math.max(0, P - pSup);
@@ -646,8 +651,10 @@ export function sugerirFormulacao(
     });
   }
 
-  if (S > 0) {
-    const kgGesso = Math.round(S / 0.15);
+  // O S do próprio formulado abate a necessidade — só complementa o que faltar.
+  const faltaS = Math.max(0, S - sSup);
+  if (faltaS >= 1) {
+    const kgGesso = Math.round(faltaS / 0.15);
     const e = escalar(kgGesso, areaHa);
     complementos.push({
       produto: "Gesso agrícola",
@@ -655,10 +662,15 @@ export function sugerirFormulacao(
       kg_ha: kgGesso,
       kg_total: e.kg_total,
       sacas_50: e.sacas_50,
-      obs: `${Math.round(S)} kg de S`,
+      obs: `completa ${Math.round(faltaS)} kg de S`,
     });
+  } else if (S > 0 && sSup > 0) {
+    observacoes.push(`O formulado ${melhor.formula} já entrega ~${Math.round(sSup)} kg de S — dispensa o gesso para enxofre.`);
   }
 
+  if (melhor.precoComboRs !== null) {
+    observacoes.push(`Preço de referência do formulado: R$ ${melhor.precoComboRs.toLocaleString("pt-BR")}/t (À vista COMBO, Campanha Turbo Ago/2026).`);
+  }
   observacoes.push("Parcele o formulado (N e K) em 3–4 vezes de outubro a março. Uma fonte é sugestão — o responsável técnico pode trocar por outro formulado equivalente.");
 
   return { area_ha: areaHa, principal, complementos, observacoes };

@@ -1,0 +1,81 @@
+// Catálogo de formulados — Campanha Turbo (Ago/2026, Pouso Alegre/MG).
+// Gerado do PDF do fornecedor. N-P2O5-K2O e %Ca/%Mg/%S do produto;
+// precoComboRs = R$/tonelada à vista (COMBO). Fonte comercial, sujeita a alteração.
+
+export type FormulaComercial = {
+  codigo: string;
+  formula: string; // N-P-K
+  produto: string;
+  n: number; p: number; k: number;
+  ca: number; mg: number; s: number;
+  precoComboRs: number | null; // R$/ton
+};
+
+export const FORMULAS_TURBO: FormulaComercial[] = [
+  { codigo: "FER000505", formula: "00-16-00", produto: "F 00.16.00 BIOPHOS", n: 0, p: 16, k: 0, ca: 19, mg: 2, s: 7, precoComboRs: 2210 },
+  { codigo: "FER000506", formula: "02-16-06", produto: "F 02.16.06 BIO", n: 2, p: 16, k: 6, ca: 14, mg: 0, s: 8, precoComboRs: 2480 },
+  { codigo: "FER000507", formula: "04-12-08", produto: "F 04.12.08 BIO", n: 4, p: 12, k: 8, ca: 12, mg: 0, s: 9, precoComboRs: 2434 },
+  { codigo: "FER001431", formula: "00-00-03", produto: "G 00.00.03 CV +9%B", n: 0, p: 0, k: 3, ca: 0, mg: 0, s: 0, precoComboRs: 4973 },
+  { codigo: "FER001267", formula: "00-00-38", produto: "G 00.00.38+4,8S+3,5MG+0,25B SBMAG", n: 0, p: 0, k: 38, ca: 0, mg: 0, s: 4, precoComboRs: 2895 },
+  { codigo: "FER000509", formula: "00-00-54", produto: "G 00.00.54 KCL+SBMAG", n: 0, p: 0, k: 54, ca: 0, mg: 0, s: 1, precoComboRs: 2929 },
+  { codigo: "FER000510", formula: "03-24-10", produto: "G 03.24.10 BTB", n: 3, p: 24, k: 10, ca: 11, mg: 0, s: 5, precoComboRs: 3920 },
+  { codigo: "FER000511", formula: "04-12-08", produto: "G 04.12.08 BTB", n: 4, p: 12, k: 8, ca: 11, mg: 1, s: 1, precoComboRs: 2642 },
+  { codigo: "FER000523", formula: "04-29-00", produto: "G 04.29.00 BTB+7%S", n: 4, p: 29, k: 0, ca: 14, mg: 0, s: 7, precoComboRs: 4169 },
+  { codigo: "FER000527", formula: "05-21-05", produto: "G 05.21.05 BTB+9%S", n: 5, p: 21, k: 5, ca: 13, mg: 0, s: 8, precoComboRs: 3395 },
+  { codigo: "FER000530", formula: "05-26-08", produto: "G 05.26.08 BTB", n: 5, p: 26, k: 8, ca: 10, mg: 0, s: 6, precoComboRs: 4040 },
+  { codigo: "FER000531", formula: "05-26-08", produto: "G 05.26.08 BTB+SBMAG", n: 5, p: 26, k: 8, ca: 7, mg: 0, s: 5, precoComboRs: 4240 },
+  { codigo: "FER000539", formula: "05-28-00", produto: "G 05.28.00 BTB+8%S", n: 5, p: 28, k: 0, ca: 9, mg: 0, s: 8, precoComboRs: 4000 },
+  { codigo: "FER000548", formula: "06-21-12", produto: "G 06.21.12 BTB", n: 6, p: 21, k: 12, ca: 8, mg: 0, s: 7, precoComboRs: 3780 },
+  { codigo: "FER000549", formula: "06-24-16", produto: "G 06.24.16 BTB", n: 6, p: 24, k: 16, ca: 4, mg: 0, s: 0, precoComboRs: 4380 },
+  { codigo: "FER000571", formula: "08-20-10", produto: "G 08.20.10 BTB", n: 8, p: 20, k: 10, ca: 5, mg: 0, s: 9, precoComboRs: 3845 },
+  { codigo: "FER000573", formula: "08-20-12", produto: "G 08.20.12 BTB+0,2%B", n: 8, p: 20, k: 12, ca: 4, mg: 0, s: 7, precoComboRs: 4080 },
+  { codigo: "FER000585", formula: "08-40-00", produto: "G 08.40.00 BTB", n: 8, p: 40, k: 0, ca: 5, mg: 0, s: 3, precoComboRs: 5370 },
+  { codigo: "FER000751", formula: "09-00-32", produto: "G 09.00.32 TB+SBMag", n: 9, p: 0, k: 32, ca: 0, mg: 0, s: 3, precoComboRs: 3435 },
+  { codigo: "FER000792", formula: "12-06-12", produto: "G 12.06.12 TB", n: 12, p: 6, k: 12, ca: 8, mg: 0, s: 0, precoComboRs: 2606 },
+  { codigo: "FER000629", formula: "13-33-00", produto: "G 13.33.00 BTB+14%S", n: 13, p: 33, k: 0, ca: 0, mg: 0, s: 14, precoComboRs: 5685 },
+  { codigo: "FER000816", formula: "14-00-21", produto: "G 14.00.21 TB+0,2%B", n: 14, p: 0, k: 21, ca: 5, mg: 0, s: 0, precoComboRs: 2655 },
+  { codigo: "FER000817", formula: "14-07-28", produto: "G 14.07.28 TB", n: 14, p: 7, k: 28, ca: 2, mg: 0, s: 0, precoComboRs: 3585 },
+  { codigo: "FER000821", formula: "14-07-28", produto: "G 14.07.28 TB+Sulfato Granulado", n: 14, p: 7, k: 28, ca: 0, mg: 0, s: 5, precoComboRs: 3605 },
+  { codigo: "FER000842", formula: "16-00-20", produto: "G 16.00.20 TB", n: 16, p: 0, k: 20, ca: 6, mg: 0, s: 0, precoComboRs: 2670 },
+  { codigo: "FER000853", formula: "16-05-20", produto: "G 16.05.20 TB+6%S", n: 16, p: 5, k: 20, ca: 1, mg: 0, s: 6, precoComboRs: 3165 },
+  { codigo: "FER000870", formula: "18-00-20", produto: "G 18.00.20 TB", n: 18, p: 0, k: 20, ca: 5, mg: 0, s: 0, precoComboRs: 2770 },
+  { codigo: "FER000872", formula: "18-00-20", produto: "G 18.00.20 TB+11%S", n: 18, p: 0, k: 20, ca: 0, mg: 0, s: 11, precoComboRs: 2880 },
+  { codigo: "FER000871", formula: "18-00-20", produto: "G 18.00.20 TB+9%S+0,2%B", n: 18, p: 0, k: 20, ca: 0, mg: 0, s: 9, precoComboRs: 3041 },
+  { codigo: "FER000878", formula: "18-04-17", produto: "G 18.04.17 TB", n: 18, p: 4, k: 17, ca: 5, mg: 0, s: 0, precoComboRs: 3000 },
+  { codigo: "FER001268", formula: "18-04-17", produto: "G 18.04.17 TURBO N +SAGR", n: 18, p: 4, k: 17, ca: 0, mg: 0, s: 11, precoComboRs: 3110 },
+  { codigo: "FER000883", formula: "18-05-20", produto: "G 18.05.20 TB", n: 18, p: 5, k: 20, ca: 4, mg: 0, s: 0, precoComboRs: 3250 },
+  { codigo: "FER000895", formula: "19-04-19", produto: "G 19.04.19 TB", n: 19, p: 4, k: 19, ca: 4, mg: 0, s: 0, precoComboRs: 3195 },
+  { codigo: "FER000897", formula: "19-04-19", produto: "G 19.04.19 TB+6%S+0,2%B", n: 19, p: 4, k: 19, ca: 0, mg: 0, s: 6, precoComboRs: 3315 },
+  { codigo: "FER000639", formula: "19-04-19", produto: "G 19.04.19 TB+BTB P+SBMAG", n: 19, p: 4, k: 19, ca: 0, mg: 0, s: 2, precoComboRs: 3836 },
+  { codigo: "FER000901", formula: "19-04-19", produto: "G 19.04.19 TB+S", n: 19, p: 4, k: 19, ca: 0, mg: 0, s: 9, precoComboRs: 3220 },
+  { codigo: "FER000904", formula: "20-00-10", produto: "G 20.00.10 TB", n: 20, p: 0, k: 10, ca: 7, mg: 0, s: 0, precoComboRs: 2584 },
+  { codigo: "FER000906", formula: "20-00-10", produto: "G 20.00.10 TB+16%S", n: 20, p: 0, k: 10, ca: 0, mg: 0, s: 17, precoComboRs: 2742 },
+  { codigo: "FER000913", formula: "20-00-20", produto: "G 20.00.20 TB", n: 20, p: 0, k: 20, ca: 4, mg: 0, s: 0, precoComboRs: 2985 },
+  { codigo: "FER000918", formula: "20-00-20", produto: "G 20.00.20 TB+9%S", n: 20, p: 0, k: 20, ca: 0, mg: 0, s: 9, precoComboRs: 3075 },
+  { codigo: "FER000937", formula: "20-05-20", produto: "G 20.05.20 TB", n: 20, p: 5, k: 20, ca: 3, mg: 0, s: 0, precoComboRs: 3400 },
+  { codigo: "FER000936", formula: "20-05-20", produto: "G 20.05.20 TURBO+6%S", n: 20, p: 5, k: 20, ca: 0, mg: 0, s: 6, precoComboRs: 3460 },
+  { codigo: "FER000955", formula: "21-00-21", produto: "G 21.00.21 TB", n: 21, p: 0, k: 21, ca: 3, mg: 0, s: 0, precoComboRs: 3105 },
+  { codigo: "FER000957", formula: "21-00-21", produto: "G 21.00.21 TB+SBMag", n: 21, p: 0, k: 21, ca: 0, mg: 0, s: 2, precoComboRs: 3552 },
+  { codigo: "FER000958", formula: "21-00-21", produto: "G 21.00.21 TURBO c/ SULF GR", n: 21, p: 0, k: 21, ca: 0, mg: 0, s: 8, precoComboRs: 3185 },
+  { codigo: "FER000961", formula: "22-00-00", produto: "G 22.00.00 TB", n: 22, p: 0, k: 0, ca: 0, mg: 0, s: 22, precoComboRs: 2445 },
+  { codigo: "FER000964", formula: "23-00-29", produto: "G 23.00.29 TB", n: 23, p: 0, k: 29, ca: 0, mg: 0, s: 0, precoComboRs: 3742 },
+  { codigo: "FER000966", formula: "23-05-23", produto: "G 23.05.23 TB", n: 23, p: 5, k: 23, ca: 0, mg: 0, s: 1, precoComboRs: 3935 },
+  { codigo: "FER000968", formula: "24-00-10", produto: "G 24.00.10 TB", n: 24, p: 0, k: 10, ca: 5, mg: 0, s: 0, precoComboRs: 2905 },
+  { codigo: "FER000971", formula: "24-00-10", produto: "G 24.00.10 TB+12%S", n: 24, p: 0, k: 10, ca: 0, mg: 0, s: 12, precoComboRs: 3141 },
+  { codigo: "FER000979", formula: "25-00-25", produto: "G 25.00.25 TB", n: 25, p: 0, k: 25, ca: 0, mg: 0, s: 0, precoComboRs: 3585 },
+  { codigo: "FER000982", formula: "25-05-20", produto: "G 25.05.20 TB", n: 25, p: 5, k: 20, ca: 0, mg: 0, s: 0, precoComboRs: 3800 },
+  { codigo: "FER000983", formula: "26-00-26", produto: "G 26.00.26 TB", n: 26, p: 0, k: 26, ca: 0, mg: 0, s: 0, precoComboRs: 3701 },
+  { codigo: "FER000988", formula: "27-00-10", produto: "G 27.00.10 TB", n: 27, p: 0, k: 10, ca: 4, mg: 0, s: 0, precoComboRs: 3050 },
+  { codigo: "FER000987", formula: "27-00-10", produto: "G 27.00.10 TURBO+10%S", n: 27, p: 0, k: 10, ca: 0, mg: 0, s: 10, precoComboRs: 3041 },
+  { codigo: "FER000992", formula: "27-00-18", produto: "G 27.00.18 TB", n: 27, p: 0, k: 18, ca: 1, mg: 0, s: 0, precoComboRs: 3365 },
+  { codigo: "FER000994", formula: "27-00-18", produto: "G 27.00.18 TB+4%S", n: 27, p: 0, k: 18, ca: 0, mg: 0, s: 4, precoComboRs: 3454 },
+  { codigo: "FER000995", formula: "27-00-18", produto: "G 27.00.18 TB+Sulf Gr+0,2%B", n: 27, p: 0, k: 18, ca: 0, mg: 0, s: 2, precoComboRs: 3528 },
+  { codigo: "FER001004", formula: "30-00-10", produto: "G 30.00.10 TB", n: 30, p: 0, k: 10, ca: 3, mg: 0, s: 0, precoComboRs: 3379 },
+  { codigo: "FER001027", formula: "34-00-14", produto: "G 34.00.14 TB", n: 34, p: 0, k: 14, ca: 0, mg: 0, s: 0, precoComboRs: 3780 },
+  { codigo: "FER001032", formula: "35-00-13", produto: "G 35.00.13 TB", n: 35, p: 0, k: 13, ca: 0, mg: 0, s: 0, precoComboRs: 3804 },
+  { codigo: "FER001034", formula: "36-00-12", produto: "G 36.00.12 TB", n: 36, p: 0, k: 12, ca: 0, mg: 0, s: 0, precoComboRs: 3884 },
+  { codigo: "FER001037", formula: "40-00-00", produto: "G 40.00.00 TB+5%S", n: 40, p: 0, k: 0, ca: 0, mg: 0, s: 5, precoComboRs: 3600 },
+  { codigo: "FER001042", formula: "43-00-00", produto: "G 43.00.00 TB+2%S", n: 43, p: 0, k: 0, ca: 0, mg: 0, s: 2, precoComboRs: 3759 },
+  { codigo: "FER001043", formula: "43-00-00", produto: "G 43.00.00 UREIA TB+0,2%B", n: 43, p: 0, k: 0, ca: 0, mg: 0, s: 0, precoComboRs: 3899 },
+  { codigo: "FER001047", formula: "46-00-00", produto: "G 46.00.00 UREIA TURBO", n: 46, p: 0, k: 0, ca: 0, mg: 0, s: 0, precoComboRs: 3948 },
+];

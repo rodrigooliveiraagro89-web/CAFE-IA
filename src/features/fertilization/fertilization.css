@@ -433,6 +433,8 @@
 .fert5a-formula-num { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
 .fert5a-formula-kgha { font-size: 1.1rem; font-weight: 800; }
 .fert5a-formula-total { font-size: 0.82rem; color: var(--text-soft); }
+.fert5a-formula-custo { font-size: 0.82rem; font-weight: 700; color: var(--agryn-emerald, #16a34a); }
+.fert5a-formula-custo em { font-style: normal; font-weight: 500; color: var(--text-faint); }
 .fert5a-formula-compl { width: 100%; border-collapse: collapse; margin-top: 0.7rem; }
 .fert5a-formula-compl td { padding: 0.35rem 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; vertical-align: top; }
 .fert5a-formula-compl td:first-child { width: 55%; }
