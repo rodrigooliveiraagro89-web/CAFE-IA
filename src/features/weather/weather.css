@@ -368,3 +368,9 @@
 .disease-evidencias li { font-size: 0.72rem; color: var(--text-faint); line-height: 1.4; }
 .disease-lido { border: 1px solid var(--line); background: transparent; color: var(--text-soft); font-size: 0.74rem; padding: 0.3rem 0.7rem; border-radius: var(--radius-sm); cursor: pointer; }
 .disease-lido:disabled { color: var(--success, #16a34a); border-color: color-mix(in srgb, var(--success) 40%, var(--line)); cursor: default; }
+
+/* Veredito do dia (frase-título) */
+.weather-veredito { display: block; font-size: 0.92rem; font-weight: 800; margin: 0.15rem 0; }
+.weather-veredito--ok { color: var(--agryn-emerald, #16a34a); }
+.weather-veredito--alerta { color: var(--danger, #dc2626); }
+.weather-veredito--neutro { color: var(--text-soft); }

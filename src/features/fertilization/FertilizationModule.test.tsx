@@ -68,14 +68,24 @@ describe("FertilizationModule (integração · 5ª Aproximação)", () => {
     expect(screen.getByRole("heading", { name: "Calagem e adubação" })).toBeInTheDocument();
     // Painel da 5ª Aproximação com o nome do talhão.
     expect(screen.getByRole("heading", { name: /Recomendação de nutrientes · Casa 1/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Necessidade de nutrientes/i })).toBeInTheDocument();
-    // Correção do solo: calagem calculada (V% baixo).
-    expect(screen.getByText(/t\/ha \(produto\)/i)).toBeInTheDocument();
+    // Modo Simples (padrão): veredito + cartão de decisão com a calagem em t/ha.
+    expect(screen.getByText(/Precisa/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/t\/ha/i).length).toBeGreaterThan(0);
     // Fonte técnica: 5ª Aproximação (não Boletim 100).
     expect(screen.getAllByText(/5ª Aproximação de Minas Gerais/i).length).toBeGreaterThan(0);
     // Não deve existir mais o antigo Boletim 100.
     expect(screen.queryByRole("heading", { name: "Adubação NPK" })).not.toBeInTheDocument();
     expect(screen.queryByText(/Boletim 100/i)).not.toBeInTheDocument();
+  });
+
+  it("modo Técnico revela os detalhes (Necessidade de nutrientes)", async () => {
+    const user = userEvent.setup();
+    renderModule();
+    // No Simples o detalhe técnico fica escondido.
+    expect(screen.queryByRole("heading", { name: /Necessidade de nutrientes/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Técnico" }));
+    expect(screen.getByRole("heading", { name: /Necessidade de nutrientes/i })).toBeInTheDocument();
+    expect(screen.getByText(/t\/ha \(produto\)/i)).toBeInTheDocument();
   });
 
   it("permite escolher a produção e guarda o cenário do talhão", async () => {

@@ -96,6 +96,14 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
   ].sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
   const riscosDoenca = diseaseRiskForCrop(agriculture.selectedPlot?.crop, weather.hourly);
 
+  // Veredito do dia (uma frase-título simples pro produtor).
+  const riscoAlto = riscosDoenca.some((r) => r.nivel === "alto");
+  const climaVeredito = riscoAlto
+    ? { texto: "Atenção: risco alto de doença", tom: "alerta" }
+    : weather.sprayWindows.length > 0
+      ? { texto: "Boa janela para pulverizar" , tom: "ok" }
+      : { texto: "Sem alertas de manejo para hoje", tom: "neutro" };
+
   const [lidos, setLidos] = useState<Set<string>>(() => carregarLidos());
   function marcarLido(id: string) {
     setLidos((prev) => {
@@ -116,6 +124,9 @@ export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
         <div>
           <span className="eyebrow">Monitoramento</span>
           <h1>Clima</h1>
+          {weather.status === "ready" && (
+            <span className={`weather-veredito weather-veredito--${climaVeredito.tom}`}>{climaVeredito.texto}</span>
+          )}
           <p>Previsão de 7 dias e janela de pulverização para planejar aplicação e adubação.</p>
         </div>
         <button className="secondary-button" type="button" onClick={() => onNavigate("caderno")}>

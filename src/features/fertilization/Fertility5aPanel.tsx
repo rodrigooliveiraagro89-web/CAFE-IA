@@ -105,6 +105,17 @@ function hojeIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Modo de exibição (preferência global): "simples" esconde o técnico.
+const MODO_KEY = "agryn.fert5a.modo";
+function carregarModoSimples(): boolean {
+  if (typeof localStorage === "undefined") return true;
+  try {
+    return localStorage.getItem(MODO_KEY) !== "tecnico"; // padrão: simples
+  } catch {
+    return true;
+  }
+}
+
 // Converte a época do cronograma ("Outubro", "Janeiro/Fevereiro"…) numa data
 // concreta da próxima safra das águas (out→mar), para virar lembrete no caderno.
 const MESES_EPOCA: Record<string, [number, number]> = {
@@ -153,6 +164,16 @@ export function Fertility5aPanel({
   const [registrando, setRegistrando] = useState(false);
   const [salvandoAp, setSalvandoAp] = useState(false);
   const [agendarMsg, setAgendarMsg] = useState("");
+  const [modoSimples, setModoSimples] = useState(carregarModoSimples);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(MODO_KEY, modoSimples ? "simples" : "tecnico");
+    } catch {
+      // segue só em memória
+    }
+  }, [modoSimples]);
   const [apForm, setApForm] = useState({
     produto: "",
     quantidade: "",
@@ -270,6 +291,21 @@ export function Fertility5aPanel({
   const fertilizantes = converterFertilizantes(n);
   const formulacao = sugerirFormulacao(n, areaHa ?? null);
   const cronograma = cronogramaAdubacao(n, rec.doses_por_planta?.N_aplicacoes ?? 4);
+
+  // Veredito e cartão de decisão (o que decide a ação, em linguagem simples).
+  const precisaCalagem = (rec.correcao_solo.calagem_t_ha_produto ?? 0) > 0.1;
+  const precisaGesso = rec.correcao_solo.gessagem_indicada;
+  const precisaNPK =
+    (n.N_kg_ha_ano ?? 0) > 0 || (n.K2O_kg_ha_ano ?? 0) > 0 || (n.P2O5_kg_ha_ano ?? 0) > 0;
+  const veredito = [
+    precisaCalagem ? "calagem" : null,
+    precisaGesso ? "gessagem" : null,
+    precisaNPK ? "adubação NPK" : null,
+  ].filter(Boolean);
+  const veredTexto =
+    veredito.length > 0
+      ? `Precisa ${veredito.join(" + ")}`
+      : "Sem correção pelos dados atuais";
   const hoje = new Date().toLocaleDateString("pt-BR");
 
   // Campos críticos que faltam para o motor não assumir (guiam o produtor).
@@ -427,9 +463,14 @@ export function Fertility5aPanel({
         <div>
           <span className="eyebrow">5ª Aproximação — MG (Emater)</span>
           <h2>Recomendação de nutrientes {plotName ? `· ${plotName}` : ""}</h2>
+          <span className="fert5a-veredito">{veredTexto}</span>
           <small className="fert5a-print-date">Emitido em {hoje}</small>
         </div>
         <div className="fert5a-actions no-print">
+          <div className="fert5a-modo" role="group" aria-label="Modo de exibição">
+            <button type="button" data-active={modoSimples} onClick={() => setModoSimples(true)}>Simples</button>
+            <button type="button" data-active={!modoSimples} onClick={() => setModoSimples(false)}>Técnico</button>
+          </div>
           {plotId && (
             <button className="secondary-button" type="button" onClick={() => void salvar()} disabled={saving}>
               <Save size={16} aria-hidden="true" /> {saving ? "Salvando…" : "Salvar"}
@@ -441,6 +482,43 @@ export function Fertility5aPanel({
         </div>
       </div>
       {savedMsg && <p className="fert5a-saved no-print"><Check size={14} /> {savedMsg}</p>}
+
+      {/* Cartão de decisão — o que fazer, em linguagem simples. */}
+      <div className="fert5a-decisao">
+        <div className="fert5a-decisao-card">
+          <span className="fert5a-decisao-label">Calagem</span>
+          {precisaCalagem ? (
+            <>
+              <strong>{fmt(rec.correcao_solo.calagem_t_ha_produto, 2)} t/ha</strong>
+              <small>{rec.correcao_solo.corretivo_sugerido ?? "calcário"}</small>
+            </>
+          ) : (
+            <><strong>Dispensada</strong><small>V% no alvo</small></>
+          )}
+        </div>
+        <div className="fert5a-decisao-card">
+          <span className="fert5a-decisao-label">Adubação</span>
+          {formulacao.principal ? (
+            <>
+              <strong>{formulacao.principal.formula}</strong>
+              <small>
+                {fmt(formulacao.principal.kg_ha, 0)} kg/ha
+                {formulacao.principal.sacas_50 != null ? ` · ${fmt(formulacao.principal.sacas_50, 1)} sc` : ""}
+              </small>
+            </>
+          ) : (
+            <><strong>—</strong><small>ver doses abaixo</small></>
+          )}
+        </div>
+        <div className="fert5a-decisao-card">
+          <span className="fert5a-decisao-label">Próxima parcela</span>
+          {cronograma.length > 0 ? (
+            <><strong>{cronograma[0].epoca}</strong><small>{cronograma.length} parcelas nas águas</small></>
+          ) : (
+            <><strong>—</strong><small>sem parcelamento</small></>
+          )}
+        </div>
+      </div>
 
       {/* Escolhas mínimas por fase. O resto vem do laudo. */}
       <div className="fert5a-escolhas no-print">
@@ -515,6 +593,12 @@ export function Fertility5aPanel({
         </label>
       </div>
 
+      {modoSimples && faltamCriticos.length > 0 && (
+        <p className="fert5a-simple-hint no-print">
+          Faltam dados do laudo ({faltamCriticos.join(", ")}) — toque em <strong>Técnico</strong> para completar.
+        </p>
+      )}
+      {!modoSimples && (
       <details className="fert5a-completar no-print" open={faltamCriticos.length > 0}>
         <summary>
           Completar o laudo (opcional){" "}
@@ -596,6 +680,7 @@ export function Fertility5aPanel({
           </div>
         </div>
       </details>
+      )}
 
       {rec.produtividade_calculo_sc_ha !== null && rec.produtividade_calculo_sc_ha !== prod && (
         <p className="fert5a-media no-print">
@@ -604,12 +689,14 @@ export function Fertility5aPanel({
         </p>
       )}
 
-      <div className="fert5a-indices">
-        <span><small>V</small><strong>{fmt(rec.indices.V_percentual)}%</strong></span>
-        <span><small>m</small><strong>{fmt(rec.indices.m_percentual)}%</strong></span>
-        <span><small>CTC (T)</small><strong>{fmt(rec.indices.T, 2)}</strong></span>
-        <span><small>SB</small><strong>{fmt(rec.indices.SB, 2)}</strong></span>
-      </div>
+      {!modoSimples && (
+        <div className="fert5a-indices">
+          <span><small>V</small><strong>{fmt(rec.indices.V_percentual)}%</strong></span>
+          <span><small>m</small><strong>{fmt(rec.indices.m_percentual)}%</strong></span>
+          <span><small>CTC (T)</small><strong>{fmt(rec.indices.T, 2)}</strong></span>
+          <span><small>SB</small><strong>{fmt(rec.indices.SB, 2)}</strong></span>
+        </div>
+      )}
 
       {rec.doses_por_planta && (
         <div className="fert5a-planta">
@@ -658,6 +745,7 @@ export function Fertility5aPanel({
         </div>
       )}
 
+      {!modoSimples && (
       <div className="fert5a-results">
         <div className="fert5a-doses">
           <h3>Necessidade de nutrientes {emProducao ? "" : "(kg/ha·ano)"}</h3>
@@ -712,8 +800,9 @@ export function Fertility5aPanel({
           </p>
         </div>
       </div>
+      )}
 
-      {soilRows.length > 0 && (
+      {!modoSimples && soilRows.length > 0 && (
         <div className="fert5a-interpret">
           <h3>Interpretação do solo (teor × faixa)</h3>
           <div className="interpret-rows">
@@ -730,7 +819,7 @@ export function Fertility5aPanel({
         </div>
       )}
 
-      {(dosesChart.length > 0 || participacaoChart.length > 0) && (
+      {!modoSimples && (dosesChart.length > 0 || participacaoChart.length > 0) && (
         <div className="fert5a-charts">
           {dosesChart.length > 0 && (
             <div className="fert5a-chart">
@@ -911,7 +1000,7 @@ export function Fertility5aPanel({
         </div>
       )}
 
-      {fertilizantes.length > 0 && (
+      {!modoSimples && fertilizantes.length > 0 && (
         <details className="fert5a-fertilizantes">
           <summary><h3>Fontes separadas (kg/ha)</h3></summary>
           <table>
@@ -989,7 +1078,7 @@ export function Fertility5aPanel({
         </div>
       )}
 
-      {rec.alertas.length > 0 && (
+      {!modoSimples && rec.alertas.length > 0 && (
         <details className="fert5a-alertas no-print">
           <summary>Observações e travas de segurança ({rec.alertas.length})</summary>
           <ul>
