@@ -4,6 +4,7 @@ import {
   converterFertilizantes,
   FASE_LABEL,
   recomendarNutrientes5a,
+  sugerirFormulacao,
   type ExtratorB,
   type ExtratorMetalico,
   type Fase,
@@ -33,6 +34,8 @@ type Props = {
   plotId?: string;
   // População efetiva do talhão (plantas/ha), quando derivável do cadastro.
   plantasHa?: number | null;
+  // Área do talhão (ha), para dimensionar a formulação em kg totais e sacas.
+  areaHa?: number | null;
   // Cenário de produção controlado pelo módulo (sincroniza os cards).
   cenario: CenarioId;
   onCenarioChange: (id: CenarioId) => void;
@@ -93,7 +96,7 @@ function loadComplementos(plotId?: string): Complementos {
 }
 
 
-export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenario, onCenarioChange }: Props) {
+export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa, cenario, onCenarioChange }: Props) {
   const v = analysis?.values;
   const [fase, setFase] = useState<Fase>("producao");
   const [safraAnt, setSafraAnt] = useState("");
@@ -210,6 +213,7 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
   const c = rec.classificacoes;
   const n = rec.necessidade_nutrientes;
   const fertilizantes = converterFertilizantes(n);
+  const formulacao = sugerirFormulacao(n, areaHa ?? null);
   const hoje = new Date().toLocaleDateString("pt-BR");
 
   // Campos críticos que faltam para o motor não assumir (guiam o produtor).
@@ -620,9 +624,58 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
         </div>
       )}
 
+      {formulacao.principal && (
+        <div className="fert5a-formulacao">
+          <div className="fert5a-formulacao-head">
+            <h3>Melhor formulação para a área</h3>
+            {formulacao.area_ha ? (
+              <span className="fert5a-area-badge">{fmt(formulacao.area_ha, 2)} ha</span>
+            ) : (
+              <span className="fert5a-area-badge fert5a-area-badge--off">informe a área do talhão</span>
+            )}
+          </div>
+
+          <div className="fert5a-formula-principal">
+            <div className="fert5a-formula-nome">
+              <strong>{formulacao.principal.formula}</strong>
+              <small>{formulacao.principal.produto}</small>
+            </div>
+            <div className="fert5a-formula-num">
+              <span className="fert5a-formula-kgha">{fmt(formulacao.principal.kg_ha, 0)} kg/ha</span>
+              {formulacao.principal.kg_total !== null && (
+                <span className="fert5a-formula-total">
+                  {fmt(formulacao.principal.kg_total, 0)} kg no talhão · {fmt(formulacao.principal.sacas_50, 1)} sacas de 50 kg
+                </span>
+              )}
+            </div>
+          </div>
+
+          {formulacao.complementos.length > 0 && (
+            <table className="fert5a-formula-compl">
+              <tbody>
+                {formulacao.complementos.map((item) => (
+                  <tr key={item.produto}>
+                    <td><strong>{item.produto}</strong> <em>{item.formula}</em></td>
+                    <td className="fert5a-kg">
+                      {fmt(item.kg_ha, 0)} kg/ha
+                      {item.kg_total !== null && <small> · {fmt(item.kg_total, 0)} kg</small>}
+                    </td>
+                    <td className="fert5a-obs">{item.obs ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {formulacao.observacoes.map((o) => (
+            <p className="fert5a-formula-obs" key={o}>{o}</p>
+          ))}
+        </div>
+      )}
+
       {fertilizantes.length > 0 && (
-        <div className="fert5a-fertilizantes">
-          <h3>Sugestão de fertilizantes (kg/ha)</h3>
+        <details className="fert5a-fertilizantes">
+          <summary><h3>Fontes separadas (kg/ha)</h3></summary>
           <table>
             <tbody>
               {fertilizantes.map((item) => (
@@ -638,7 +691,7 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
             Parcele o N e o K em 3–4 vezes de outubro a março. Uma fonte é só uma opção — o
             responsável técnico pode trocar por outro formulado equivalente.
           </p>
-        </div>
+        </details>
       )}
 
       {rec.alertas.length > 0 && (

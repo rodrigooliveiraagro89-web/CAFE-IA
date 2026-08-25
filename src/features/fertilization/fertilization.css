@@ -420,6 +420,26 @@
 .fert5a-completar-sub { margin-top: 0.9rem; padding-top: 0.7rem; border-top: 1px dashed var(--line); }
 .fert5a-completar-titulo { display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-soft); margin-bottom: 0.5rem; }
 
+/* Melhor formulação para a área */
+.fert5a-formulacao { margin: 0.6rem 0 1rem; padding: 1rem; border: 1px solid var(--agryn-emerald, #16a34a); border-radius: var(--radius-md, 12px); background: color-mix(in srgb, var(--agryn-emerald, #16a34a) 7%, var(--surface)); }
+.fert5a-formulacao-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.7rem; }
+.fert5a-formulacao-head h3 { margin: 0; font-size: 0.95rem; }
+.fert5a-area-badge { font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--agryn-emerald, #16a34a); color: #fff; white-space: nowrap; }
+.fert5a-area-badge--off { background: var(--warning, #d97706); }
+.fert5a-formula-principal { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1rem; padding: 0.7rem 0.9rem; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--line); }
+.fert5a-formula-nome { display: flex; flex-direction: column; }
+.fert5a-formula-nome strong { font-size: 1.35rem; letter-spacing: 0.02em; color: var(--agryn-emerald, #16a34a); }
+.fert5a-formula-nome small { color: var(--text-soft); font-size: 0.8rem; }
+.fert5a-formula-num { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.fert5a-formula-kgha { font-size: 1.1rem; font-weight: 800; }
+.fert5a-formula-total { font-size: 0.82rem; color: var(--text-soft); }
+.fert5a-formula-compl { width: 100%; border-collapse: collapse; margin-top: 0.7rem; }
+.fert5a-formula-compl td { padding: 0.35rem 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; vertical-align: top; }
+.fert5a-formula-compl td:first-child { width: 55%; }
+.fert5a-formula-compl em { font-style: normal; color: var(--text-faint); font-size: 0.78rem; }
+.fert5a-formula-compl small { color: var(--text-faint); }
+.fert5a-formula-obs { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--text-soft); }
+
 /* Doses por planta (fases de campo: formação, recepa, pós-plantio, implantação) */
 .fert5a-planta { margin: 0.4rem 0 1rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft, var(--surface)); }
 .fert5a-planta h3 { font-size: 0.9rem; margin: 0 0 0.6rem; }

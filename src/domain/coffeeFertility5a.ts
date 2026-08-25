@@ -517,6 +517,153 @@ export function converterFertilizantes(
   return itens;
 }
 
+// ------------------------------------ melhor formulação para a área ----------
+
+export type FormulacaoItem = {
+  produto: string;
+  formula: string;
+  kg_ha: number;
+  kg_total: number | null; // dimensionado para a área do talhão
+  sacas_50: number | null; // sacas de 50 kg
+  obs?: string;
+};
+
+export type FormulacaoPlano = {
+  area_ha: number | null;
+  principal: FormulacaoItem | null;
+  complementos: FormulacaoItem[];
+  observacoes: string[];
+};
+
+// Formulados comuns no café do Sul de Minas (N-P2O5-K2O em %). Inclui a ureia
+// como "formulado" só de N, para quando o K recomendado é zero (solo rico em K).
+const CATALOGO_FORMULAS: { label: string; produto: string; n: number; p: number; k: number }[] = [
+  { label: "45-00-00", produto: "Ureia", n: 45, p: 0, k: 0 },
+  { label: "30-00-10", produto: "Formulado 30-00-10", n: 30, p: 0, k: 10 },
+  { label: "25-00-15", produto: "Formulado 25-00-15", n: 25, p: 0, k: 15 },
+  { label: "20-00-15", produto: "Formulado 20-00-15", n: 20, p: 0, k: 15 },
+  { label: "20-00-20", produto: "Formulado 20-00-20", n: 20, p: 0, k: 20 },
+  { label: "18-00-18", produto: "Formulado 18-00-18", n: 18, p: 0, k: 18 },
+  { label: "22-00-18", produto: "Formulado 22-00-18", n: 22, p: 0, k: 18 },
+  { label: "25-00-25", produto: "Formulado 25-00-25", n: 25, p: 0, k: 25 },
+  { label: "20-05-20", produto: "Formulado 20-05-20", n: 20, p: 5, k: 20 },
+  { label: "20-05-15", produto: "Formulado 20-05-15", n: 20, p: 5, k: 15 },
+  { label: "19-04-19", produto: "Formulado 19-04-19", n: 19, p: 4, k: 19 },
+];
+
+function escalar(kg_ha: number, areaHa: number | null): { kg_total: number | null; sacas_50: number | null } {
+  if (areaHa === null || areaHa <= 0) return { kg_total: null, sacas_50: null };
+  const total = kg_ha * areaHa;
+  return { kg_total: Math.round(total), sacas_50: Math.round((total / 50) * 10) / 10 };
+}
+
+/**
+ * Escolhe o MELHOR formulado NPK para a recomendação e dimensiona para a área.
+ * Critério: dosar o formulado para entregar todo o N (nutriente que comanda o
+ * café) e escolher aquele que menos desperdiça K (excesso pesa mais que falta,
+ * pois a falta é completada com KCl). P e S entram como complemento. Resultado
+ * em kg/ha e no total do talhão (kg e sacas de 50 kg).
+ */
+export function sugerirFormulacao(
+  n: Recomendacao5a["necessidade_nutrientes"],
+  areaHa: number | null,
+): FormulacaoPlano {
+  const N = num(n.N_kg_ha_ano);
+  const K = num(n.K2O_kg_ha_ano) ?? 0;
+  const P = num(n.P2O5_kg_ha_ano) ?? 0;
+  const S = num(n.S_kg_ha_ano) ?? 0;
+  const observacoes: string[] = [];
+
+  if (N === null || N <= 0) {
+    return {
+      area_ha: areaHa,
+      principal: null,
+      complementos: [],
+      observacoes: ["Sem dose de N calculada para esta fase — a formulação NPK não se aplica aqui."],
+    };
+  }
+
+  // Escolhe o formulado que melhor cobre N sem desperdiçar K.
+  let melhor = CATALOGO_FORMULAS[0];
+  let melhorScore = Infinity;
+  for (const f of CATALOGO_FORMULAS) {
+    const dose = N / (f.n / 100); // kg/ha para entregar todo o N
+    const kSup = (dose * f.k) / 100;
+    const pSup = (dose * f.p) / 100;
+    const excessoK = Math.max(0, kSup - K);
+    const faltaK = Math.max(0, K - kSup);
+    const score = excessoK * 2 + faltaK + Math.abs(pSup - P) * 0.5;
+    if (score < melhorScore) {
+      melhorScore = score;
+      melhor = f;
+    }
+  }
+
+  const dose = N / (melhor.n / 100);
+  const doseKgHa = Math.round(dose);
+  const esc = escalar(doseKgHa, areaHa);
+  const principal: FormulacaoItem = {
+    produto: melhor.produto,
+    formula: melhor.label,
+    kg_ha: doseKgHa,
+    kg_total: esc.kg_total,
+    sacas_50: esc.sacas_50,
+    obs: `entrega os ${Math.round(N)} kg de N`,
+  };
+
+  const kSup = (dose * melhor.k) / 100;
+  const pSup = (dose * melhor.p) / 100;
+  const complementos: FormulacaoItem[] = [];
+
+  const faltaK = Math.max(0, K - kSup);
+  if (faltaK >= 1) {
+    const kgKcl = Math.round(faltaK / 0.6);
+    const e = escalar(kgKcl, areaHa);
+    complementos.push({
+      produto: "Cloreto de potássio (KCl)",
+      formula: "00-00-60",
+      kg_ha: kgKcl,
+      kg_total: e.kg_total,
+      sacas_50: e.sacas_50,
+      obs: `completa ${Math.round(faltaK)} kg de K₂O`,
+    });
+  }
+  if (kSup - K > 5) {
+    observacoes.push(`O formulado ${melhor.label} entrega ~${Math.round(kSup)} kg de K₂O — acima dos ${Math.round(K)} recomendados. Considere um formulado com menos K.`);
+  }
+
+  const faltaP = Math.max(0, P - pSup);
+  if (faltaP >= 1) {
+    const kgMap = Math.round(faltaP / 0.52);
+    const e = escalar(kgMap, areaHa);
+    complementos.push({
+      produto: "MAP",
+      formula: "11-52-00",
+      kg_ha: kgMap,
+      kg_total: e.kg_total,
+      sacas_50: e.sacas_50,
+      obs: `completa ${Math.round(faltaP)} kg de P₂O₅`,
+    });
+  }
+
+  if (S > 0) {
+    const kgGesso = Math.round(S / 0.15);
+    const e = escalar(kgGesso, areaHa);
+    complementos.push({
+      produto: "Gesso agrícola",
+      formula: "~15% S, 16% Ca",
+      kg_ha: kgGesso,
+      kg_total: e.kg_total,
+      sacas_50: e.sacas_50,
+      obs: `${Math.round(S)} kg de S`,
+    });
+  }
+
+  observacoes.push("Parcele o formulado (N e K) em 3–4 vezes de outubro a março. Uma fonte é sugestão — o responsável técnico pode trocar por outro formulado equivalente.");
+
+  return { area_ha: areaHa, principal, complementos, observacoes };
+}
+
 // --------------------------------------------------------------- motor -------
 
 export function recomendarNutrientes5a(input: {

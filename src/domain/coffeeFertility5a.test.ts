@@ -8,6 +8,7 @@ import {
   gessagemIndicada,
   produtividadeCalculo,
   recomendarNutrientes5a,
+  sugerirFormulacao,
 } from "./coffeeFertility5a";
 
 describe("classificarP (P-rem)", () => {
@@ -195,5 +196,40 @@ describe("fases de formação e campo (g/planta → kg/ha)", () => {
     expect(rec.doses_por_planta?.P2O5_g_cova).toBe(65);
     expect(rec.doses_por_planta?.P2O5_g_m_sulco).toBe(163); // 65 × 2,5
     expect(rec.necessidade_nutrientes.N_kg_ha_ano).toBeNull();
+  });
+});
+
+describe("sugerirFormulacao — melhor formulado para a área", () => {
+  const base = {
+    N_kg_ha_ano: 300, P2O5_kg_ha_ano: 0, K2O_kg_ha_ano: 150, S_kg_ha_ano: 0,
+    B_kg_ha: null, Cu_kg_ha: null, Mn_kg_ha: null, Zn_kg_ha: null,
+  };
+
+  it("N 300 / K2O 150 → 30-00-10 dosado ao N, dimensionado para 2 ha", () => {
+    const plano = sugerirFormulacao(base, 2);
+    expect(plano.principal?.formula).toBe("30-00-10");
+    expect(plano.principal?.kg_ha).toBe(1000); // 300 / 0,30
+    expect(plano.principal?.kg_total).toBe(2000); // × 2 ha
+    expect(plano.principal?.sacas_50).toBe(40); // 2000 / 50
+    // Falta de K completada com KCl.
+    const kcl = plano.complementos.find((c) => c.produto.includes("KCl"));
+    expect(kcl?.kg_ha).toBe(83); // 50 / 0,60
+  });
+
+  it("K2O zero (solo rico) → escolhe ureia, sem KCl", () => {
+    const plano = sugerirFormulacao({ ...base, K2O_kg_ha_ano: 0 }, 1);
+    expect(plano.principal?.formula).toBe("45-00-00");
+    expect(plano.complementos.find((c) => c.produto.includes("KCl"))).toBeUndefined();
+  });
+
+  it("N ausente (fase de campo sem população) → sem formulação", () => {
+    const plano = sugerirFormulacao({ ...base, N_kg_ha_ano: null }, 3);
+    expect(plano.principal).toBeNull();
+  });
+
+  it("sem área informada → kg/ha calculado, total nulo", () => {
+    const plano = sugerirFormulacao(base, null);
+    expect(plano.principal?.kg_ha).toBe(1000);
+    expect(plano.principal?.kg_total).toBeNull();
   });
 });

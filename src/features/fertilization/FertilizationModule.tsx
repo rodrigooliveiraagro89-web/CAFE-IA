@@ -136,6 +136,7 @@ export function FertilizationModule({ agriculture, soilAnalyses, onNavigate }: F
         plotName={plot.name}
         plotId={plot.id}
         plantasHa={plantasHaFromPlot(plot)}
+        areaHa={plot.areaHectares ?? null}
         cenario={cenario}
         onCenarioChange={setCenario}
       />
