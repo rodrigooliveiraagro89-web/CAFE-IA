@@ -4,6 +4,8 @@ import {
   converterFertilizantes,
   FASE_LABEL,
   recomendarNutrientes5a,
+  type ExtratorB,
+  type ExtratorMetalico,
   type Fase,
   type Sistema,
 } from "../../domain/coffeeFertility5a";
@@ -62,6 +64,34 @@ function fmt(value: number | null, digits = 1): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 }
 
+// Complementos do laudo: o produtor preenche o que a extração não trouxe, para
+// o motor não precisar assumir nada. Guardados por talhão (localStorage).
+type Complementos = {
+  pRem?: string;
+  argila?: string;
+  ph?: string;
+  mo?: string;
+  prnt?: string;
+  foliarN?: string;
+  extratorB?: ExtratorB | "";
+  extratorMicros?: ExtratorMetalico | "";
+  ca2040?: string;
+  al2040?: string;
+  m2040?: string;
+};
+
+const COMP_KEY = (plotId: string) => `agryn.fert5a.comp.${plotId}`;
+
+function loadComplementos(plotId?: string): Complementos {
+  if (!plotId || typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(COMP_KEY(plotId));
+    return raw ? (JSON.parse(raw) as Complementos) : {};
+  } catch {
+    return {};
+  }
+}
+
 
 export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenario, onCenarioChange }: Props) {
   const v = analysis?.values;
@@ -72,10 +102,23 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
   const [history, setHistory] = useState<SavedRecommendation[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
+  const [comp, setComp] = useState<Complementos>(() => loadComplementos(plotId));
 
   // Fases de campo (não produção) trabalham em g/planta e precisam da população.
   const emProducao = fase === "producao";
   const plantasHaNum = parseNumberBR(plantas);
+
+  // Persiste os complementos do laudo por talhão (o que o produtor preenche).
+  useEffect(() => {
+    if (!plotId || typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(COMP_KEY(plotId), JSON.stringify(comp));
+    } catch {
+      // segue só em memória
+    }
+  }, [plotId, comp]);
+
+  const setC = (patch: Partial<Complementos>) => setComp((prev) => ({ ...prev, ...patch }));
 
   useEffect(() => {
     if (!plotId) return;
@@ -88,8 +131,8 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
     };
   }, [plotId]);
 
-  // Todos os valores vêm do laudo. Ca/Mg em mmolc → cmolc; H+Al e Al são
-  // derivados de CTC/V/m% quando o laudo não os traz explicitamente.
+  // Os valores vêm do laudo; o produtor pode COMPLETAR o que faltou (comp).
+  // Ca/Mg em mmolc → cmolc; H+Al e Al são derivados de CTC/V/m% quando ausentes.
   const solo = useMemo(() => {
     const caC = v?.ca != null ? v.ca / 10 : null;
     const mgC = v?.mg != null ? v.mg / 10 : null;
@@ -98,12 +141,19 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
     const hAl = v?.hAl ?? (sb != null && v?.ctc != null ? Math.max(0, v.ctc - sb) : null);
     const mPct = v?.mPercent ?? null;
     const al = v?.al ?? (sb != null && mPct != null && mPct < 100 ? (mPct * sb) / (100 - mPct) : null);
+    // Complemento sobrepõe o laudo apenas quando preenchido (senão mantém o laudo).
+    const or = (raw: string | undefined, base: number | null | undefined) => {
+      const n = parseNumberBR(raw ?? "");
+      return n ?? base ?? null;
+    };
+    const extB: ExtratorB | null = comp.extratorB || v?.extratorB || null;
+    const extM: ExtratorMetalico | null = comp.extratorMicros || v?.extratorMicros || null;
     return {
-      pH_agua: v?.ph ?? null,
-      materia_organica_dag_kg: v?.organicMatter ?? null,
+      pH_agua: or(comp.ph, v?.ph),
+      materia_organica_dag_kg: or(comp.mo, v?.organicMatter),
       P_mg_dm3: v?.p ?? null,
-      P_rem_mg_L: v?.pRem ?? null,
-      argila_percentual: v?.argila ?? null,
+      P_rem_mg_L: or(comp.pRem, v?.pRem),
+      argila_percentual: or(comp.argila, v?.argila),
       K_mg_dm3: v?.k ?? null,
       Ca_cmolc_dm3: caC,
       Mg_cmolc_dm3: mgC,
@@ -111,15 +161,29 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
       H_Al_cmolc_dm3: hAl,
       S_mg_dm3: v?.s ?? null,
       B_mg_dm3: v?.b ?? null,
-      extrator_B: v?.extratorB ?? null,
+      extrator_B: extB,
       Cu_mg_dm3: v?.cu ?? null,
-      extrator_Cu: v?.extratorMicros ?? null,
+      extrator_Cu: extM,
       Mn_mg_dm3: v?.mn ?? null,
-      extrator_Mn: v?.extratorMicros ?? null,
+      extrator_Mn: extM,
       Zn_mg_dm3: v?.zn ?? null,
-      extrator_Zn: v?.extratorMicros ?? null,
+      extrator_Zn: extM,
     };
-  }, [v]);
+  }, [v, comp]);
+
+  // Análise de 20–40 cm (gessagem) e N foliar — só quando o produtor informa.
+  const sub = useMemo(() => {
+    const ca = parseNumberBR(comp.ca2040 ?? "");
+    const al = parseNumberBR(comp.al2040 ?? "");
+    const m = parseNumberBR(comp.m2040 ?? "");
+    if (ca === null && al === null && m === null) return null;
+    return { Ca_cmolc_dm3: ca, Al_cmolc_dm3: al, m_percentual: m };
+  }, [comp.ca2040, comp.al2040, comp.m2040]);
+
+  const foliar = useMemo(() => {
+    const n = parseNumberBR(comp.foliarN ?? "");
+    return n === null ? null : { N_dag_kg: n };
+  }, [comp.foliarN]);
 
   const prod = CENARIOS.find((c) => c.id === cenario)?.sacasPorHectare ?? 45;
 
@@ -132,17 +196,29 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
           produtividade_safra_anterior_sc_ha: parseNumberBR(safraAnt),
           plantas_ha: plantasHaNum,
           sistema,
-          PRNT_percentual: 95,
+          PRNT_percentual: parseNumberBR(comp.prnt ?? "") ?? 95,
         },
         solo,
+        sub,
+        foliar,
       }),
-    [fase, prod, safraAnt, plantasHaNum, sistema, solo],
+    [fase, prod, safraAnt, plantasHaNum, sistema, comp.prnt, solo, sub, foliar],
   );
 
   const c = rec.classificacoes;
   const n = rec.necessidade_nutrientes;
   const fertilizantes = converterFertilizantes(n);
   const hoje = new Date().toLocaleDateString("pt-BR");
+
+  // Campos críticos que faltam para o motor não assumir (guiam o produtor).
+  const faltamCriticos: string[] = [];
+  if (solo.P_mg_dm3 !== null && solo.P_rem_mg_L === null && solo.argila_percentual === null) {
+    faltamCriticos.push("P-rem/argila");
+  }
+  if (solo.B_mg_dm3 !== null && !solo.extrator_B) faltamCriticos.push("extrator do B");
+  if ((solo.Cu_mg_dm3 !== null || solo.Mn_mg_dm3 !== null || solo.Zn_mg_dm3 !== null) && !solo.extrator_Cu) {
+    faltamCriticos.push("extrator Cu/Mn/Zn");
+  }
 
   // Gráfico 1 — doses de macronutrientes (kg/ha).
   const dosesChart = (
@@ -310,6 +386,86 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, cenari
           </select>
         </label>
       </div>
+
+      <details className="fert5a-completar no-print" open={faltamCriticos.length > 0}>
+        <summary>
+          Completar o laudo (opcional){" "}
+          {faltamCriticos.length > 0 && (
+            <span className="fert5a-falta-badge">falta: {faltamCriticos.join(", ")}</span>
+          )}
+        </summary>
+        <p className="fert5a-completar-hint">
+          Preencha o que a extração do laudo não trouxe. O que ficar em branco usa o laudo; o que
+          você informar sobrepõe. Assim o cálculo não precisa assumir nada.
+        </p>
+        <div className="fert5a-completar-grid">
+          <label>
+            P-rem (mg/L)
+            <input inputMode="decimal" value={comp.pRem ?? ""} onChange={(e) => setC({ pRem: e.target.value })}
+              placeholder={v?.pRem != null ? `laudo: ${fmt(v.pRem, 1)}` : "para classificar P e S"} />
+          </label>
+          <label>
+            Argila (%)
+            <input inputMode="decimal" value={comp.argila ?? ""} onChange={(e) => setC({ argila: e.target.value })}
+              placeholder={v?.argila != null ? `laudo: ${fmt(v.argila, 0)}` : "alternativa ao P-rem p/ P"} />
+          </label>
+          <label>
+            Extrator do Boro
+            <select value={comp.extratorB ?? ""} onChange={(e) => setC({ extratorB: e.target.value as ExtratorB | "" })}>
+              <option value="">{v?.extratorB ? `laudo: ${v.extratorB}` : "— selecione —"}</option>
+              <option value="mehlich1">Mehlich-1</option>
+              <option value="hcl">HCl 0,05 mol/L</option>
+              <option value="agua_quente">Água quente</option>
+            </select>
+          </label>
+          <label>
+            Extrator Cu/Mn/Zn
+            <select value={comp.extratorMicros ?? ""} onChange={(e) => setC({ extratorMicros: e.target.value as ExtratorMetalico | "" })}>
+              <option value="">{v?.extratorMicros ? `laudo: ${v.extratorMicros}` : "— selecione —"}</option>
+              <option value="mehlich1">Mehlich-1</option>
+              <option value="dtpa">DTPA</option>
+            </select>
+          </label>
+          <label>
+            pH (água)
+            <input inputMode="decimal" value={comp.ph ?? ""} onChange={(e) => setC({ ph: e.target.value })}
+              placeholder={v?.ph != null ? `laudo: ${fmt(v.ph, 1)}` : "opcional"} />
+          </label>
+          <label>
+            M.O. (dag/kg)
+            <input inputMode="decimal" value={comp.mo ?? ""} onChange={(e) => setC({ mo: e.target.value })}
+              placeholder={v?.organicMatter != null ? `laudo: ${fmt(v.organicMatter, 1)}` : "opcional"} />
+          </label>
+          <label>
+            PRNT do calcário (%)
+            <input inputMode="decimal" value={comp.prnt ?? ""} onChange={(e) => setC({ prnt: e.target.value })}
+              placeholder="padrão 95" />
+          </label>
+          <label>
+            N foliar (dag/kg)
+            <input inputMode="decimal" value={comp.foliarN ?? ""} onChange={(e) => setC({ foliarN: e.target.value })}
+              placeholder="ajusta N (produção)" />
+          </label>
+        </div>
+        <div className="fert5a-completar-sub">
+          <span className="fert5a-completar-titulo">Análise de 20–40 cm — para decidir gessagem</span>
+          <div className="fert5a-completar-grid">
+            <label>
+              Ca 20–40 (cmolc)
+              <input inputMode="decimal" value={comp.ca2040 ?? ""} onChange={(e) => setC({ ca2040: e.target.value })} placeholder="≤ 0,4 indica" />
+            </label>
+            <label>
+              Al 20–40 (cmolc)
+              <input inputMode="decimal" value={comp.al2040 ?? ""} onChange={(e) => setC({ al2040: e.target.value })} placeholder="> 0,5 indica" />
+            </label>
+            <label>
+              m 20–40 (%)
+              <input inputMode="decimal" value={comp.m2040 ?? ""} onChange={(e) => setC({ m2040: e.target.value })} placeholder="> 30 indica" />
+            </label>
+          </div>
+        </div>
+      </details>
+
       {rec.produtividade_calculo_sc_ha !== null && rec.produtividade_calculo_sc_ha !== prod && (
         <p className="fert5a-media no-print">
           Bienalidade: cálculo usando a <strong>média {fmt(rec.produtividade_calculo_sc_ha, 0)} sc/ha</strong>{" "}

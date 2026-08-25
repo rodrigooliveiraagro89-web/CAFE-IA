@@ -405,6 +405,17 @@
 .fert5a-sistema { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); min-width: 140px; }
 .fert5a-sistema select { min-height: 46px; padding: 0.5rem 0.7rem; font-size: 0.95rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
 
+/* Completar o laudo (P-rem, argila, extratores, 20–40 cm, foliar) */
+.fert5a-completar { margin: 0.2rem 0 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.4rem 0.9rem; background: var(--surface-soft, var(--surface)); }
+.fert5a-completar > summary { cursor: pointer; font-size: 0.85rem; font-weight: 700; color: var(--text-soft); padding: 0.4rem 0; list-style: revert; }
+.fert5a-falta-badge { margin-left: 0.5rem; font-weight: 600; font-size: 0.72rem; color: var(--warning, #d97706); background: color-mix(in srgb, var(--warning, #d97706) 14%, transparent); padding: 0.1rem 0.5rem; border-radius: 999px; }
+.fert5a-completar-hint { margin: 0.2rem 0 0.7rem; font-size: 0.8rem; color: var(--text-faint); }
+.fert5a-completar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.7rem; }
+.fert5a-completar-grid label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.76rem; font-weight: 600; color: var(--text-soft); }
+.fert5a-completar-grid input, .fert5a-completar-grid select { min-height: 42px; padding: 0.45rem 0.6rem; font-size: 0.9rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+.fert5a-completar-sub { margin-top: 0.9rem; padding-top: 0.7rem; border-top: 1px dashed var(--line); }
+.fert5a-completar-titulo { display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-soft); margin-bottom: 0.5rem; }
+
 /* Doses por planta (fases de campo: formação, recepa, pós-plantio, implantação) */
 .fert5a-planta { margin: 0.4rem 0 1rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft, var(--surface)); }
 .fert5a-planta h3 { font-size: 0.9rem; margin: 0 0 0.6rem; }
