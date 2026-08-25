@@ -212,8 +212,6 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
     expect(plano.principal?.kg_ha).toBe(1500); // 300 / 0,20
     expect(plano.principal?.kg_total).toBe(3000); // × 2 ha
     expect(plano.principal?.sacas_50).toBe(60);
-    expect(plano.principal?.preco_rs_ton).toBeGreaterThan(0);
-    expect(plano.principal?.preco_total_rs).toBeGreaterThan(0);
     // Sem falta de K → sem KCl.
     expect(plano.complementos.find((c) => c.produto.includes("KCl"))).toBeUndefined();
   });
@@ -224,10 +222,9 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
     expect(plano.complementos.find((c) => c.produto.includes("KCl"))).toBeUndefined();
   });
 
-  it("usa o catálogo comercial (código FER e preço)", () => {
+  it("usa o catálogo comercial (código FER)", () => {
     const plano = sugerirFormulacao(base, 5);
     expect(plano.principal?.codigo).toMatch(/^FER\d+/);
-    expect(plano.principal?.preco_rs_ton).toBeGreaterThan(0);
   });
 
   it("N ausente (fase de campo sem população) → sem formulação", () => {
@@ -235,10 +232,9 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
     expect(plano.principal).toBeNull();
   });
 
-  it("sem área informada → kg/ha calculado, total e custo nulos", () => {
+  it("sem área informada → kg/ha calculado, total nulo", () => {
     const plano = sugerirFormulacao(base, null);
     expect(plano.principal?.kg_ha).toBe(1500);
     expect(plano.principal?.kg_total).toBeNull();
-    expect(plano.principal?.preco_total_rs).toBeNull();
   });
 });

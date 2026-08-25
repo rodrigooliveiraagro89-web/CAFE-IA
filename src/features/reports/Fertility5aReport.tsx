@@ -180,14 +180,6 @@ export function Fertility5aReport({
                     {fmt(formulacao.principal.kg_total, 0)} kg no talhão · {fmt(formulacao.principal.sacas_50, 1)} sacas de 50 kg
                   </span>
                 )}
-                {formulacao.principal.preco_total_rs != null && (
-                  <span className="fert5a-formula-custo">
-                    ≈ R$ {formulacao.principal.preco_total_rs.toLocaleString("pt-BR")} no talhão
-                    {formulacao.principal.preco_rs_ton != null && (
-                      <em> · R$ {formulacao.principal.preco_rs_ton.toLocaleString("pt-BR")}/t</em>
-                    )}
-                  </span>
-                )}
               </div>
             </div>
             {formulacao.complementos.length > 0 && (

@@ -528,8 +528,6 @@ export type FormulacaoItem = {
   kg_ha: number;
   kg_total: number | null; // dimensionado para a área do talhão
   sacas_50: number | null; // sacas de 50 kg
-  preco_rs_ton?: number | null; // R$/tonelada (À vista COMBO)
-  preco_total_rs?: number | null; // custo estimado no talhão
   obs?: string;
 };
 
@@ -586,10 +584,8 @@ export function sugerirFormulacao(
     const faltaK = Math.max(0, K - kSup);
     let score = excessoK * 2 + faltaK + Math.abs(pSup - P) * 0.5;
     if (S > 0) score -= Math.min(sSup, S) * 0.05; // recompensa cobrir o S
-    // Desempate por CUSTO por hectare do formulado (produto de baixa
-    // concentração exige mais quilos), não pelo preço da tonelada.
-    const custoHa = ((f.precoComboRs ?? 4000) * dose) / 1000;
-    score += custoHa / 100000;
+    // Desempate por concentração: menos quilos de produto para a mesma dose.
+    score += dose / 1e7;
     if (score < melhorScore) {
       melhorScore = score;
       melhor = f;
@@ -599,10 +595,6 @@ export function sugerirFormulacao(
   const dose = N / (melhor.n / 100);
   const doseKgHa = Math.round(dose);
   const esc = escalar(doseKgHa, areaHa);
-  const precoTotal =
-    melhor.precoComboRs !== null && esc.kg_total !== null
-      ? Math.round((melhor.precoComboRs * esc.kg_total) / 1000)
-      : null;
   const principal: FormulacaoItem = {
     produto: melhor.produto,
     formula: melhor.formula,
@@ -610,8 +602,6 @@ export function sugerirFormulacao(
     kg_ha: doseKgHa,
     kg_total: esc.kg_total,
     sacas_50: esc.sacas_50,
-    preco_rs_ton: melhor.precoComboRs,
-    preco_total_rs: precoTotal,
     obs: `entrega os ${Math.round(N)} kg de N`,
   };
 
@@ -668,9 +658,6 @@ export function sugerirFormulacao(
     observacoes.push(`O formulado ${melhor.formula} já entrega ~${Math.round(sSup)} kg de S — dispensa o gesso para enxofre.`);
   }
 
-  if (melhor.precoComboRs !== null) {
-    observacoes.push(`Preço de referência do formulado: R$ ${melhor.precoComboRs.toLocaleString("pt-BR")}/t (À vista COMBO, Campanha Turbo Ago/2026).`);
-  }
   observacoes.push("Parcele o formulado (N e K) em 3–4 vezes de outubro a março. Uma fonte é sugestão — o responsável técnico pode trocar por outro formulado equivalente.");
 
   return { area_ha: areaHa, principal, complementos, observacoes };
