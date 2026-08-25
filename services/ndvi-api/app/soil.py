@@ -42,6 +42,9 @@ NUMERIC_FIELDS = [
     "al",
     "h_al",
     "argila",
+    "ca_20_40",
+    "al_20_40",
+    "m_20_40",
 ]
 
 SYSTEM_PROMPT = (
@@ -65,12 +68,16 @@ SYSTEM_PROMPT = (
     '"zn": num|null, "b": num|null, "fe": num|null, "mn": num|null, "cu": num|null, '
     '"p_rem": num|null, "al": num|null, "h_al": num|null, "argila": num|null, '
     '"extrator_b": "..."|null, "extrator_micros": "..."|null, '
+    '"ca_20_40": num|null, "al_20_40": num|null, "m_20_40": num|null, '
     '"analysis_date": "YYYY-MM-DD"|null, "laboratory": "..."|null } ] }. '
     "Campos extras: p_rem = fósforo remanescente/P-rem em mg/L; al = alumínio "
     "trocável (Al) em cmolc/dm³; h_al = H+Al (acidez potencial) em cmolc/dm³; "
     "argila = teor de argila em %. extrator_b = método de extração do Boro (ex.: "
     "'Mehlich-1', 'HCl', 'água quente'); extrator_micros = método dos micros "
     "Cu/Mn/Zn (ex.: 'Mehlich-1' ou 'DTPA') — copie o texto como está no laudo. "
+    "ca_20_40, al_20_40 e m_20_40 = Ca (cmolc/dm³), Al (cmolc/dm³) e m% da camada "
+    "de 20–40 cm (subsuperfície), quando o laudo trouxer essa profundidade; os "
+    "demais campos referem-se à camada de 0–20 cm. "
     "Use null quando não aparecerem no laudo. "
     "Se houver só uma amostra, devolva a lista com um único item."
 )

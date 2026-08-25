@@ -26,6 +26,9 @@ type RawSoilValues = {
   argila?: number | null;
   extrator_b?: string | null;
   extrator_micros?: string | null;
+  ca_20_40?: number | null;
+  al_20_40?: number | null;
+  m_20_40?: number | null;
   analysis_date?: string | null;
   laboratory?: string | null;
 };
@@ -79,6 +82,9 @@ function fromRaw(raw: RawSoilValues): SoilExtraction {
       argila: raw.argila ?? null,
       extratorB: normalizarExtratorB(raw.extrator_b),
       extratorMicros: normalizarExtratorMicros(raw.extrator_micros),
+      ca2040: raw.ca_20_40 ?? null,
+      al2040: raw.al_20_40 ?? null,
+      m2040: raw.m_20_40 ?? null,
     },
     analysisDate: raw.analysis_date ?? null,
     laboratory: raw.laboratory ?? null,

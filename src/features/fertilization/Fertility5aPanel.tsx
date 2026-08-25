@@ -175,14 +175,15 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
     };
   }, [v, comp]);
 
-  // Análise de 20–40 cm (gessagem) e N foliar — só quando o produtor informa.
+  // Análise de 20–40 cm (gessagem): vem do laudo automaticamente; o produtor
+  // pode sobrepor no "Completar o laudo".
   const sub = useMemo(() => {
-    const ca = parseNumberBR(comp.ca2040 ?? "");
-    const al = parseNumberBR(comp.al2040 ?? "");
-    const m = parseNumberBR(comp.m2040 ?? "");
+    const ca = parseNumberBR(comp.ca2040 ?? "") ?? v?.ca2040 ?? null;
+    const al = parseNumberBR(comp.al2040 ?? "") ?? v?.al2040 ?? null;
+    const m = parseNumberBR(comp.m2040 ?? "") ?? v?.m2040 ?? null;
     if (ca === null && al === null && m === null) return null;
     return { Ca_cmolc_dm3: ca, Al_cmolc_dm3: al, m_percentual: m };
-  }, [comp.ca2040, comp.al2040, comp.m2040]);
+  }, [comp.ca2040, comp.al2040, comp.m2040, v?.ca2040, v?.al2040, v?.m2040]);
 
   const foliar = useMemo(() => {
     const n = parseNumberBR(comp.foliarN ?? "");
@@ -471,15 +472,18 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
           <div className="fert5a-completar-grid">
             <label>
               Ca 20–40 (cmolc)
-              <input inputMode="decimal" value={comp.ca2040 ?? ""} onChange={(e) => setC({ ca2040: e.target.value })} placeholder="≤ 0,4 indica" />
+              <input inputMode="decimal" value={comp.ca2040 ?? ""} onChange={(e) => setC({ ca2040: e.target.value })}
+                placeholder={v?.ca2040 != null ? `laudo: ${fmt(v.ca2040, 2)}` : "≤ 0,4 indica"} />
             </label>
             <label>
               Al 20–40 (cmolc)
-              <input inputMode="decimal" value={comp.al2040 ?? ""} onChange={(e) => setC({ al2040: e.target.value })} placeholder="> 0,5 indica" />
+              <input inputMode="decimal" value={comp.al2040 ?? ""} onChange={(e) => setC({ al2040: e.target.value })}
+                placeholder={v?.al2040 != null ? `laudo: ${fmt(v.al2040, 2)}` : "> 0,5 indica"} />
             </label>
             <label>
               m 20–40 (%)
-              <input inputMode="decimal" value={comp.m2040 ?? ""} onChange={(e) => setC({ m2040: e.target.value })} placeholder="> 30 indica" />
+              <input inputMode="decimal" value={comp.m2040 ?? ""} onChange={(e) => setC({ m2040: e.target.value })}
+                placeholder={v?.m2040 != null ? `laudo: ${fmt(v.m2040, 0)}` : "> 30 indica"} />
             </label>
           </div>
         </div>

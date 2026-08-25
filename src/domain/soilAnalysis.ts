@@ -29,6 +29,10 @@ export type SoilValues = {
   argila?: number | null; // % de argila
   extratorB?: "mehlich1" | "hcl" | "agua_quente" | null; // extrator do Boro
   extratorMicros?: "mehlich1" | "dtpa" | null; // extrator de Cu/Mn/Zn
+  // Camada de 20–40 cm (subsuperfície) — decide a gessagem na 5ª Aproximação.
+  ca2040?: number | null; // Ca 20–40 cm (cmolc/dm³)
+  al2040?: number | null; // Al 20–40 cm (cmolc/dm³)
+  m2040?: number | null; // m% 20–40 cm
 };
 
 export type SoilFieldKey = keyof SoilValues;
