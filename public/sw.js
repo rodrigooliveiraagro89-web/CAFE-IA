@@ -1,10 +1,16 @@
 /* global self, caches, fetch, Response, clients */
-const CACHE = "agryn-shell-v5";
+// Service worker do AGRYN: app abre e funciona offline no talhão. Estratégia:
+// - HTML/navegação: network-first (pega deploy novo; cai pro shell salvo offline).
+// - Assets hasheados (/assets/, /brand/): cache-first + atualização em segundo
+//   plano (abre instantâneo e offline).
+// - Chamadas de API (Supabase/Render/Open-Meteo) são cross-origin → não passam
+//   por aqui (nunca cacheamos dados autenticados/dinâmicos).
+const CACHE = "agryn-shell-v6";
 const BASE = "/CAFE-IA/";
-const SHELL = [BASE, `${BASE}landing.html`, `${BASE}manifest.webmanifest`, `${BASE}brand/agryn-mark.svg`];
+const SHELL = [BASE, `${BASE}manifest.webmanifest`, `${BASE}brand/agryn-mark.svg`];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).catch(() => {}));
   self.skipWaiting();
 });
 
@@ -15,16 +21,54 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+function putInCache(request, response) {
+  if (response && response.ok) {
+    caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET" || !request.url.startsWith(self.location.origin)) return;
+  const url = new URL(request.url);
+
+  // Navegação (HTML): network-first → mantém o app atualizado; offline usa o shell.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) caches.open(CACHE).then((cache) => cache.put(BASE, response.clone()));
+          return response;
+        })
+        .catch(async () => (await caches.match(request)) || (await caches.match(BASE)) || Response.error()),
+    );
+    return;
+  }
+
+  // Assets imutáveis (hash no nome): cache-first + revalidação em segundo plano.
+  if (url.pathname.includes("/assets/") || url.pathname.includes("/brand/")) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const network = fetch(request)
+          .then((response) => {
+            putInCache(request, response);
+            return response;
+          })
+          .catch(() => cached);
+        return cached || network;
+      }),
+    );
+    return;
+  }
+
+  // Demais GET do próprio domínio (manifest, páginas legadas): network-first.
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response.ok) caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
+        putInCache(request, response);
         return response;
       })
-      .catch(async () => (await caches.match(request)) || (request.mode === "navigate" ? caches.match(BASE) : Response.error())),
+      .catch(() => caches.match(request)),
   );
 });
 
