@@ -466,8 +466,10 @@ function colunaNfoliar(nFoliar: number | null): number {
   return 2; // 3,1–3,5 (e acima, com regra de cancelamento de parcelas)
 }
 
+// Coluna da tabela por classe de K (mg/dm³). Retorna -1 quando o K é
+// desconhecido — o K2O NÃO é calculado (não assumir solo rico).
 function colunaK(Kmg: number | null): number {
-  if (Kmg === null) return 3;
+  if (Kmg === null) return -1;
   if (Kmg < 60) return 0;
   if (Kmg <= 120) return 1;
   if (Kmg <= 200) return 2;
@@ -880,7 +882,8 @@ export function recomendarNutrientes5a(input: {
     if (prodCalc !== null) {
       const linha = faixaProdutividade(prodCalc);
       N = N_PRODUCAO[linha][colunaNfoliar(num(input.foliar?.N_dag_kg))];
-      K2O = K2O_PRODUCAO[linha][colK];
+      K2O = colK < 0 ? null : K2O_PRODUCAO[linha][colK];
+      if (colK < 0) alertas.push("Informe o teor de K do laudo (mg/dm³) para calcular o K2O.");
       const classP = classificacoes.P;
       P2O5 = classP ? P2O5_PRODUCAO[linha][CLASSE_P_INDEX[classP]] : null;
       if (!classP) alertas.push("Sem P-rem nem argila: P2O5 não calculado (informe um deles).");
@@ -911,7 +914,7 @@ export function recomendarNutrientes5a(input: {
     const nAplic = num(N_G_PLANTA_APLIC[fase]);
     const nParcelas = num(lavoura.numero_parcelamentos) ?? PARCELAS_PADRAO[fase];
     const k2oTab = K2O_G_PLANTA_ANO[fase];
-    const k2oGPlanta = k2oTab ? k2oTab[colK] : null;
+    const k2oGPlanta = k2oTab && colK >= 0 ? k2oTab[colK] : null;
     const nAnualGPlanta = nAplic !== null ? nAplic * nParcelas : null;
 
     N = gPlantaParaKgHa(nAnualGPlanta, plantasHa);

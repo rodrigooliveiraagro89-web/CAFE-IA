@@ -123,6 +123,17 @@ describe("recomendarNutrientes5a — exemplo seção 13 (produção, 40 sc/ha)",
     expect(ureia && ureia.kg_ha).toBeGreaterThan(600); // N restante / 0,45
   });
 
+  it("sem K no laudo, K2O não é calculado (não assume solo rico)", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "producao", produtividade_esperada_sc_ha: 40 },
+      solo: { P_mg_dm3: 8, P_rem_mg_L: 15 }, // sem K_mg_dm3
+    });
+    expect(rec.necessidade_nutrientes.K2O_kg_ha_ano).toBeNull();
+    expect(rec.alertas.some((a) => /teor de K/i.test(a))).toBe(true);
+    // N continua calculado.
+    expect(rec.necessidade_nutrientes.N_kg_ha_ano).toBe(300);
+  });
+
   it("N cai com análise foliar alta (3,3 → coluna 3,1–3,5)", () => {
     const comFoliar = recomendarNutrientes5a({
       lavoura: { fase: "producao", produtividade_esperada_sc_ha: 40 },

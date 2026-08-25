@@ -1,4 +1,4 @@
-import { Check, Download, FlaskConical, Plus, Save, Sprout } from "lucide-react";
+import { Check, Download, FlaskConical, Plus, Save, Sprout, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   converterFertilizantes,
@@ -306,6 +306,21 @@ export function Fertility5aPanel({
     veredito.length > 0
       ? `Precisa ${veredito.join(" + ")}`
       : "Sem correção pelos dados atuais";
+
+  // Motivos quando um macro não calcula (evita o produtor achar que "sumiu").
+  const npkMotivos: string[] = [];
+  if (n.P2O5_kg_ha_ano === null) {
+    npkMotivos.push(
+      emProducao
+        ? "Fósforo (P₂O₅): informe P-rem ou o teor de argila do laudo para calcular."
+        : fase === "implantacao"
+          ? "Fósforo: a dose vai na cova — veja Doses por planta."
+          : "Fósforo dispensado nesta fase (foi aplicado na cova/implantação).",
+    );
+  }
+  if (n.K2O_kg_ha_ano === null) {
+    npkMotivos.push("Potássio (K₂O): informe o teor de K do laudo (mg/dm³) para calcular.");
+  }
   const hoje = new Date().toLocaleDateString("pt-BR");
 
   // Campos críticos que faltam para o motor não assumir (guiam o produtor).
@@ -519,6 +534,36 @@ export function Fertility5aPanel({
           )}
         </div>
       </div>
+
+      {/* Resumo N-P-K sempre visível (com o motivo quando algum não calcula). */}
+      <div className="fert5a-npk">
+        {[
+          { k: "N", v: n.N_kg_ha_ano },
+          { k: "P₂O₅", v: n.P2O5_kg_ha_ano },
+          { k: "K₂O", v: n.K2O_kg_ha_ano },
+          { k: "S", v: n.S_kg_ha_ano },
+        ].map((m) => (
+          <span className="fert5a-npk-chip" key={m.k} data-vazio={m.v === null || undefined}>
+            <small>{m.k}</small>
+            <strong>{m.v === null ? "—" : `${fmt(m.v, 0)}`}</strong>
+            {m.v !== null && <em>kg/ha</em>}
+          </span>
+        ))}
+      </div>
+      {npkMotivos.length > 0 && (
+        <div className="fert5a-npk-motivos">
+          {npkMotivos.map((mt) => (
+            <p key={mt}>
+              <TriangleAlert size={13} aria-hidden="true" /> {mt}
+            </p>
+          ))}
+          {modoSimples && faltamCriticos.length > 0 && (
+            <button className="secondary-button" type="button" onClick={() => setModoSimples(false)}>
+              Completar o laudo (Técnico)
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Escolhas mínimas por fase. O resto vem do laudo. */}
       <div className="fert5a-escolhas no-print">

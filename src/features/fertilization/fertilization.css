@@ -449,6 +449,16 @@
 .fert5a-decisao-card strong { font-size: 1.15rem; color: var(--text); line-height: 1.2; }
 .fert5a-decisao-card small { font-size: 0.78rem; color: var(--text-soft); }
 .fert5a-simple-hint { margin: 0.4rem 0 0.8rem; font-size: 0.82rem; color: var(--warning, #d97706); font-weight: 600; }
+.fert5a-npk { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.6rem; }
+.fert5a-npk-chip { display: inline-flex; align-items: baseline; gap: 0.3rem; padding: 0.35rem 0.7rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.fert5a-npk-chip small { font-size: 0.72rem; font-weight: 800; color: var(--text-faint); }
+.fert5a-npk-chip strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.fert5a-npk-chip em { font-style: normal; font-size: 0.72rem; color: var(--text-faint); }
+.fert5a-npk-chip[data-vazio] strong { color: var(--warning, #d97706); }
+.fert5a-npk-motivos { margin: 0 0 0.9rem; padding: 0.6rem 0.8rem; border: 1px solid var(--warning, #d97706); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--warning, #d97706) 8%, transparent); }
+.fert5a-npk-motivos p { margin: 0.15rem 0; font-size: 0.82rem; color: var(--text); display: flex; align-items: center; gap: 0.35rem; }
+.fert5a-npk-motivos p svg { color: var(--warning, #d97706); flex: 0 0 auto; }
+.fert5a-npk-motivos button { margin-top: 0.5rem; }
 
 .fert5a-sistema { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); min-width: 140px; }
 .fert5a-sistema select { min-height: 46px; padding: 0.5rem 0.7rem; font-size: 0.95rem; border: 1px solid var(--line-strong, var(--line)); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
