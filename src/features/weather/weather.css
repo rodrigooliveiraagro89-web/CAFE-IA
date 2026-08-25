@@ -177,7 +177,7 @@
 /* Janela de pulverização ------------------------------------------------- */
 .spray-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.7rem;
 }
 
@@ -273,7 +273,7 @@
 /* Painel "O que fazer nos próximos dias" */
 .guidance-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.7rem;
 }
 .guidance-card {
@@ -329,7 +329,7 @@
 .calendar-chip > svg { color: var(--success, #16a34a); }
 
 /* Chuva acumulada e balanço hídrico */
-.balance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.7rem; }
+.balance-grid { display: grid; grid-template-columns: 1fr; gap: 0.7rem; }
 .balance-card { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.75rem 0.9rem; border-radius: var(--radius-md, 12px); background: var(--surface); border: 1px solid var(--line); }
 .balance-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint); }
 .balance-rain { font-size: 1.25rem; }
@@ -350,7 +350,7 @@
 .hour-rain svg { color: var(--info); }
 
 /* Riscos climáticos de doença */
-.disease-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.7rem; }
+.disease-grid { display: grid; grid-template-columns: 1fr; gap: 0.7rem; }
 .disease-card { padding: 0.8rem 0.9rem; border-radius: var(--radius-md, 12px); background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line-strong, var(--line)); }
 .disease-card[data-lido="true"] { opacity: 0.55; }
 .disease-card--alto { border-left-color: var(--danger, #dc2626); }
