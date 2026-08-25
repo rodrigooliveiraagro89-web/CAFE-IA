@@ -577,11 +577,30 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
               <em className="fert5a-valvo-hint"> · alvo V {vAlvo}%</em>
             )}
           </p>
+          {rec.correcao_solo.corretivo_sugerido && (
+            <p>
+              <strong>Corretivo:</strong> {rec.correcao_solo.corretivo_sugerido}{" "}
+              <em className="fert5a-valvo-hint">({rec.correcao_solo.corretivo_motivo})</em>
+            </p>
+          )}
           <p>
             <strong>Gessagem:</strong>{" "}
-            {rec.correcao_solo.gessagem_indicada
-              ? "indicada (avaliar 20–40 cm)"
-              : "não indicada pelos dados atuais"}
+            {rec.correcao_solo.gessagem_indicada ? (
+              rec.correcao_solo.gesso_t_ha !== null ? (
+                <>
+                  {fmt(rec.correcao_solo.gesso_t_ha, 2)} t/ha de gesso
+                  <em className="fert5a-valvo-hint">
+                    {" "}
+                    · fornece ~{fmt(rec.correcao_solo.gesso_ca_kg_ha, 0)} kg Ca e ~
+                    {fmt(rec.correcao_solo.gesso_s_kg_ha, 0)} kg S
+                  </em>
+                </>
+              ) : (
+                "indicada (informe a calagem para dimensionar)"
+              )
+            ) : (
+              "não indicada pelos dados atuais"
+            )}
           </p>
         </div>
       </div>
@@ -696,6 +715,28 @@ export function Fertility5aPanel({ analysis, plotName, plotId, plantasHa, areaHa
             responsável técnico pode trocar por outro formulado equivalente.
           </p>
         </details>
+      )}
+
+      {rec.fontes_micros.length > 0 && (
+        <div className="fert5a-micros">
+          <h3>Micronutrientes — fonte e aplicação</h3>
+          <table>
+            <tbody>
+              {rec.fontes_micros.map((m) => (
+                <tr key={m.nutriente}>
+                  <td><strong>{m.nutriente}</strong></td>
+                  <td>{m.produto} <em>({m.teor_pct}%)</em></td>
+                  <td className="fert5a-kg">{fmt(m.dose_produto_kg_ha, 1)} kg/ha</td>
+                  <td className="fert5a-obs">via {m.via}{m.obs ? ` · ${m.obs}` : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="fert5a-parcelamento">
+            Doses de micros têm intervalo estreito entre deficiência e toxidez — validar com análise
+            foliar antes de reaplicar.
+          </p>
+        </div>
       )}
 
       {rec.alertas.length > 0 && (

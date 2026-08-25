@@ -142,9 +142,24 @@ export type Recomendacao5a = {
   correcao_solo: {
     calagem_t_ha_prnt100: number | null;
     calagem_t_ha_produto: number | null;
+    corretivo_sugerido: string | null; // tipo de calcário conforme Ca:Mg/Mg
+    corretivo_motivo: string | null;
     gessagem_indicada: boolean;
+    gesso_t_ha: number | null; // dose de gesso (NG = 0,25 × NC)
+    gesso_ca_kg_ha: number | null; // Ca fornecido pelo gesso
+    gesso_s_kg_ha: number | null; // S fornecido pelo gesso
   };
+  fontes_micros: MicroFonte[];
   alertas: string[];
+};
+
+export type MicroFonte = {
+  nutriente: string;
+  produto: string;
+  teor_pct: number;
+  dose_produto_kg_ha: number;
+  via: string;
+  obs?: string;
 };
 
 // --------------------------------------------------------------- cálculos ----
@@ -327,6 +342,73 @@ export function calcularCalagem(input: {
     nc_prnt100: Math.round(nc * 100) / 100,
     qc_produto: Math.round(qc * 100) / 100,
   };
+}
+
+// Seção 3 — escolha do corretivo pela relação Ca:Mg e pela classe de Mg.
+export function escolherCorretivo(
+  classeMg: ClasseGeral | null,
+  caMg: number | null,
+): { tipo: string; motivo: string } | null {
+  const mgBaixo = classeMg === "muito_baixo" || classeMg === "baixo";
+  if (mgBaixo || (caMg !== null && caMg > 5)) {
+    return {
+      tipo: "Calcário dolomítico",
+      motivo:
+        caMg !== null && caMg > 5
+          ? `relação Ca:Mg ${round(caMg, 1)} alta — repor Mg`
+          : "Mg baixo — usar corretivo com Mg",
+    };
+  }
+  if (caMg !== null && caMg < 3) {
+    return { tipo: "Calcário calcítico", motivo: `relação Ca:Mg ${round(caMg, 1)} baixa — priorizar Ca` };
+  }
+  return { tipo: "Calcário dolomítico", motivo: "manter a relação Ca:Mg entre 3:1 e 5:1" };
+}
+
+// Seção 3 — dose de gesso (NG = 0,25 × NC), quando a gessagem é indicada e há
+// necessidade de calagem. O gesso fornece ~16% Ca e ~15% S.
+export function doseGessagem(
+  ncPrnt100: number | null,
+  indicada: boolean,
+): { gesso_t_ha: number | null; ca_kg_ha: number | null; s_kg_ha: number | null } {
+  if (!indicada || ncPrnt100 === null || ncPrnt100 <= 0) {
+    return { gesso_t_ha: null, ca_kg_ha: null, s_kg_ha: null };
+  }
+  const t = round(0.25 * ncPrnt100, 2);
+  const kg = t * 1000;
+  return { gesso_t_ha: t, ca_kg_ha: Math.round(kg * 0.16), s_kg_ha: Math.round(kg * 0.15) };
+}
+
+// Seção 11 — fontes comerciais dos micronutrientes e via de aplicação.
+const MICRO_FONTES: Record<string, { produto: string; teor: number; via: string; obs?: string }> = {
+  B: { produto: "Ácido bórico", teor: 17, via: "solo", obs: "B corrige-se preferencialmente via solo" },
+  Zn: { produto: "Sulfato de zinco", teor: 20, via: "solo ou foliar" },
+  Cu: { produto: "Sulfato de cobre", teor: 13, via: "foliar ou solo", obs: "descontar Cu de fungicidas cúpricos" },
+  Mn: { produto: "Sulfato de manganês", teor: 26, via: "foliar" },
+};
+
+export function fontesMicros(n: Recomendacao5a["necessidade_nutrientes"]): MicroFonte[] {
+  const itens: MicroFonte[] = [];
+  const mapa: [string, number | null][] = [
+    ["B", n.B_kg_ha],
+    ["Zn", n.Zn_kg_ha],
+    ["Cu", n.Cu_kg_ha],
+    ["Mn", n.Mn_kg_ha],
+  ];
+  for (const [nut, dose] of mapa) {
+    const d = num(dose);
+    if (d === null || d <= 0) continue;
+    const f = MICRO_FONTES[nut];
+    itens.push({
+      nutriente: nut,
+      produto: f.produto,
+      teor_pct: f.teor,
+      dose_produto_kg_ha: Math.round((d / (f.teor / 100)) * 10) / 10,
+      via: f.via,
+      obs: f.obs,
+    });
+  }
+  return itens;
 }
 
 export function gessagemIndicada(sub: Solo20a40 | null | undefined): boolean {
@@ -706,6 +788,11 @@ export function recomendarNutrientes5a(input: {
     profundidade_correcao_cm: lavoura.profundidade_correcao_cm,
   });
   const gessagem = gessagemIndicada(input.sub);
+  const gesso = doseGessagem(calagem.nc_prnt100, gessagem);
+  const corretivo =
+    calagem.nc_prnt100 !== null && calagem.nc_prnt100 > 0
+      ? escolherCorretivo(classificacoes.Mg, idx.Ca_Mg_ratio)
+      : null;
 
   // Macronutrientes por fase.
   let N: number | null = null;
@@ -844,8 +931,23 @@ export function recomendarNutrientes5a(input: {
     correcao_solo: {
       calagem_t_ha_prnt100: calagem.nc_prnt100,
       calagem_t_ha_produto: calagem.qc_produto,
+      corretivo_sugerido: corretivo?.tipo ?? null,
+      corretivo_motivo: corretivo?.motivo ?? null,
       gessagem_indicada: gessagem,
+      gesso_t_ha: gesso.gesso_t_ha,
+      gesso_ca_kg_ha: gesso.ca_kg_ha,
+      gesso_s_kg_ha: gesso.s_kg_ha,
     },
+    fontes_micros: fontesMicros({
+      N_kg_ha_ano: N,
+      P2O5_kg_ha_ano: P2O5,
+      K2O_kg_ha_ano: K2O,
+      S_kg_ha_ano: S,
+      B_kg_ha: microB.dose_kg_ha,
+      Cu_kg_ha: microCu.dose_kg_ha,
+      Mn_kg_ha: microMn.dose_kg_ha,
+      Zn_kg_ha: microZn.dose_kg_ha,
+    }),
     alertas,
   };
 }

@@ -346,6 +346,12 @@
 .fert5a-kg { white-space: nowrap; font-weight: 700; text-align: right; }
 .fert5a-obs { color: var(--text-soft); font-size: 0.78rem; }
 .fert5a-parcelamento { margin: 0.6rem 0 0; font-size: 0.76rem; color: var(--text-soft); line-height: 1.45; }
+.fert5a-micros { margin-top: 1rem; }
+.fert5a-micros h3 { font-size: 0.9rem; margin: 0 0 0.5rem; }
+.fert5a-micros table { width: 100%; border-collapse: collapse; }
+.fert5a-micros td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--line); font-size: 0.85rem; vertical-align: top; }
+.fert5a-micros td:first-child { width: 2.5rem; font-weight: 700; }
+.fert5a-micros em { font-style: normal; color: var(--text-faint); font-size: 0.78rem; }
 
 @media print {
   body.printing-fert5a * { visibility: hidden !important; }

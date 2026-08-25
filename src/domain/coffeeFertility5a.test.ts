@@ -238,3 +238,38 @@ describe("sugerirFormulacao — melhor formulado para a área", () => {
     expect(plano.principal?.kg_total).toBeNull();
   });
 });
+
+describe("correção do solo: corretivo, gessagem e micros", () => {
+  it("Mg baixo → calcário dolomítico; gessagem com Al 20-40 alto vira dose de gesso", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "producao", produtividade_esperada_sc_ha: 40, Ve_percentual: 60 },
+      solo: {
+        Ca_cmolc_dm3: 2, Mg_cmolc_dm3: 0.3, // Mg baixo
+        Al_cmolc_dm3: 0.2, H_Al_cmolc_dm3: 4, K_mg_dm3: 100,
+        P_mg_dm3: 8, P_rem_mg_L: 15,
+      },
+      sub: { Al_cmolc_dm3: 0.7 }, // dispara gessagem
+    });
+    expect(rec.correcao_solo.corretivo_sugerido).toBe("Calcário dolomítico");
+    expect(rec.correcao_solo.gessagem_indicada).toBe(true);
+    // NC>0 → dose de gesso = 0,25 × NC.
+    expect(rec.correcao_solo.gesso_t_ha).toBeGreaterThan(0);
+    expect(rec.correcao_solo.gesso_s_kg_ha).toBeGreaterThan(0);
+  });
+
+  it("micros classificados baixos geram fontes comerciais (produto e via)", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "producao", produtividade_esperada_sc_ha: 40 },
+      solo: {
+        K_mg_dm3: 100, P_mg_dm3: 8, P_rem_mg_L: 15,
+        B_mg_dm3: 0.2, extrator_B: "mehlich1", // baixo → 3 kg B
+        Zn_mg_dm3: 1.5, extrator_Zn: "mehlich1", // baixo → 6 kg Zn
+      },
+    });
+    const b = rec.fontes_micros.find((m) => m.nutriente === "B");
+    const zn = rec.fontes_micros.find((m) => m.nutriente === "Zn");
+    expect(b?.produto).toMatch(/bórico/i);
+    expect(b?.dose_produto_kg_ha).toBeGreaterThan(0); // 3 / 0,17 ≈ 17,6
+    expect(zn?.via).toMatch(/foliar|solo/);
+  });
+});

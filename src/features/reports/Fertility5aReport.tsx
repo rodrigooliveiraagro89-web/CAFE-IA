@@ -155,7 +155,15 @@ export function Fertility5aReport({
             {rec.correcao_solo.calagem_t_ha_produto !== null
               ? `${fmt(rec.correcao_solo.calagem_t_ha_produto, 2)} t/ha`
               : "—"}
-            {rec.correcao_solo.gessagem_indicada ? " · Gessagem indicada" : ""}
+            {rec.correcao_solo.corretivo_sugerido ? ` · ${rec.correcao_solo.corretivo_sugerido}` : ""}
+          </p>
+          <p className="fert5a-correcao">
+            <strong>Gessagem:</strong>{" "}
+            {rec.correcao_solo.gessagem_indicada
+              ? rec.correcao_solo.gesso_t_ha !== null
+                ? `${fmt(rec.correcao_solo.gesso_t_ha, 2)} t/ha (≈${fmt(rec.correcao_solo.gesso_ca_kg_ha, 0)} kg Ca, ${fmt(rec.correcao_solo.gesso_s_kg_ha, 0)} kg S)`
+                : "indicada"
+              : "não indicada"}
           </p>
         </div>
         {formulacao.principal && (
@@ -209,6 +217,23 @@ export function Fertility5aReport({
                   <tr key={item.produto}>
                     <td><strong>{item.produto}</strong> <em>{item.formula}</em></td>
                     <td className="fert5a-kg">{fmt(item.kg_ha, 0)} kg/ha</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {rec.fontes_micros.length > 0 && (
+          <div className="fert5a-micros">
+            <h3>Micronutrientes — fonte e via</h3>
+            <table>
+              <tbody>
+                {rec.fontes_micros.map((m) => (
+                  <tr key={m.nutriente}>
+                    <td><strong>{m.nutriente}</strong></td>
+                    <td>{m.produto} <em>({m.teor_pct}%)</em></td>
+                    <td className="fert5a-kg">{fmt(m.dose_produto_kg_ha, 1)} kg/ha</td>
+                    <td className="fert5a-obs">via {m.via}</td>
                   </tr>
                 ))}
               </tbody>
