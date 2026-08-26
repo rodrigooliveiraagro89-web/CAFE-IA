@@ -203,7 +203,60 @@
 .plot-card > button:first-child {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  padding: 1rem 2.8rem 1rem 1rem;
+  padding: 1rem 4.6rem 1rem 1rem;
+}
+
+.plot-card-actions {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.1rem;
+}
+
+.ghost-icon {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.ghost-icon:hover {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--text);
+}
+.plot-card-actions .danger-icon {
+  position: static;
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.plot-status {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-faint) 16%, transparent);
+  color: var(--text-soft);
+  vertical-align: middle;
+}
+.plot-status[data-status="ativo"] {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.form-inset-title {
+  margin: 0 0 0.7rem;
+  font-weight: 700;
+  font-size: 0.98rem;
 }
 
 .plot-area {

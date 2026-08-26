@@ -6,6 +6,7 @@ import {
   FileUp,
   LandPlot,
   MapPinned,
+  Pencil,
   Plus,
   Share2,
   Trash2,
@@ -22,7 +23,9 @@ import {
   plotStatusLabels,
   propertyLocation,
   recentSeasons,
+  type FarmPlot,
   type PlotInput,
+  type PlotStatus,
   type PropertyInput,
 } from "../../domain/agriculturalContext";
 import { canAddPlot, canAddProperty, resolvePlan, TRIAL_DAYS } from "../../domain/plans";
@@ -227,6 +230,7 @@ export function PropertyManager({
   const selectedShared = selectedProperty ? isSharedProperty(selectedProperty, userId) : false;
   const [propertyDraft, setPropertyDraft] = useState(blankProperty);
   const [plotDraft, setPlotDraft] = useState(blankPlot);
+  const [editingPlotId, setEditingPlotId] = useState<string | null>(null);
   const [propertyFormOpen, setPropertyFormOpen] = useState(state.properties.length === 0);
   const [plotFormOpen, setPlotFormOpen] = useState(false);
   const [boundaryMessage, setBoundaryMessage] = useState("");
@@ -250,11 +254,54 @@ export function PropertyManager({
 
   function submitPlot(event: FormEvent) {
     event.preventDefault();
-    if (!selectedProperty || !plotAllowed) return;
-    agriculture.addPlot(selectedProperty.id, plotDraft);
+    if (!selectedProperty) return;
+    if (editingPlotId) {
+      agriculture.updatePlot(editingPlotId, plotDraft);
+    } else {
+      if (!plotAllowed) return;
+      agriculture.addPlot(selectedProperty.id, plotDraft);
+    }
     setPlotDraft(blankPlot);
+    setEditingPlotId(null);
     setBoundaryMessage("");
     setPlotFormOpen(false);
+  }
+
+  function abrirNovoTalhao() {
+    setPlotDraft(blankPlot);
+    setEditingPlotId(null);
+    setBoundaryMessage("");
+    setPlotFormOpen(true);
+  }
+
+  function editarTalhao(plot: FarmPlot) {
+    setPlotDraft({
+      name: plot.name,
+      crop: plot.crop,
+      variety: plot.variety,
+      season: plot.season,
+      plantingDate: plot.plantingDate,
+      phenologicalStage: plot.phenologicalStage,
+      rowSpacing: plot.rowSpacing,
+      plantSpacing: plot.plantSpacing,
+      population: plot.population,
+      areaHectares: plot.areaHectares,
+      geometry: plot.geometry,
+      altitude: plot.altitude ?? "",
+      produtividadeEsperada: plot.produtividadeEsperada ?? "",
+      produtividadeAnterior: plot.produtividadeAnterior ?? "",
+      status: plot.status ?? "ativo",
+      observacoes: plot.observacoes ?? "",
+    });
+    setEditingPlotId(plot.id);
+    setBoundaryMessage("");
+    setPlotFormOpen(true);
+  }
+
+  function fecharFormTalhao() {
+    setPlotFormOpen(false);
+    setEditingPlotId(null);
+    setPlotDraft(blankPlot);
   }
 
   async function importBoundary(file: File | undefined) {
@@ -450,7 +497,7 @@ export function PropertyManager({
                   <p>Selecione a área operacional ou cadastre um novo limite.</p>
                 </div>
                 {plotAllowed && !selectedShared && (
-                  <button className="secondary-button" type="button" onClick={() => setPlotFormOpen(true)}>
+                  <button className="secondary-button" type="button" onClick={abrirNovoTalhao}>
                     <Plus size={17} /> Novo talhão
                   </button>
                 )}
@@ -465,8 +512,9 @@ export function PropertyManager({
                 />
               )}
 
-              {plotFormOpen && plotAllowed && (
+              {plotFormOpen && (plotAllowed || editingPlotId) && (
                 <form className="data-form inset-form" onSubmit={submitPlot}>
+                  <p className="form-inset-title">{editingPlotId ? "Editar talhão" : "Novo talhão"}</p>
                   <div className="form-grid">
                     <label>
                       Nome do talhão
@@ -550,8 +598,8 @@ export function PropertyManager({
                     {boundaryMessage || "Arquivos Shapefile exigem conversão para GeoJSON nesta versão."}
                   </p>
                   <div className="form-actions">
-                    <button className="secondary-button" type="button" onClick={() => setPlotFormOpen(false)}>Cancelar</button>
-                    <button className="primary-button" type="submit">Salvar talhão</button>
+                    <button className="secondary-button" type="button" onClick={fecharFormTalhao}>Cancelar</button>
+                    <button className="primary-button" type="submit">{editingPlotId ? "Salvar alterações" : "Salvar talhão"}</button>
                   </div>
                 </form>
               )}
@@ -567,22 +615,42 @@ export function PropertyManager({
                     <article className="plot-card" data-active={plot.id === selectedPlot?.id} key={plot.id}>
                       <button type="button" onClick={() => agriculture.selectPlot(plot.id)}>
                         <span className="plot-crop-icon"><Wheat size={21} /></span>
-                        <span><small>{plot.crop}</small><strong>{plot.name}</strong></span>
+                        <span>
+                          <small>{plot.crop}</small><strong>{plot.name}</strong>
+                          {plot.status && (
+                            <span className="plot-status" data-status={plot.status}>
+                              {plotStatusLabels[plot.status as PlotStatus] ?? plot.status}
+                            </span>
+                          )}
+                        </span>
                         <span className="plot-area">{plot.areaHectares.toLocaleString("pt-BR")} ha</span>
-                        <span className="plot-meta">{plot.season}{plot.variety ? ` · ${plot.variety}` : ""}</span>
+                        <span className="plot-meta">
+                          {plot.season}{plot.variety ? ` · ${plot.variety}` : ""}
+                          {plot.produtividadeEsperada ? ` · meta ${plot.produtividadeEsperada} sc/ha` : ""}
+                        </span>
                         {plot.geometry && <span className="geometry-badge"><MapPinned size={13} /> Limite geográfico</span>}
                       </button>
                       {!selectedShared && (
-                        <button
-                          className="danger-icon"
-                          type="button"
-                          title="Excluir talhão"
-                          onClick={() => {
-                            if (window.confirm(`Excluir o talhão ${plot.name}?`)) agriculture.removePlot(plot.id);
-                          }}
-                        >
-                          <Trash2 size={17} />
-                        </button>
+                        <div className="plot-card-actions">
+                          <button
+                            className="ghost-icon"
+                            type="button"
+                            title="Editar talhão"
+                            onClick={() => editarTalhao(plot)}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            className="danger-icon"
+                            type="button"
+                            title="Excluir talhão"
+                            onClick={() => {
+                              if (window.confirm(`Excluir o talhão ${plot.name}?`)) agriculture.removePlot(plot.id);
+                            }}
+                          >
+                            <Trash2 size={17} />
+                          </button>
+                        </div>
                       )}
                     </article>
                   ))}

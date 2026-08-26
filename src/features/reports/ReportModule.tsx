@@ -1,7 +1,7 @@
 import { Check, Copy, Crown, Download, Link2, MapPinned, Share2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppView } from "../../app/navigation";
-import { propertyLocation } from "../../domain/agriculturalContext";
+import { plotStatusLabels, propertyLocation, type PlotStatus } from "../../domain/agriculturalContext";
 import {
   agregarCompras,
   recomendarNutrientes5a,
@@ -371,6 +371,7 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
             <th>Talhão</th>
             <th>Cultura</th>
             <th>Safra</th>
+            <th>Situação</th>
             <th>Área (ha)</th>
             <th>NDVI médio</th>
             <th>Última análise</th>
@@ -383,6 +384,7 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
               <td>{row.plot.name}</td>
               <td>{row.plot.crop}</td>
               <td>{row.plot.season || "—"}</td>
+              <td>{row.plot.status ? plotStatusLabels[row.plot.status as PlotStatus] ?? row.plot.status : "—"}</td>
               <td>{row.plot.areaHectares.toLocaleString("pt-BR")}</td>
               <td>{row.ndviMean !== null ? row.ndviMean.toFixed(2) : "—"}</td>
               <td>{row.ndviDate ? new Date(row.ndviDate).toLocaleDateString("pt-BR") : "Não processado"}</td>

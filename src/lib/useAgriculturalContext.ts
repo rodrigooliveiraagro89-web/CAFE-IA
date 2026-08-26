@@ -19,6 +19,7 @@ export type AgriculturalController = {
   selectedPlot: FarmPlot | null;
   addProperty: (input: PropertyInput) => string;
   addPlot: (propertyId: string, input: PlotInput) => string;
+  updatePlot: (plotId: string, input: PlotInput) => void;
   updatePlotBoundary: (
     plotId: string,
     geometry: GeoPolygon,
@@ -297,6 +298,36 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
             .then(({ error }) => logSyncError("talhão novo", error));
         }
         return id;
+      },
+      updatePlot(plotId, input) {
+        setState((current) => ({
+          ...current,
+          plots: current.plots.map((p) => (p.id === plotId ? { ...p, ...input } : p)),
+        }));
+        if (userId && navigator.onLine) {
+          supabase
+            .from("plots")
+            .update({
+              name: input.name,
+              crop: input.crop,
+              variety: input.variety,
+              season: input.season,
+              planting_date: input.plantingDate,
+              phenological_stage: input.phenologicalStage,
+              row_spacing: input.rowSpacing,
+              plant_spacing: input.plantSpacing,
+              population: input.population,
+              area_hectares: input.areaHectares,
+              geometry: input.geometry,
+              altitude: input.altitude ?? null,
+              produtividade_esperada: input.produtividadeEsperada ?? null,
+              produtividade_anterior: input.produtividadeAnterior ?? null,
+              status: input.status ?? null,
+              observacoes: input.observacoes ?? null,
+            })
+            .eq("id", plotId)
+            .then(({ error }) => logSyncError("talhão editado", error));
+        }
       },
       updatePlotBoundary(plotId, geometry, areaHectares) {
         setState((current) => ({
