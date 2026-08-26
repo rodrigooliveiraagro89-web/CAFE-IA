@@ -1,18 +1,18 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { dm, pushAlerts, type AlertInput, type CanonicalAlert } from "./alertRules.ts";
 
 // Entrega de alertas por Web Push. Roda agendada (pg_cron -> HTTP) e calcula os
 // alertas NO SERVIDOR a partir das tabelas do Supabase, para chegar no celular
 // do produtor mesmo com o app fechado. A trava de acesso (x-cron-secret) segue
 // ativa: o segredo esperado é lido da tabela function_secrets (gerado dentro do
 // banco, sem segredo humano em env). verify_jwt fica desligado de propósito.
+//
+// A DERIVAÇÃO dos alertas (limiares, NDVI/solo/atividades, calendário mensal)
+// mora em ./alertRules.ts — a MESMA fonte que o app usa (src/domain/alertRules.ts),
+// copiada byte a byte no deploy. Assim o que chega por push bate com a tela.
+// Aqui ficam só as partes do servidor: previsão do tempo (clima), dedup e envio.
 
-type Severity = "alta" | "media" | "info";
-type Alert = { key: string; severity: Severity; title: string; body: string; view: string };
-
-const NDVI_DIAS_DESATUALIZADO = 45;
-const NDVI_QUEDA_RELEVANTE = 0.08;
-const SOLO_DIAS_VALIDADE = 365;
 const REENVIO_DIAS = 7;
 
 // Geada — o push mais crítico p/ café de montanha. Mínima prevista para as
@@ -25,44 +25,6 @@ const GEADA_DIAS_A_FRENTE = 2;
 const CHUVA_FORTE_MM = 30; // >= 30 mm/dia
 const CALOR_MAX_C = 34; // >= 34 °C
 const CLIMA_DIAS_A_FRENTE = 3; // janela p/ chuva/calor/veranico
-const ATIV_PROXIMA_DIAS = 3; // avisa atividade planejada (adubação etc.) chegando
-
-const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-
-// Calendário do cafeicultor (Sul de Minas) — atividades por mês. Espelha
-// src/domain/coffeeCalendar.ts; serve para o resumo mensal por push.
-const MESES = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-const CALENDAR: { label: string; months: number[] }[] = [
-  { label: "Análise de solo", months: [4, 5, 6, 7] },
-  { label: "Análise foliar", months: [1, 2, 11, 12] },
-  { label: "Calagem/Gessagem", months: [3, 4, 7, 8, 9] },
-  { label: "Podas", months: [6, 7, 8] },
-  { label: "Manejo do mato", months: [1, 2, 3, 4, 10, 11, 12] },
-  { label: "Adubação via solo", months: [1, 2, 9, 10, 11, 12] },
-  { label: "Adubação foliar", months: [1, 2, 3, 9, 10, 11, 12] },
-  { label: "Plantio das mudas", months: [1, 2, 10, 11, 12] },
-  { label: "Desbrotas", months: [1, 2, 3, 4, 5, 6, 12] },
-  { label: "Colheita", months: [4, 5, 6, 7, 8] },
-];
-
-// Resumo mensal do calendário — uma notificação por mês (chave YYYY-MM).
-function calendarSummary(today: string): Alert | null {
-  const month = Number(today.slice(5, 7));
-  const labels = CALENDAR.filter((a) => a.months.includes(month)).map((a) => a.label);
-  if (labels.length === 0) return null;
-  return {
-    key: `calendario-${today.slice(0, 7)}`,
-    severity: "media",
-    title: `📅 Calendário de ${MESES[month] ?? ""}`,
-    body: `Época de: ${labels.join(", ")}. Veja no Clima o que fazer e a melhor janela.`,
-    view: "clima",
-  };
-}
-
-function weekdayLabel(isoDate: string): string {
-  const d = new Date(`${isoDate.slice(0, 10)}T12:00:00Z`);
-  return Number.isNaN(d.getTime()) ? "" : WEEKDAYS[d.getUTCDay()];
-}
 
 // Centro do talhão a partir da geometria GeoJSON (anel [lng,lat]).
 function plotCentroid(geometry: any): { lat: number; lon: number } | null {
@@ -84,13 +46,9 @@ function plotCentroid(geometry: any): { lat: number; lon: number } | null {
   return { lat: sumLat / pts.length, lon: sumLon / pts.length };
 }
 
-function dm(date: string): string {
-  return `${weekdayLabel(date)} (${date.slice(8, 10)}/${date.slice(5, 7)})`;
-}
-
 // Consulta a previsão pública Open-Meteo (sem chave) e devolve os alertas de
 // clima (geada, chuva forte, calor extremo, veranico) — os mesmos do Início.
-async function fetchWeatherAlerts(lat: number, lon: number): Promise<Alert[]> {
+async function fetchWeatherAlerts(lat: number, lon: number): Promise<CanonicalAlert[]> {
   const days = CLIMA_DIAS_A_FRENTE + 1;
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
@@ -109,7 +67,7 @@ async function fetchWeatherAlerts(lat: number, lon: number): Promise<Alert[]> {
   const tmin = data.daily?.temperature_2m_min ?? [];
   const tmax = data.daily?.temperature_2m_max ?? [];
   const prec = data.daily?.precipitation_sum ?? [];
-  const alerts: Alert[] = [];
+  const alerts: CanonicalAlert[] = [];
 
   // Geada — próximas madrugadas (ignora hoje, já em curso).
   let coldest: { date: string; min: number } | null = null;
@@ -126,6 +84,7 @@ async function fetchWeatherAlerts(lat: number, lon: number): Promise<Alert[]> {
       title: severa ? `❄️ Risco de geada (${coldest.min}°C)` : `❄️ Atenção a geada (${coldest.min}°C)`,
       body: `Mínima de ${coldest.min}°C na madrugada de ${dm(coldest.date)}. Avalie proteção da lavoura.`,
       view: "clima",
+      actionLabel: "Ver no clima",
     });
   }
 
@@ -141,6 +100,7 @@ async function fetchWeatherAlerts(lat: number, lon: number): Promise<Alert[]> {
         title: `🌧️ Chuva forte (${rain} mm)`,
         body: `${rain} mm previstos para ${dm(time[i])}. Evite adubação em cobertura antes (lixiviação) e planeje colheita/drenagem.`,
         view: "clima",
+        actionLabel: "Ver no clima",
       });
       break;
     }
@@ -154,6 +114,7 @@ async function fetchWeatherAlerts(lat: number, lon: number): Promise<Alert[]> {
         title: `🔥 Calor extremo (${max}°C)`,
         body: `Máxima de ${max}°C para ${dm(time[i])}. Evite pulverizar nas horas quentes; atenção ao estresse na florada/granação.`,
         view: "clima",
+        actionLabel: "Ver no clima",
       });
       break;
     }
@@ -167,114 +128,10 @@ async function fetchWeatherAlerts(lat: number, lon: number): Promise<Alert[]> {
       title: "☀️ Sem chuva nos próximos dias",
       body: `Nenhuma chuva relevante prevista para os próximos ${days} dias. Atenção ao déficit hídrico e programe irrigação.`,
       view: "clima",
+      actionLabel: "Ver no clima",
     });
   }
 
-  return alerts;
-}
-
-function diasEntre(deISO: string, ateISO: string): number {
-  const de = new Date(`${deISO.slice(0, 10)}T00:00:00Z`).getTime();
-  const ate = new Date(`${ateISO.slice(0, 10)}T00:00:00Z`).getTime();
-  if (Number.isNaN(de) || Number.isNaN(ate)) return 0;
-  return Math.round((ate - de) / 86_400_000);
-}
-
-function ultimoPorData<T>(itens: T[], dataDe: (i: T) => string): T | null {
-  if (!itens.length) return null;
-  return [...itens].sort((a, b) => new Date(dataDe(b)).getTime() - new Date(dataDe(a)).getTime())[0];
-}
-
-function buildAlerts(plots: any[], records: any[], ndvi: any[], soil: any[], today: string): Alert[] {
-  const alerts: Alert[] = [];
-
-  // Resumo do calendário do cafeicultor (uma vez por mês).
-  const cal = calendarSummary(today);
-  if (cal) alerts.push(cal);
-
-  const atrasadas = records.filter(
-    (r) => r.status === "planejada" && r.date && diasEntre(r.date, today) > 0,
-  );
-  if (atrasadas.length > 0) {
-    alerts.push({
-      key: "atividades-atrasadas",
-      severity: "alta",
-      title: atrasadas.length === 1 ? "1 atividade atrasada" : `${atrasadas.length} atividades atrasadas`,
-      body: "Há atividades planejadas cuja data já passou. Abra o caderno de campo.",
-      view: "caderno",
-    });
-  }
-
-  // Atividades planejadas CHEGANDO (adubação, pulverização, colheita etc.):
-  // avisa nos próximos dias, uma por atividade (dedup por id evita repetir).
-  const plotName = new Map<string, string>();
-  for (const p of plots) plotName.set(String(p.id), p.name ?? "talhão");
-  for (const r of records) {
-    if (r.status !== "planejada" || !r.date) continue;
-    const dias = diasEntre(today, r.date);
-    if (dias < 0 || dias > ATIV_PROXIMA_DIAS) continue;
-    const quando = dias === 0 ? "hoje" : dias === 1 ? "amanhã" : `em ${dias} dias`;
-    const nome = String(r.title || r.type || "Atividade").trim() || "Atividade";
-    const onde = r.plot_id && plotName.get(String(r.plot_id)) ? ` em ${plotName.get(String(r.plot_id))}` : "";
-    alerts.push({
-      key: `atividade-proxima-${r.id}`,
-      severity: "media",
-      title: `📌 ${nome} ${quando}`,
-      body: `${nome} planejada${onde} para ${dm(r.date)} (${quando}). Abra o caderno para confirmar.`,
-      view: "caderno",
-    });
-  }
-  for (const plot of plots) {
-    const nome = plot.name ?? "talhão";
-    const ndviPlot = ndvi
-      .filter((r) => String(r.plot_id) === String(plot.id))
-      .sort((a, b) => new Date(b.acquired_at).getTime() - new Date(a.acquired_at).getTime());
-    if (ndviPlot.length >= 2) {
-      const m0 = Number(ndviPlot[0]?.result?.statistics?.mean);
-      const m1 = Number(ndviPlot[1]?.result?.statistics?.mean);
-      if (Number.isFinite(m0) && Number.isFinite(m1) && m1 - m0 >= NDVI_QUEDA_RELEVANTE) {
-        alerts.push({
-          key: `ndvi-queda-${plot.id}`,
-          severity: "alta",
-          title: `Vigor em queda em ${nome}`,
-          body: `NDVI médio caiu de ${m1.toFixed(2)} para ${m0.toFixed(2)}. Vale inspeção de campo.`,
-          view: "ndvi",
-        });
-      }
-    }
-    const ultimoNdvi = ndviPlot[0] ?? null;
-    if (ultimoNdvi && diasEntre(ultimoNdvi.acquired_at, today) > NDVI_DIAS_DESATUALIZADO) {
-      alerts.push({
-        key: `ndvi-desatualizado-${plot.id}`,
-        severity: "media",
-        title: `NDVI desatualizado em ${nome}`,
-        body: `A última cena tem mais de ${NDVI_DIAS_DESATUALIZADO} dias. Atualize o monitoramento.`,
-        view: "ndvi",
-      });
-    }
-    const solosPlot = soil.filter((s) => String(s.plot_id) === String(plot.id));
-    const ultimoSolo = ultimoPorData(solosPlot, (s) => s.analysis_date ?? s.created_at);
-    if (!ultimoSolo) {
-      alerts.push({
-        key: `solo-ausente-${plot.id}`,
-        severity: "media",
-        title: `Sem análise de solo em ${nome}`,
-        body: "A recomendação de calagem e adubação depende do laudo do talhão.",
-        view: "analise-solo",
-      });
-    } else {
-      const dataSolo = ultimoSolo.analysis_date ?? ultimoSolo.created_at;
-      if (diasEntre(dataSolo, today) > SOLO_DIAS_VALIDADE) {
-        alerts.push({
-          key: `solo-vencido-${plot.id}`,
-          severity: "media",
-          title: `Análise de solo vencida em ${nome}`,
-          body: "O último laudo tem mais de 12 meses. Uma amostragem nova mantém a adubação calibrada.",
-          view: "analise-solo",
-        });
-      }
-    }
-  }
   return alerts;
 }
 
@@ -289,10 +146,34 @@ function groupBy<T>(rows: T[], key: (r: T) => string): Map<string, T[]> {
   return map;
 }
 
+// Monta a forma normalizada que alertRules espera a partir das linhas do banco.
+function toAlertInput(plots: any[], records: any[], ndvi: any[], soil: any[]): AlertInput {
+  return {
+    plots: plots.map((p) => ({ id: String(p.id), name: p.name ?? "talhão" })),
+    records: records.map((r) => ({
+      id: String(r.id),
+      status: r.status,
+      date: r.date,
+      plotId: r.plot_id != null ? String(r.plot_id) : null,
+      title: r.title,
+      type: r.type,
+    })),
+    ndvi: ndvi.map((r) => {
+      const mean = Number(r?.result?.statistics?.mean);
+      return {
+        plotId: String(r.plot_id),
+        acquiredAt: r.acquired_at,
+        mean: Number.isFinite(mean) ? mean : null,
+      };
+    }),
+    soil: soil.map((s) => ({ plotId: String(s.plot_id), date: s.analysis_date ?? s.created_at })),
+  };
+}
+
 // Envio por WhatsApp via Cloud API (Meta). Usa um TEMPLATE aprovado com dois
 // parâmetros no corpo: {{1}} = título, {{2}} = mensagem. Só envia se as
 // credenciais estiverem configuradas nos secrets da função.
-async function sendWhatsapp(to: string, alert: Alert): Promise<boolean> {
+async function sendWhatsapp(to: string, alert: CanonicalAlert): Promise<boolean> {
   const token = Deno.env.get("WHATSAPP_TOKEN") ?? "";
   const phoneId = Deno.env.get("WHATSAPP_PHONE_ID") ?? "";
   if (!token || !phoneId) return false;
@@ -441,13 +322,13 @@ Deno.serve(async (req) => {
     // Nível mínimo: 'alta' → só alta; 'media' → alta + média.
     const aceita = (sev: string) => (pref.min === "alta" ? sev === "alta" : sev === "alta" || sev === "media");
     const userPlots = plotsByUser.get(userId) ?? [];
-    const alerts = buildAlerts(
+    const input = toAlertInput(
       userPlots,
       recordsByUser.get(userId) ?? [],
       ndviByUser.get(userId) ?? [],
       soilByUser.get(userId) ?? [],
-      today,
-    ).filter((a) => aceita(a.severity));
+    );
+    const alerts = pushAlerts(input, today).filter((a) => aceita(a.severity));
 
     // Geada: usa o centro do primeiro talhão mapeado do usuário. Se não houver
     // limite desenhado, não dá para localizar o clima — segue sem geada.

@@ -1,5 +1,6 @@
 import type { DailyForecast } from "./weather";
 import type { WeatherGuidance } from "./weatherGuidance";
+import { CALENDAR, monthName } from "./alertRules";
 
 /**
  * Calendário do cafeicultor — as atividades por mês (referência para o Sul de
@@ -7,6 +8,10 @@ import type { WeatherGuidance } from "./weatherGuidance";
  * produtor. Serve para o app AVISAR o que fazer no mês SEM precisar agendar, e
  * cruzar com a previsão para gerar alertas oportunos. As datas variam por
  * região/altitude/cultivar — é orientação, não prescrição.
+ *
+ * Os meses vêm de ./alertRules (fonte única compartilhada com o push); aqui só
+ * acrescentamos o `kind` (usado pelo cruzamento com o clima). Assim o calendário
+ * do app e o resumo mensal por push nunca divergem.
  */
 
 export type CalendarKind = Extract<
@@ -21,37 +26,28 @@ export type CalendarActivity = {
   months: number[]; // 1 = janeiro … 12 = dezembro
 };
 
-export const COFFEE_CALENDAR: CalendarActivity[] = [
-  { id: "analise-solo", label: "Análise de solo", kind: "analise", months: [4, 5, 6, 7] },
-  { id: "analise-foliar", label: "Análise foliar", kind: "foliar", months: [1, 2, 11, 12] },
-  { id: "calagem", label: "Calagem / Gessagem", kind: "calagem", months: [3, 4, 7, 8, 9] },
-  { id: "podas", label: "Podas", kind: "poda", months: [6, 7, 8] },
-  { id: "manejo-mato", label: "Manejo do mato", kind: "manejo", months: [1, 2, 3, 4, 10, 11, 12] },
-  { id: "adubacao-solo", label: "Adubação via solo", kind: "adubacao", months: [1, 2, 9, 10, 11, 12] },
-  { id: "adubacao-foliar", label: "Adubação foliar", kind: "foliar", months: [1, 2, 3, 9, 10, 11, 12] },
-  { id: "plantio", label: "Plantio das mudas", kind: "plantio", months: [1, 2, 10, 11, 12] },
-  { id: "desbrotas", label: "Desbrotas", kind: "desbrota", months: [1, 2, 3, 4, 5, 6, 12] },
-  { id: "colheita", label: "Colheita", kind: "colheita", months: [4, 5, 6, 7, 8] },
-];
+const KIND_BY_ID: Record<string, CalendarKind> = {
+  "analise-solo": "analise",
+  "analise-foliar": "foliar",
+  calagem: "calagem",
+  podas: "poda",
+  "manejo-mato": "manejo",
+  "adubacao-solo": "adubacao",
+  "adubacao-foliar": "foliar",
+  plantio: "plantio",
+  desbrotas: "desbrota",
+  colheita: "colheita",
+};
 
-const MONTH_NAMES = [
-  "",
-  "janeiro",
-  "fevereiro",
-  "março",
-  "abril",
-  "maio",
-  "junho",
-  "julho",
-  "agosto",
-  "setembro",
-  "outubro",
-  "novembro",
-  "dezembro",
-];
+export const COFFEE_CALENDAR: CalendarActivity[] = CALENDAR.map((entry) => ({
+  id: entry.id,
+  label: entry.label,
+  kind: KIND_BY_ID[entry.id] ?? "manejo",
+  months: entry.months,
+}));
 
 export function monthLabel(month: number): string {
-  return MONTH_NAMES[month] ?? "";
+  return monthName(month);
 }
 
 /** Atividades recomendadas para o mês (1–12). */
