@@ -44,6 +44,18 @@ export function isSharedProperty(property: FarmProperty, userId: string | null):
   return Boolean(property.ownerId && userId && property.ownerId !== userId);
 }
 
+// Situação do talhão na propriedade (usada em alertas e no plano de safra).
+export const plotStatuses = ["ativo", "formacao", "recepado", "reforma", "inativo"] as const;
+export type PlotStatus = (typeof plotStatuses)[number];
+
+export const plotStatusLabels: Record<PlotStatus, string> = {
+  ativo: "Em produção",
+  formacao: "Em formação",
+  recepado: "Recepado/esqueletado",
+  reforma: "Em reforma",
+  inativo: "Inativo",
+};
+
 export type FarmPlot = {
   id: string;
   propertyId: string;
@@ -59,6 +71,13 @@ export type FarmPlot = {
   areaHectares: number;
   geometry: GeoPolygon | null;
   createdAt: string;
+  // Campos persistidos do talhão (Fase 1.2). Opcionais para compatibilidade
+  // com talhões já salvos; strings numéricas seguem o padrão do cadastro.
+  altitude?: string; // metros
+  produtividadeEsperada?: string; // sc/ha
+  produtividadeAnterior?: string; // sc/ha (safra anterior, p/ bienalidade)
+  status?: PlotStatus | string;
+  observacoes?: string;
 };
 
 export type AgriculturalContextState = {

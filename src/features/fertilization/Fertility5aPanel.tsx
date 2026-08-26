@@ -41,6 +41,9 @@ type Props = {
   // Área do talhão (ha), para dimensionar a formulação em kg totais e sacas.
   areaHa?: number | null;
   propertyId?: string;
+  // Produtividade da safra anterior (sc/ha) cadastrada no talhão — pré-preenche
+  // a bienalidade em vez de ficar transitória.
+  safraAnteriorPadrao?: string;
   // Aplicações de adubação já registradas neste talhão (caderno de campo).
   aplicacoes?: FieldRecord[];
   onRegistrarAplicacao?: (input: FieldRecordInput) => Promise<void> | void;
@@ -165,6 +168,7 @@ export function Fertility5aPanel({
   plotId,
   plantasHa,
   areaHa,
+  safraAnteriorPadrao,
   aplicacoes,
   onRegistrarAplicacao,
   cenario,
@@ -172,7 +176,7 @@ export function Fertility5aPanel({
 }: Props) {
   const v = analysis?.values;
   const [fase, setFase] = useState<Fase>("producao");
-  const [safraAnt, setSafraAnt] = useState("");
+  const [safraAnt, setSafraAnt] = useState(safraAnteriorPadrao ?? "");
   const [plantas, setPlantas] = useState(plantasHa != null ? String(Math.round(plantasHa)) : "");
   const [sistema, setSistema] = useState<Sistema>("sequeiro");
   const [vAlvo, setVAlvo] = useState(60); // alvo de saturação por bases (Ve)

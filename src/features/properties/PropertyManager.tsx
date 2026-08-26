@@ -18,6 +18,8 @@ import {
   isSharedProperty,
   parsePlotBoundary,
   phenologicalStages,
+  plotStatuses,
+  plotStatusLabels,
   propertyLocation,
   recentSeasons,
   type PlotInput,
@@ -100,6 +102,11 @@ const blankPlot: PlotInput = {
   population: "",
   areaHectares: 0,
   geometry: null,
+  altitude: "",
+  produtividadeEsperada: "",
+  produtividadeAnterior: "",
+  status: "ativo",
+  observacoes: "",
 };
 
 function SharePanel({ propertyId, propertyName }: { propertyId: string; propertyName: string }) {
@@ -504,6 +511,30 @@ export function PropertyManager({
                     <label>
                       População de plantas
                       <input value={plotDraft.population} onChange={(event) => setPlotDraft((current) => ({ ...current, population: event.target.value }))} placeholder="Plantas/ha" />
+                    </label>
+                    <label>
+                      Altitude (m)
+                      <input inputMode="numeric" value={plotDraft.altitude ?? ""} onChange={(event) => setPlotDraft((current) => ({ ...current, altitude: event.target.value }))} placeholder="Ex.: 1100" />
+                    </label>
+                    <label>
+                      Produtividade esperada (sc/ha)
+                      <input inputMode="decimal" value={plotDraft.produtividadeEsperada ?? ""} onChange={(event) => setPlotDraft((current) => ({ ...current, produtividadeEsperada: event.target.value }))} placeholder="Ex.: 45" />
+                    </label>
+                    <label>
+                      Produtividade da safra anterior (sc/ha)
+                      <input inputMode="decimal" value={plotDraft.produtividadeAnterior ?? ""} onChange={(event) => setPlotDraft((current) => ({ ...current, produtividadeAnterior: event.target.value }))} placeholder="p/ bienalidade" />
+                    </label>
+                    <label>
+                      Situação do talhão
+                      <select value={plotDraft.status ?? "ativo"} onChange={(event) => setPlotDraft((current) => ({ ...current, status: event.target.value }))}>
+                        {plotStatuses.map((s) => (
+                          <option key={s} value={s}>{plotStatusLabels[s]}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="plot-obs-field">
+                      Observações
+                      <input value={plotDraft.observacoes ?? ""} onChange={(event) => setPlotDraft((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Anotações do talhão (opcional)" />
                     </label>
                   </div>
                   <label className="boundary-upload">

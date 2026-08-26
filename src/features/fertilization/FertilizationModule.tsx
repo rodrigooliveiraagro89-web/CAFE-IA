@@ -152,6 +152,7 @@ export function FertilizationModule({
         plantasHa={plantasHaFromPlot(plot)}
         areaHa={plot.areaHectares ?? null}
         propertyId={plot.propertyId}
+        safraAnteriorPadrao={plot.produtividadeAnterior}
         aplicacoes={(fieldRecords ?? []).filter(
           (r) => r.plotId === plot.id && r.type === "Adubação",
         )}

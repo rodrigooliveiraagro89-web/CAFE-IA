@@ -60,6 +60,11 @@ type PlotRow = {
   area_hectares: number;
   geometry: GeoPolygon | null;
   created_at: string;
+  altitude?: string | null;
+  produtividade_esperada?: string | null;
+  produtividade_anterior?: string | null;
+  status?: string | null;
+  observacoes?: string | null;
 };
 
 function propertyFromRow(row: PropertyRow): FarmProperty {
@@ -91,6 +96,11 @@ function plotFromRow(row: PlotRow): FarmPlot {
     areaHectares: Number(row.area_hectares),
     geometry: row.geometry,
     createdAt: row.created_at,
+    altitude: row.altitude ?? undefined,
+    produtividadeEsperada: row.produtividade_esperada ?? undefined,
+    produtividadeAnterior: row.produtividade_anterior ?? undefined,
+    status: row.status ?? undefined,
+    observacoes: row.observacoes ?? undefined,
   };
 }
 
@@ -144,6 +154,11 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
         area_hectares: plot.areaHectares,
         geometry: plot.geometry,
         created_at: plot.createdAt,
+        altitude: plot.altitude ?? null,
+        produtividade_esperada: plot.produtividadeEsperada ?? null,
+        produtividade_anterior: plot.produtividadeAnterior ?? null,
+        status: plot.status ?? null,
+        observacoes: plot.observacoes ?? null,
       }));
       if (properties.length) {
         const { error } = await supabase.from("properties").upsert(properties);
@@ -273,6 +288,11 @@ export function useAgriculturalContext(userId: string | null = null): Agricultur
               population: input.population,
               area_hectares: input.areaHectares,
               geometry: input.geometry,
+              altitude: input.altitude ?? null,
+              produtividade_esperada: input.produtividadeEsperada ?? null,
+              produtividade_anterior: input.produtividadeAnterior ?? null,
+              status: input.status ?? null,
+              observacoes: input.observacoes ?? null,
             })
             .then(({ error }) => logSyncError("talhão novo", error));
         }
