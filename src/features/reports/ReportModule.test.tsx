@@ -66,7 +66,7 @@ function controller(): AgriculturalController {
 describe("ReportModule (integração)", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("inclui a seção de adubação com programa e proveniência (plano Pro)", () => {
+  it("inclui a recomendação de adubação pela 5ª Aproximação (plano Pro)", () => {
     render(
       <ReportModule
         agriculture={controller()}
@@ -81,10 +81,10 @@ describe("ReportModule (integração)", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Adubação recomendada" })).toBeInTheDocument();
-    // Programa com a fórmula recomendada e a proveniência (base + laudo).
-    expect(screen.getAllByText(/27-00-10/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Base:.*Boletim 100.*Profert/)).toBeInTheDocument();
+    // Fonte única: só a 5ª Aproximação (o antigo bloco Boletim 100 foi removido).
+    expect(screen.getByRole("heading", { name: /Recomendação 5ª Aproximação/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/5ª Aproximação de Minas Gerais/i).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "Adubação recomendada" })).not.toBeInTheDocument();
   });
 
   it("no plano grátis, mostra o aviso de upgrade em vez do relatório", () => {
@@ -101,6 +101,6 @@ describe("ReportModule (integração)", () => {
         onNavigate={vi.fn()}
       />,
     );
-    expect(screen.queryByRole("heading", { name: "Adubação recomendada" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Recomendação 5ª Aproximação/i })).not.toBeInTheDocument();
   });
 });

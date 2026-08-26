@@ -9,11 +9,8 @@ import {
 } from "../../domain/coffeeFertility5a";
 import { CENARIOS, type CenarioId } from "../../domain/fertilization";
 import { analysisToSolo, subFromValues } from "../fertilization/soilToSolo";
-import { PRECO_PADRAO_KG } from "../../domain/fertilizerProgram";
 import type { FieldRecord } from "../../domain/fieldRecords";
-import { parseNumberBR } from "../../domain/parseNumber";
 import { resolvePlan, TRIAL_DAYS, type PlanId } from "../../domain/plans";
-import { provenienciaResumo } from "../../domain/provenance";
 import { soilLevelLabel } from "../../domain/soilAnalysis";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { supabase } from "../../lib/supabaseClient";
@@ -23,7 +20,6 @@ import {
   buildPropertyReport,
   priorityLabels,
   whatsappShareUrl,
-  type FertReportPrefs,
   type PropertyReport,
 } from "./buildReport";
 import { BarChart } from "./charts/BarChart";
@@ -31,54 +27,21 @@ import { Fertility5aReport } from "./Fertility5aReport";
 import { renderSharedReportHtml } from "./sharedReport";
 import "./report.css";
 
-const brl0 = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const brl2 = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-// Preferências de adubação salvas por talhão (aba Calagem e adubação).
-function loadFertPrefsByPlot(plotIds: string[]): Record<string, FertReportPrefs> {
-  const out: Record<string, FertReportPrefs> = {};
-  if (typeof localStorage === "undefined") return out;
-  for (const id of plotIds) {
-    try {
-      const raw = localStorage.getItem(`agryn.fert.${id}`);
-      if (!raw) continue;
-      const p = JSON.parse(raw) as {
-        vAlvo?: number; fonteP?: string; cobertura?: string; fonteK?: string; plantas?: string; cenarioId?: string;
-      };
-      const cen = CENARIOS.find((c) => c.id === p.cenarioId);
-      out[id] = {
-        vAlvo: p.vAlvo,
-        fonteP: p.fonteP,
-        cobertura: p.cobertura,
-        fonteK: p.fonteK,
-        plantas: p.plantas ? parseNumberBR(p.plantas) ?? undefined : undefined,
-        sacas: cen?.sacasPorHectare,
-      };
-    } catch {
-      // ignora entrada inválida
-    }
+// Cenário de produção salvo por talhão na tela de adubação (mesma chave), para
+// o relatório mostrar a MESMA produtividade escolhida no painel de cada talhão.
+function loadCenarioPlot(plotId: string): CenarioId {
+  if (typeof localStorage === "undefined") return "media";
+  try {
+    const raw = localStorage.getItem(`agryn.fert5a.${plotId}`);
+    if (raw === "baixa" || raw === "media" || raw === "alta") return raw;
+  } catch {
+    // sem persistência
   }
-  return out;
+  return "media";
 }
 
-function loadFertPrecos(): Record<string, number> {
-  const precos: Record<string, number> = { ...PRECO_PADRAO_KG };
-  if (typeof localStorage === "undefined") return precos;
-  try {
-    const raw = localStorage.getItem("agryn.fert.precos");
-    if (raw) {
-      const map = JSON.parse(raw) as Record<string, string>;
-      for (const [k, v] of Object.entries(map)) {
-        const n = parseNumberBR(v);
-        if (n !== null) precos[k] = n;
-      }
-    }
-  } catch {
-    // usa os padrões
-  }
-  return precos;
+function sacasDoCenario(id: CenarioId): number {
+  return CENARIOS.find((c) => c.id === id)?.sacasPorHectare ?? 45;
 }
 
 type ReportModuleProps = {
@@ -159,9 +122,6 @@ export function ReportModule({
       records,
       ndviHistory,
       soilAnalyses,
-      undefined,
-      loadFertPrefsByPlot(state.plots.filter((plot) => plot.propertyId === property.id).map((plot) => plot.id)),
-      loadFertPrecos(),
     );
   }, [property, state.plots, records, ndviHistory, soilAnalyses]);
 
@@ -335,11 +295,15 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
   const { property, plots, executiveSummary, conclusion, ndviChart, costByPlotChart, costByCategoryChart, totalCost, generatedAt } =
     report;
   const location = propertyLocation(property);
-  const [cenario5a, setCenario5a] = useState<CenarioId>("media");
+  // Produção por talhão: padrão = o cenário salvo por talhão na tela de adubação.
+  // O botão de override aplica um cenário único a todos (simulação no relatório).
+  const [override5a, setOverride5a] = useState<CenarioId | null>(null);
+  const sacasParaTalhao = (plotId: string): number =>
+    sacasDoCenario(override5a ?? loadCenarioPlot(plotId));
 
-  // Lista de compras: soma os formulados/corretivos de todos os talhões com laudo.
+  // Lista de compras: soma os formulados/corretivos de todos os talhões com laudo,
+  // cada um na SUA produtividade (a mesma da tela), salvo override.
   const compras = useMemo(() => {
-    const sacas = CENARIOS.find((c) => c.id === cenario5a)?.sacasPorHectare ?? 45;
     const planos = [];
     let calcarioT = 0;
     let gessoT = 0;
@@ -347,7 +311,7 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
       if (!row.soilAnalysis) continue;
       const area = row.plot.areaHectares ?? 0;
       const rec = recomendarNutrientes5a({
-        lavoura: { fase: "producao", produtividade_esperada_sc_ha: sacas, PRNT_percentual: 95 },
+        lavoura: { fase: "producao", produtividade_esperada_sc_ha: sacasParaTalhao(row.plot.id), PRNT_percentual: 95 },
         solo: analysisToSolo(row.soilAnalysis.values),
         sub: subFromValues(row.soilAnalysis.values),
       });
@@ -356,7 +320,8 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
       if (rec.correcao_solo.gesso_t_ha) gessoT += rec.correcao_solo.gesso_t_ha * area;
     }
     return { itens: agregarCompras(planos), calcarioT, gessoT };
-  }, [plots, cenario5a]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plots, override5a]);
 
   return (
     <article className="report-print-area">
@@ -492,12 +457,15 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
           <h2>Recomendação 5ª Aproximação (Emater-MG)</h2>
           <div className="report-fert5a-prod no-print" role="group" aria-label="Produção esperada">
             <span>Produção esperada:</span>
+            <button type="button" data-active={override5a === null} onClick={() => setOverride5a(null)}>
+              Por talhão (salvo)
+            </button>
             {CENARIOS.map((cen) => (
               <button
                 key={cen.id}
                 type="button"
-                data-active={cen.id === cenario5a}
-                onClick={() => setCenario5a(cen.id)}
+                data-active={cen.id === override5a}
+                onClick={() => setOverride5a(cen.id)}
               >
                 {cen.label} · {cen.sacasPorHectare} sc/ha
               </button>
@@ -510,7 +478,7 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
                 <h3>{row.plot.name}</h3>
                 <Fertility5aReport
                   analysis={row.soilAnalysis!}
-                  sacas={CENARIOS.find((c) => c.id === cenario5a)?.sacasPorHectare ?? 45}
+                  sacas={sacasParaTalhao(row.plot.id)}
                   areaHa={row.plot.areaHectares ?? null}
                 />
               </div>
@@ -599,79 +567,6 @@ function ReportDocument({ report, photos }: { report: PropertyReport; photos: Re
           </div>
         ))}
 
-      {plots.some((row) => row.fertilizer) && (
-        <>
-          <h2>Adubação recomendada</h2>
-          {plots
-            .filter((row) => row.fertilizer)
-            .map((row) => {
-              const f = row.fertilizer;
-              if (!f) return null;
-              return (
-                <div className="report-soil-block" key={`fert-${row.plot.id}`}>
-                  <h3>
-                    {row.plot.name} — {f.sacas} sc/ha · V% alvo {f.vAlvo}
-                  </h3>
-                  <p className="report-soil-alerts" style={{ color: "var(--text-soft)" }}>
-                    {f.calagemDispensada
-                      ? `Calagem dispensada — V% atual ${f.vAtual.toFixed(0)}% já atinge o alvo.`
-                      : `Calagem: ${f.calagemTHa.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} t/ha de calcário dolomítico (V% ${f.vAtual.toFixed(0)} → ${f.vAlvo}).`}{" "}
-                    NPK (kg/ha): N {f.npk.n} · P₂O₅ {f.npk.p2o5} · K₂O {f.npk.k2o} · S {f.npk.s}.
-                  </p>
-                  <table className="report-data-table">
-                    <thead>
-                      <tr>
-                        <th>Insumo</th>
-                        <th>Fórmula</th>
-                        <th>kg/ha</th>
-                        <th>g/planta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {f.itens.map((it) => (
-                        <tr key={it.formula + it.nome}>
-                          <td>{it.nome}</td>
-                          <td>{it.formula}</td>
-                          <td>{it.kgPorHectare.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</td>
-                          <td>
-                            {f.plantasPorHa > 0
-                              ? ((it.kgPorHectare * 1000) / f.plantasPorHa).toLocaleString("pt-BR", {
-                                  maximumFractionDigits: 0,
-                                })
-                              : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr>
-                        <td>
-                          <strong>Total · custo</strong>
-                        </td>
-                        <td />
-                        <td>
-                          <strong>
-                            {f.totalKgHa.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg/ha
-                          </strong>
-                        </td>
-                        <td>
-                          <strong>
-                            {brl0(f.custoHa)}/ha · {brl2(f.custoSaca)}/sc
-                          </strong>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  {f.kExcesso && (
-                    <p className="report-soil-alerts">
-                      Potássio em excesso na fórmula escolhida — com K alto no solo, prefira
-                      27-00-10 ou 30-00-10.
-                    </p>
-                  )}
-                  <p className="report-provenance">{provenienciaResumo(f.proveniencia)}</p>
-                </div>
-              );
-            })}
-        </>
-      )}
 
       <h2>2. Custos</h2>
       <table className="report-data-table">

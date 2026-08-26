@@ -100,44 +100,15 @@ describe("whatsappSummary", () => {
   });
 });
 
-describe("bloco de adubação no relatório", () => {
-  it("gera calagem, NPK e programa quando há laudo", () => {
-    const report = buildPropertyReport(
-      property(),
-      [plot("A")],
-      [],
-      [],
-      [soil("A")],
-      GERADO,
-    );
-    const fert = report.plots[0].fertilizer;
-    expect(fert).not.toBeNull();
-    expect(fert?.calagemTHa).toBeGreaterThan(1); // V% 41 -> 60
-    expect(fert?.npk.n).toBe(200); // média 45 sc, N foliar padrão
-    expect(fert?.itens.length).toBeGreaterThan(0);
-    expect(fert?.custoHa).toBeGreaterThan(0);
-    // Proveniência carimbada com o laudo e a data de geração do relatório.
-    expect(fert?.proveniencia.laudo?.id).toBe("A-soil");
-    expect(fert?.proveniencia.geradoEm).toBe(GERADO);
+describe("laudo no relatório (base da 5ª Aproximação)", () => {
+  it("expõe o último laudo do talhão quando existe", () => {
+    const report = buildPropertyReport(property(), [plot("A")], [], [], [soil("A")], GERADO);
+    expect(report.plots[0].soilAnalysis).not.toBeNull();
+    expect(report.plots[0].soil?.rows.length ?? 0).toBeGreaterThan(0);
   });
 
-  it("respeita a fórmula escolhida por talhão", () => {
-    const report = buildPropertyReport(
-      property(),
-      [plot("A")],
-      [],
-      [],
-      [soil("A")],
-      GERADO,
-      { A: { cobertura: "200020", sacas: 45 } },
-    );
-    const fert = report.plots[0].fertilizer;
-    // 20-00-20 entrega K em excesso com K alto no solo
-    expect(fert?.kExcesso).toBe(true);
-  });
-
-  it("sem laudo, o bloco de adubação é nulo", () => {
+  it("sem laudo, soilAnalysis é nulo", () => {
     const report = buildPropertyReport(property(), [plot("A")], [], [], [], GERADO);
-    expect(report.plots[0].fertilizer).toBeNull();
+    expect(report.plots[0].soilAnalysis).toBeNull();
   });
 });

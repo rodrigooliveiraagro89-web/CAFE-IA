@@ -17,7 +17,7 @@ describe("buildAssistantContext", () => {
     expect(ctx).toContain("Sítio São José");
     expect(ctx).toContain("Último laudo");
     expect(ctx).toContain("Calagem"); // V% 41 -> precisa de calcário
-    expect(ctx).toContain("Boletim 100");
+    expect(ctx).toContain("5ª Aproximação"); // fonte única: mesmo motor da tela
     expect(ctx).toContain("NDVI");
     expect(ctx).toContain("Alertas ativos");
   });
