@@ -7,4 +7,5 @@
  */
 export * from "./types";
 export * from "./core";
+export * from "./soilEngine";
 export * from "./engine5a";
