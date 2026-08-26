@@ -1,3 +1,4 @@
+/* global process, console */
 // Sincroniza a cópia da Edge Function com a fonte única dos alertas.
 //
 // A regra dos alertas (limiares, NDVI/solo/atividades, calendário) mora em
