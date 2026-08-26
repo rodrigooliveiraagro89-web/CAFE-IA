@@ -1221,7 +1221,7 @@ export function Fertility5aPanel({
       <p className="fert5a-fonte">
         Fonte: 5ª Aproximação de Minas Gerais + Manual do Café (Emater-MG). Valores do laudo; o que
         não estiver no laudo fica em branco. Decisão final e conversão em fertilizante são do
-        responsável técnico.
+        responsável técnico. <em>Regra {rec.regra.versao} · catálogo {rec.regra.catalogo}.</em>
       </p>
 
       {history.length > 0 && (

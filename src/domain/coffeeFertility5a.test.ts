@@ -11,6 +11,8 @@ import {
   sugerirFormulacao,
   agregarCompras,
   cronogramaAdubacao,
+  alertasFaixaPlausivel,
+  REGRA_5A_VERSAO,
 } from "./coffeeFertility5a";
 
 describe("classificarP (P-rem)", () => {
@@ -141,6 +143,34 @@ describe("recomendarNutrientes5a — exemplo seção 13 (produção, 40 sc/ha)",
       foliar: { N_dag_kg: 3.3 },
     });
     expect(comFoliar.necessidade_nutrientes.N_kg_ha_ano).toBe(140);
+  });
+});
+
+describe("versionamento e validação de faixas (Fase 0.3/0.5)", () => {
+  it("carimba a versão da regra na saída", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "producao", produtividade_esperada_sc_ha: 40 },
+      solo: { K_mg_dm3: 100, P_mg_dm3: 8, P_rem_mg_L: 15 },
+    });
+    expect(rec.regra.versao).toBe(REGRA_5A_VERSAO);
+    expect(rec.regra.fonte).toMatch(/5ª Aproximação/);
+    expect(rec.regra.catalogo).toBeTruthy();
+  });
+
+  it("alertasFaixaPlausivel sinaliza valores absurdos, ignora ausentes", () => {
+    expect(alertasFaixaPlausivel({ pH_agua: 14 }).some((a) => /pH/.test(a))).toBe(true);
+    expect(alertasFaixaPlausivel({ P_mg_dm3: 9000 }).some((a) => /P \(/.test(a))).toBe(true);
+    expect(alertasFaixaPlausivel({ pH_agua: 5.5, P_mg_dm3: 12 })).toEqual([]); // plausíveis
+    expect(alertasFaixaPlausivel({})).toEqual([]); // laudo vazio não trava
+  });
+
+  it("o motor emite o aviso (avisa, não trava) e ainda calcula", () => {
+    const rec = recomendarNutrientes5a({
+      lavoura: { fase: "producao", produtividade_esperada_sc_ha: 40 },
+      solo: { pH_agua: 14, K_mg_dm3: 100, P_mg_dm3: 8, P_rem_mg_L: 15 },
+    });
+    expect(rec.alertas.some((a) => /faixa plausível/i.test(a))).toBe(true);
+    expect(rec.necessidade_nutrientes.N_kg_ha_ano).toBe(300); // segue calculando
   });
 });
 

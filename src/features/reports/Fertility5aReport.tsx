@@ -267,7 +267,7 @@ export function Fertility5aReport({
 
       <p className="fert5a-fonte">
         5ª Aproximação de Minas Gerais + Manual do Café (Emater-MG) · produção de referência {fmt(sacas, 0)} sc/ha.
-        Radares: teor do solo em % do adequado (referência café).
+        Radares: teor do solo em % do adequado (referência café). Regra {rec.regra.versao} · catálogo {rec.regra.catalogo}.
       </p>
     </div>
   );
