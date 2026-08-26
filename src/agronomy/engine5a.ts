@@ -13,31 +13,32 @@
  */
 
 import { FORMULAS_TURBO } from "../domain/formulasTurbo";
+import { calcularIndices, num, round } from "./core";
+import type {
+  ClasseGeral,
+  ClasseMicro,
+  DosesPorPlanta,
+  ExtratorB,
+  ExtratorMetalico,
+  Fase,
+  FertilizanteItem,
+  Foliar,
+  FormulacaoItem,
+  FormulacaoPlano,
+  Lavoura,
+  MicroFonte,
+  MicroSaida,
+  ParcelaAdubacao,
+  Recomendacao5a,
+  Solo0a20,
+  Solo20a40,
+} from "./types";
 
 // Versão das regras do motor 5ª Aproximação. Suba a versão sempre que uma faixa,
 // dose ou fórmula do cálculo mudar — o histórico salvo carrega esta âncora.
 export const REGRA_5A_VERSAO = "5a-mg-2026-v1";
 export const REGRA_5A_FONTE = "5ª Aproximação de Minas Gerais + Manual do Café (Emater-MG)";
 export const CATALOGO_VERSAO = "campanha-turbo-2026-08";
-
-// ------------------------------------------------------------------ tipos ----
-
-export type Fase =
-  | "implantacao"
-  | "pos_plantio"
-  | "formacao_1_ano"
-  | "formacao_2_ano"
-  | "esqueletado_1_ano"
-  | "recepado_1_ano"
-  | "producao";
-
-export type ClasseGeral = "muito_baixo" | "baixo" | "medio" | "bom" | "muito_bom";
-export type ClasseMicro = "baixo" | "medio" | "adequado" | "alto";
-
-export type ExtratorB = "mehlich1" | "hcl" | "agua_quente";
-export type ExtratorMetalico = "mehlich1" | "dtpa";
-
-export type Sistema = "sequeiro" | "irrigado";
 
 export const FASE_LABEL: Record<Fase, string> = {
   implantacao: "Implantação (cova/sulco)",
@@ -48,157 +49,6 @@ export const FASE_LABEL: Record<Fase, string> = {
   esqueletado_1_ano: "Esqueletamento — 1º ano",
   producao: "Lavoura em produção",
 };
-
-export type Solo0a20 = {
-  pH_agua?: number | null;
-  materia_organica_dag_kg?: number | null;
-  P_mg_dm3?: number | null;
-  P_rem_mg_L?: number | null;
-  argila_percentual?: number | null;
-  K_mg_dm3?: number | null;
-  Ca_cmolc_dm3?: number | null;
-  Mg_cmolc_dm3?: number | null;
-  Al_cmolc_dm3?: number | null;
-  H_Al_cmolc_dm3?: number | null;
-  S_mg_dm3?: number | null;
-  B_mg_dm3?: number | null;
-  extrator_B?: ExtratorB | null;
-  Cu_mg_dm3?: number | null;
-  extrator_Cu?: ExtratorMetalico | null;
-  Mn_mg_dm3?: number | null;
-  extrator_Mn?: ExtratorMetalico | null;
-  Zn_mg_dm3?: number | null;
-  extrator_Zn?: ExtratorMetalico | null;
-};
-
-export type Solo20a40 = {
-  Ca_cmolc_dm3?: number | null;
-  Al_cmolc_dm3?: number | null;
-  m_percentual?: number | null;
-};
-
-export type Foliar = {
-  N_dag_kg?: number | null;
-};
-
-export type Lavoura = {
-  fase: Fase;
-  produtividade_esperada_sc_ha?: number | null;
-  produtividade_safra_anterior_sc_ha?: number | null;
-  plantas_ha?: number | null; // população efetiva — converte g/planta em kg/ha
-  numero_parcelamentos?: number | null; // parcelas de N por ciclo
-  sistema?: Sistema | null;
-  Ve_percentual?: number | null; // alvo de saturação; padrão 60
-  PRNT_percentual?: number | null;
-  superficie_coberta_percentual?: number | null; // padrão 100
-  profundidade_correcao_cm?: number | null; // padrão 20
-};
-
-export type MicroSaida = { classe: ClasseMicro | null; dose_kg_ha: number | null };
-
-export type DosesPorPlanta = {
-  N_g_planta_aplicacao: number | null;
-  N_aplicacoes: number | null;
-  K2O_g_planta_ano: number | null;
-  P2O5_g_cova: number | null;
-  P2O5_g_m_sulco: number | null;
-  S_g_planta: number | null;
-  B_g_planta: number | null;
-  Zn_g_planta: number | null;
-  plantas_ha: number | null;
-};
-
-export type Recomendacao5a = {
-  fase: Fase;
-  fase_label: string;
-  produtividade_calculo_sc_ha: number | null;
-  indices: {
-    K_cmolc_dm3: number | null;
-    SB: number | null;
-    T: number | null;
-    t: number | null;
-    V_percentual: number | null;
-    m_percentual: number | null;
-    Ca_Mg_ratio: number | null;
-  };
-  classificacoes: {
-    materia_organica: ClasseGeral | null;
-    Ca: ClasseGeral | null;
-    Mg: ClasseGeral | null;
-    T: ClasseGeral | null;
-    V: ClasseGeral | null;
-    P: ClasseGeral | null;
-    S: ClasseGeral | null;
-    B: ClasseMicro | null;
-    Cu: ClasseMicro | null;
-    Mn: ClasseMicro | null;
-    Zn: ClasseMicro | null;
-  };
-  necessidade_nutrientes: {
-    N_kg_ha_ano: number | null;
-    P2O5_kg_ha_ano: number | null;
-    K2O_kg_ha_ano: number | null;
-    S_kg_ha_ano: number | null;
-    B_kg_ha: number | null;
-    Cu_kg_ha: number | null;
-    Mn_kg_ha: number | null;
-    Zn_kg_ha: number | null;
-  };
-  doses_por_planta: DosesPorPlanta | null;
-  correcao_solo: {
-    calagem_t_ha_prnt100: number | null;
-    calagem_t_ha_produto: number | null;
-    corretivo_sugerido: string | null; // tipo de calcário conforme Ca:Mg/Mg
-    corretivo_motivo: string | null;
-    gessagem_indicada: boolean;
-    gesso_t_ha: number | null; // dose de gesso (NG = 0,25 × NC)
-    gesso_ca_kg_ha: number | null; // Ca fornecido pelo gesso
-    gesso_s_kg_ha: number | null; // S fornecido pelo gesso
-  };
-  fontes_micros: MicroFonte[];
-  alertas: string[];
-  // Carimbo de versão da regra e da fonte técnica — torna a recomendação
-  // auditável e reancorável (o payload salvo carrega a versão que o gerou).
-  regra: { versao: string; fonte: string; catalogo: string };
-};
-
-export type MicroFonte = {
-  nutriente: string;
-  produto: string;
-  teor_pct: number;
-  dose_produto_kg_ha: number;
-  via: string;
-  obs?: string;
-};
-
-// --------------------------------------------------------------- cálculos ----
-
-const K_DIVISOR_CMOLC = 391; // K(mg/dm³)/391 = K(cmolc/dm³)
-
-function num(v: number | null | undefined): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-
-function round(value: number, digits = 1): number {
-  const f = 10 ** digits;
-  return Math.round(value * f) / f;
-}
-
-export function calcularIndices(s: Solo0a20) {
-  const Ca = num(s.Ca_cmolc_dm3);
-  const Mg = num(s.Mg_cmolc_dm3);
-  const Al = num(s.Al_cmolc_dm3);
-  const HAl = num(s.H_Al_cmolc_dm3);
-  const Kmg = num(s.K_mg_dm3);
-  const K = Kmg !== null ? Kmg / K_DIVISOR_CMOLC : null;
-  const SB = Ca !== null && Mg !== null && K !== null ? Ca + Mg + K : null;
-  const T = SB !== null && HAl !== null ? SB + HAl : null;
-  const t = SB !== null && Al !== null ? SB + Al : null;
-  const V = SB !== null && T !== null && T > 0 ? (100 * SB) / T : null;
-  const m = t !== null && Al !== null && t > 0 ? (100 * Al) / t : null;
-  const CaMg = Ca !== null && Mg !== null && Mg > 0 ? Ca / Mg : null;
-  return { K_cmolc_dm3: K, SB, T, t, V_percentual: V, m_percentual: m, Ca_Mg_ratio: CaMg };
-}
 
 // -------------------------------------------------- classificações gerais ----
 
@@ -572,7 +422,6 @@ function zincoPlantioGPlanta(classeZn: ClasseMicro | null): number | null {
 
 // ----------------------------------------- conversão para fertilizantes ------
 
-export type FertilizanteItem = { produto: string; formula: string; kg_ha: number; obs?: string };
 
 /**
  * Converte a necessidade em NUTRIENTE para fontes comerciais usuais, de forma
@@ -614,22 +463,6 @@ export function converterFertilizantes(
 
 // ------------------------------------ melhor formulação para a área ----------
 
-export type FormulacaoItem = {
-  produto: string;
-  formula: string;
-  codigo?: string; // código do produto no catálogo comercial
-  kg_ha: number;
-  kg_total: number | null; // dimensionado para a área do talhão
-  sacas_50: number | null; // sacas de 50 kg
-  obs?: string;
-};
-
-export type FormulacaoPlano = {
-  area_ha: number | null;
-  principal: FormulacaoItem | null;
-  complementos: FormulacaoItem[];
-  observacoes: string[];
-};
 
 function escalar(kg_ha: number, areaHa: number | null): { kg_total: number | null; sacas_50: number | null } {
   if (areaHa === null || areaHa <= 0) return { kg_total: null, sacas_50: null };
@@ -758,14 +591,6 @@ export function sugerirFormulacao(
 
 // ------------------------------------- cronograma de parcelamento ------------
 
-export type ParcelaAdubacao = {
-  ordem: number;
-  epoca: string;
-  N_kg_ha: number;
-  P2O5_kg_ha: number;
-  K2O_kg_ha: number;
-  S_kg_ha: number;
-};
 
 const EPOCAS_PARCELAS: Record<number, string[]> = {
   2: ["Outubro/Novembro", "Janeiro/Fevereiro"],
