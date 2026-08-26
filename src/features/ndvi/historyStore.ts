@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { logSyncError } from "../../lib/syncError";
+import { enqueueWrite } from "../../lib/syncOutbox";
 import type { NdviResult } from "./types";
 
 const HISTORY_KEY = "agryn.ndvi.history.v1";
@@ -12,10 +14,6 @@ type NdviResultRow = {
   processed_at: string;
   result: NdviResult;
 };
-
-function logSyncError(action: string, error: { message: string } | null) {
-  if (error) console.error(`[agryn] falha ao sincronizar ${action}:`, error.message);
-}
 
 export function useNdviHistory(userId: string | null = null) {
   const [history, setHistory] = useState<NdviResult[]>(loadHistory);
@@ -68,20 +66,21 @@ export function useNdviHistory(userId: string | null = null) {
         [result, ...current.filter((item) => item.id !== result.id)].slice(0, HISTORY_LIMIT),
       );
       if (userId) {
-        supabase
-          .from("ndvi_results")
-          .upsert(
-            {
-              id: result.id,
-              user_id: userId,
-              plot_id: result.plotId,
-              acquired_at: result.acquiredAt,
-              processed_at: result.processedAt,
-              result,
-            },
-            { onConflict: "id" },
-          )
-          .then(({ error }) => logSyncError("novo resultado de NDVI", error));
+        // Outbox durável: NDVI criado offline sincroniza ao reconectar.
+        enqueueWrite({
+          id: `ndvi_results:${result.id}`,
+          table: "ndvi_results",
+          onConflict: "id",
+          label: "novo resultado de NDVI",
+          payload: {
+            id: result.id,
+            user_id: userId,
+            plot_id: result.plotId,
+            acquired_at: result.acquiredAt,
+            processed_at: result.processedAt,
+            result,
+          },
+        });
       }
     },
   };

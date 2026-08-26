@@ -10,6 +10,7 @@ import {
 import type { GeoPolygon } from "../features/ndvi/types";
 import { demoPlots, demoProperty } from "../features/onboarding/demoData";
 import { supabase } from "./supabaseClient";
+import { logSyncError } from "./syncError";
 
 const STORAGE_KEY = "agryn.agricultural-context.v1";
 
@@ -105,9 +106,6 @@ function plotFromRow(row: PlotRow): FarmPlot {
   };
 }
 
-function logSyncError(action: string, error: { message: string } | null) {
-  if (error) console.error(`[agryn] falha ao sincronizar ${action}:`, error.message);
-}
 
 export function useAgriculturalContext(userId: string | null = null): AgriculturalController {
   const [state, setState] = useState<AgriculturalContextState>(loadContext);

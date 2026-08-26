@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { logSyncError } from "../../lib/syncError";
+import { enqueueWrite } from "../../lib/syncOutbox";
 import type { SoilValues } from "../../domain/soilAnalysis";
 import { demoSoil } from "../onboarding/demoData";
 
@@ -38,10 +40,6 @@ function analysisFromRow(row: SoilAnalysisRow): SoilAnalysis {
     values: row.values,
     createdAt: row.created_at,
   };
-}
-
-function logSyncError(action: string, error: { message: string } | null) {
-  if (error) console.error(`[agryn] falha ao sincronizar ${action}:`, error.message);
 }
 
 export function useSoilAnalyses(userId: string | null = null, demoActive = false) {
@@ -94,9 +92,13 @@ export function useSoilAnalyses(userId: string | null = null, demoActive = false
       if (demoActive) return id; // no modo demo não grava nada
       setAnalyses((current) => [analysis, ...current].slice(0, LIMIT));
       if (userId) {
-        supabase
-          .from("soil_analyses")
-          .insert({
+        // Outbox durável: se estiver offline, envia ao reconectar (não fica órfão).
+        enqueueWrite({
+          id: `soil_analyses:${id}`,
+          table: "soil_analyses",
+          onConflict: "id",
+          label: "nova análise de solo",
+          payload: {
             id,
             user_id: userId,
             plot_id: input.plotId,
@@ -104,8 +106,8 @@ export function useSoilAnalyses(userId: string | null = null, demoActive = false
             laboratory: input.laboratory,
             source: input.source,
             values: input.values,
-          })
-          .then(({ error }) => logSyncError("nova análise de solo", error));
+          },
+        });
       }
       return id;
     },

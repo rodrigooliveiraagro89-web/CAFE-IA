@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FieldAttachment, FieldRecord, FieldRecordInput } from "../domain/fieldRecords";
 import { supabase } from "./supabaseClient";
+import { logSyncError } from "./syncError";
 
 const STORAGE_KEY = "agryn.field-records.v1";
 
@@ -38,9 +39,6 @@ function recordFromRow(row: FieldRecordRow): FieldRecord {
   };
 }
 
-function logSyncError(action: string, error: { message: string } | null) {
-  if (error) console.error(`[agryn] falha ao sincronizar ${action}:`, error.message);
-}
 
 export function useFieldRecords(userId: string | null = null) {
   const [records, setRecords] = useState<FieldRecord[]>(loadRecords);

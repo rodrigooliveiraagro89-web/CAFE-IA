@@ -7,10 +7,13 @@ import "leaflet/dist/leaflet.css";
 import { App } from "./app/App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { initTelemetry } from "./lib/telemetry";
+import { initOutbox } from "./lib/syncOutbox";
 import "./styles/index.css";
 import "./styles/platform.css";
 
 initTelemetry();
+// Reenvia escritas offline (solo/NDVI) quando a conexão voltar (Fase 1.3).
+initOutbox();
 
 // Depois que o app fica de pé por alguns segundos, libera nova auto-recarga
 // para um futuro chunk obsoleto (o flag é setado em retryImport no App.tsx).
