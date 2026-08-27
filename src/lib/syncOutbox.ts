@@ -6,9 +6,9 @@
  * de se perderem num fire-and-forget. Resolve o bug de análises de solo e
  * resultados de NDVI criados offline ficarem órfãos no aparelho.
  *
- * Só faz UPSERT (idempotente por id) — reenviar a mesma operação é seguro.
- * A RLS do Supabase garante que cada usuário só grava o que é seu (o payload
- * carrega user_id).
+ * Faz UPSERT (idempotente por id) ou DELETE (por match) — reenviar a mesma
+ * operação é seguro. A RLS do Supabase garante que cada usuário só grava/apaga o
+ * que é seu (o payload carrega user_id; o delete é restrito pela policy do dono).
  */
 import { supabase } from "./supabaseClient";
 import { logSyncError } from "./syncError";
@@ -18,7 +18,9 @@ const OUTBOX_KEY = "agryn.outbox.v1";
 export type OutboxOp = {
   id: string; // chave de deduplicação, ex.: "soil_analyses:<uuid>"
   table: string;
-  payload: Record<string, unknown>;
+  op?: "upsert" | "delete"; // padrão: upsert (compatível com ops antigas)
+  payload?: Record<string, unknown>; // para upsert
+  match?: Record<string, unknown>; // para delete, ex.: { id }
   onConflict?: string; // coluna de conflito do upsert (normalmente "id")
   label: string; // rótulo para o log
 };
@@ -46,6 +48,11 @@ export function pendingCount(): number {
   return load().length;
 }
 
+/** Ids das operações ainda pendentes (para um fetch não descartar o que está na fila). */
+export function pendingIds(): Set<string> {
+  return new Set(load().map((o) => o.id));
+}
+
 let flushing = false;
 
 /** Reenvia o que estiver na fila. Mantém na fila o que falhar (nova tentativa). */
@@ -58,9 +65,12 @@ export async function flushOutbox(): Promise<void> {
   try {
     const remaining: OutboxOp[] = [];
     for (const op of ops) {
-      const { error } = await supabase
-        .from(op.table)
-        .upsert(op.payload, op.onConflict ? { onConflict: op.onConflict } : undefined);
+      const { error } =
+        op.op === "delete"
+          ? await supabase.from(op.table).delete().match(op.match ?? {})
+          : await supabase
+              .from(op.table)
+              .upsert(op.payload ?? {}, op.onConflict ? { onConflict: op.onConflict } : undefined);
       if (error) {
         logSyncError(op.label, error);
         remaining.push(op); // mantém para tentar de novo depois
@@ -78,6 +88,15 @@ export function enqueueWrite(op: OutboxOp): void {
   ops.push(op);
   save(ops);
   void flushOutbox();
+}
+
+/**
+ * Enfileira uma EXCLUSÃO durável. Usa a MESMA chave de dedup do upsert do mesmo
+ * registro, então um delete pendente substitui um create/update pendente — nunca
+ * recria depois de excluir. Deletar id inexistente é no-op (idempotente).
+ */
+export function enqueueDelete(op: { id: string; table: string; match: Record<string, unknown>; label: string }): void {
+  enqueueWrite({ id: op.id, table: op.table, op: "delete", match: op.match, label: op.label });
 }
 
 let initialized = false;

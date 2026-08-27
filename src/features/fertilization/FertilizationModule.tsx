@@ -28,7 +28,7 @@ type FertilizationModuleProps = {
     plotId: string,
     input: FieldRecordInput,
     files?: File[],
-  ) => Promise<void> | void;
+  ) => Promise<string | void> | void;
   onNavigate: (view: AppView) => void;
 };
 

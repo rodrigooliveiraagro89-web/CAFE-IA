@@ -13,7 +13,7 @@ import { supabase } from "../../lib/supabaseClient";
 type FieldNotebookProps = {
   agriculture: AgriculturalController;
   records: FieldRecord[];
-  onAdd: (propertyId: string, plotId: string, input: FieldRecordInput, files?: File[]) => Promise<void>;
+  onAdd: (propertyId: string, plotId: string, input: FieldRecordInput, files?: File[]) => Promise<string | void>;
   onToggle: (recordId: string) => void;
   onRemove: (recordId: string) => void;
   onNavigate: (view: AppView) => void;

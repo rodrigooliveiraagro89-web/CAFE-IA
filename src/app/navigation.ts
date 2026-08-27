@@ -19,6 +19,7 @@ export type AppView =
   | "ndvi"
   | "analise-solo"
   | "adubacao"
+  | "plano-safra"
   | "assistente"
   | "diagnostico"
   | "clima"
@@ -51,7 +52,7 @@ export const navigationItems: NavigationItem[] = [
   {
     id: "adubacao",
     label: "Calagem e adubação",
-    description: "Doses pelo Boletim 100",
+    description: "Doses pela 5ª Aproximação",
     icon: Mountain,
   },
   { id: "ndvi", label: "Monitoramento NDVI", description: "Satélite e vigor vegetal", icon: Satellite },

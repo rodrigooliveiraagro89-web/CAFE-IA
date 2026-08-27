@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { enqueueWrite, flushOutbox, pendingCount } from "./syncOutbox";
+import { enqueueDelete, enqueueWrite, flushOutbox, pendingCount } from "./syncOutbox";
 
 function setOnline(v: boolean) {
   Object.defineProperty(navigator, "onLine", { value: v, configurable: true });
@@ -48,5 +48,25 @@ describe("syncOutbox (fila offline durável)", () => {
     await flushOutbox();
     expect(pendingCount()).toBe(1);
     setOnline(true);
+  });
+
+  it("delete durável: offline enfileira, reconectar apaga e limpa; dedup substitui upsert pendente", async () => {
+    setOnline(false);
+    enqueueDelete({ id: "crop_plans:p1", table: "crop_plans", match: { id: "p1" }, label: "remoção do plano" });
+    expect(pendingCount()).toBe(1);
+    setOnline(true);
+    await flushOutbox();
+    expect(pendingCount()).toBe(0);
+  });
+
+  it("delete substitui um upsert pendente do mesmo id (nunca recria após excluir)", async () => {
+    setOnline(false);
+    enqueueWrite({ id: "crop_plans:p2", table: "crop_plans", onConflict: "id", label: "plano", payload: { id: "p2" } });
+    enqueueDelete({ id: "crop_plans:p2", table: "crop_plans", match: { id: "p2" }, label: "remoção" });
+    // Mesma chave de dedup: fica só a exclusão na fila.
+    expect(pendingCount()).toBe(1);
+    setOnline(true);
+    await flushOutbox();
+    expect(pendingCount()).toBe(0);
   });
 });

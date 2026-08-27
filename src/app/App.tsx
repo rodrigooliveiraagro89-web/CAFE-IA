@@ -41,6 +41,7 @@ const DiagnosisModule = lazy(() => retryImport(() => import("../features/diagnos
 const PrivacyModule = lazy(() => retryImport(() => import("../features/privacy/PrivacyModule")).then((m) => ({ default: m.PrivacyModule })));
 const WeatherModule = lazy(() => retryImport(() => import("../features/weather/WeatherModule")).then((m) => ({ default: m.WeatherModule })));
 const FieldNotebook = lazy(() => retryImport(() => import("../features/fieldbook/FieldNotebook")).then((m) => ({ default: m.FieldNotebook })));
+const CropPlanModule = lazy(() => retryImport(() => import("../features/cropplan/CropPlanModule")).then((m) => ({ default: m.CropPlanModule })));
 const ModuleHub = lazy(() => retryImport(() => import("../features/modules/ModuleHub")).then((m) => ({ default: m.ModuleHub })));
 const MappingModule = lazy(() => retryImport(() => import("../features/mapping/MappingModule")).then((m) => ({ default: m.MappingModule })));
 const NdviModule = lazy(() => retryImport(() => import("../features/ndvi/NdviModule")).then((m) => ({ default: m.NdviModule })));
@@ -54,6 +55,7 @@ import { effectivePlanId, trialAlreadyUsed } from "../domain/plans";
 import { useAgriculturalContext } from "../lib/useAgriculturalContext";
 import { useAuth } from "../lib/useAuth";
 import { useFieldRecords } from "../lib/useFieldRecords";
+import { useCropPlans } from "../features/cropplan/useCropPlan";
 import { loadPreferences, savePreferences, type ThemePreference } from "../lib/preferences";
 import type { AppView } from "./navigation";
 import { createProCheckout } from "../features/billing/billingClient";
@@ -92,6 +94,7 @@ export function App() {
   const auth = useAuth();
   const agriculture = useAgriculturalContext(auth.userId);
   const fieldBook = useFieldRecords(auth.userId);
+  const cropPlan = useCropPlans(auth.userId);
   const ndviHistory = useNdviHistory(auth.userId);
   const soil = useSoilAnalyses(auth.userId, agriculture.demoActive);
   const safety = useMemo(() => {
@@ -318,6 +321,17 @@ export function App() {
         <CostCenter
           agriculture={agriculture}
           records={fieldBook.records}
+          onNavigate={navigate}
+        />
+      )}
+      {activeView === "plano-safra" && (
+        <CropPlanModule
+          agriculture={agriculture}
+          cropPlan={cropPlan}
+          soilAnalyses={soil.analyses}
+          records={fieldBook.records}
+          onRegistrarAplicacao={fieldBook.addRecord}
+          onRemoverAplicacao={fieldBook.removeRecord}
           onNavigate={navigate}
         />
       )}

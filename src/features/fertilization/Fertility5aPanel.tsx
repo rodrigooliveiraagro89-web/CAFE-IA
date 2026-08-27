@@ -46,7 +46,7 @@ type Props = {
   safraAnteriorPadrao?: string;
   // Aplicações de adubação já registradas neste talhão (caderno de campo).
   aplicacoes?: FieldRecord[];
-  onRegistrarAplicacao?: (input: FieldRecordInput) => Promise<void> | void;
+  onRegistrarAplicacao?: (input: FieldRecordInput) => Promise<string | void> | void;
   // Cenário de produção controlado pelo módulo (sincroniza os cards).
   cenario: CenarioId;
   onCenarioChange: (id: CenarioId) => void;

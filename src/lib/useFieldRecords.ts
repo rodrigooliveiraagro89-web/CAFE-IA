@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FieldAttachment, FieldRecord, FieldRecordInput } from "../domain/fieldRecords";
 import { supabase } from "./supabaseClient";
 import { logSyncError } from "./syncError";
+import { enqueueWrite, pendingIds } from "./syncOutbox";
 
 const STORAGE_KEY = "agryn.field-records.v1";
 
@@ -101,7 +102,19 @@ export function useFieldRecords(userId: string | null = null) {
         if (!active) return;
         logSyncError("caderno de campo", error);
         if (error) return;
-        setRecords(((data as FieldRecordRow[] | null) ?? []).map(recordFromRow));
+        // Merge (não sobrescreve): preserva SÓ os registros locais que ainda
+        // estão pendentes na outbox (criados offline e não sincronizados) que a
+        // nuvem não conhece — senão um reabrir já-online os descartaria. Não
+        // preserva cruft local sem op pendente (evita ressuscitar exclusões).
+        const cloud = ((data as FieldRecordRow[] | null) ?? []).map(recordFromRow);
+        const pend = pendingIds();
+        setRecords((local) => {
+          const cloudIds = new Set(cloud.map((record) => record.id));
+          const pendentes = local.filter(
+            (record) => !cloudIds.has(record.id) && pend.has(`field_records:${record.id}`),
+          );
+          return [...pendentes, ...cloud];
+        });
       });
 
     return () => {
@@ -122,18 +135,31 @@ export function useFieldRecords(userId: string | null = null) {
         createdAt: new Date().toISOString(),
       };
       setRecords((current) => [record, ...current]);
-      if (userId && navigator.onLine) {
-        const { error } = await supabase
-          .from("field_records")
-          .insert({
-            id,
-            user_id: userId,
-            property_id: propertyId,
-            plot_id: plotId,
-            ...input,
-          });
-        logSyncError("novo registro do caderno", error);
-        if (!error && files.length > 0 && navigator.onLine) {
+      if (userId) {
+        // Escrita durável: mesmo criado offline, o registro entra na outbox e
+        // sincroniza ao reconectar (upsert idempotente por id). Antes o insert
+        // era condicionado a navigator.onLine e um registro offline podia se
+        // perder num reabrir já-online (o fetch sobrescrevia o estado local).
+        const linhaBase = {
+          id,
+          user_id: userId,
+          property_id: propertyId,
+          plot_id: plotId,
+          type: record.type,
+          title: record.title,
+          date: record.date,
+          notes: record.notes,
+          status: record.status,
+          cost: record.cost,
+          quantity: record.quantity,
+          unit: record.unit,
+          attachments: record.attachments,
+          created_at: record.createdAt,
+        };
+        enqueueWrite({ id: `field_records:${id}`, table: "field_records", onConflict: "id", label: "novo registro do caderno", payload: linhaBase });
+        // Anexos exigem rede (upload no Storage); só quando online. A linha é
+        // re-enfileirada com os anexos para que o metadado também seja durável.
+        if (files.length > 0 && navigator.onLine) {
           const attachments: FieldAttachment[] = [];
           for (const file of files.slice(0, 4)) {
             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
@@ -146,11 +172,13 @@ export function useFieldRecords(userId: string | null = null) {
           }
           if (attachments.length) {
             setRecords((current) => current.map((item) => item.id === id ? { ...item, attachments } : item));
-            const { error: attachmentError } = await supabase.from("field_records").update({ attachments }).eq("id", id);
-            logSyncError("metadados dos anexos", attachmentError);
+            enqueueWrite({ id: `field_records:${id}`, table: "field_records", onConflict: "id", label: "anexos do registro", payload: { ...linhaBase, attachments } });
           }
         }
       }
+      // Devolve o id para quem precisa vincular o registro (ex.: item do plano
+      // de safra que virou realizado no caderno).
+      return id;
     },
     toggleRecord(recordId: string) {
       const target = records.find((record) => record.id === recordId);

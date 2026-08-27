@@ -19,6 +19,7 @@ function makeBuilder(result: QueryResult) {
     select: () => builder,
     order: () => builder,
     eq: () => builder,
+    match: () => builder,
     is: () => builder,
     ilike: () => builder,
     limit: () => builder,
