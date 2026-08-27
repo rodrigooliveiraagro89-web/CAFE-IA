@@ -143,7 +143,7 @@
   white-space: nowrap;
 }
 
-.cropplan-kind[data-kind="adubacao"] { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--brand); }
+.cropplan-kind[data-kind="adubacao"] { background: color-mix(in srgb, var(--agryn-emerald) 18%, transparent); color: var(--agryn-emerald); }
 .cropplan-kind[data-kind="colheita"] { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
 .cropplan-kind[data-kind="analise"],
 .cropplan-kind[data-kind="foliar"] { background: color-mix(in srgb, var(--info) 18%, transparent); color: var(--info); }

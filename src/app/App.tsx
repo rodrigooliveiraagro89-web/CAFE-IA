@@ -321,6 +321,7 @@ export function App() {
         <CostCenter
           agriculture={agriculture}
           records={fieldBook.records}
+          cropPlan={cropPlan}
           onNavigate={navigate}
         />
       )}

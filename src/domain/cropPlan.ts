@@ -46,6 +46,25 @@ export type CropPlan = {
   updatedAt: string;
 };
 
+/** Rótulo da safra de um talhão (fallback quando plot.season está vazio). */
+export function safraLabel(season: string | undefined | null): string {
+  return season || "Safra atual";
+}
+
+/**
+ * Localiza o plano de um talhão para a safra atual — a MESMA chave (talhão ×
+ * safra) usada ao criar. Compartilhado por CropPlanModule e CostCenter para não
+ * divergirem (ex.: um usar só plotId e o outro plotId+safra).
+ */
+export function findPlanForPlot<T extends { plotId: string; safra: string }>(
+  plans: T[],
+  plotId: string,
+  season: string | undefined | null,
+): T | null {
+  const safra = safraLabel(season);
+  return plans.find((p) => p.plotId === plotId && p.safra === safra) ?? null;
+}
+
 // Rótulos amigáveis por categoria (para chips/ícones na UI e no relatório).
 export const KIND_LABEL: Record<string, string> = {
   analise: "Análise",
@@ -189,8 +208,7 @@ export function summarizePlan(
     plannedTotal += item.plannedCost > 0 ? item.plannedCost : 0;
     if (item.status === "concluida") {
       doneCount += 1;
-      const doRegistro = item.fieldRecordId ? custoPorRegistro.get(item.fieldRecordId) : undefined;
-      realizedTotal += doRegistro ?? item.realizedCost ?? 0;
+      realizedTotal += realizedOf(item, custoPorRegistro);
     } else {
       plannedCount += 1;
     }
@@ -199,4 +217,39 @@ export function summarizePlan(
   const activeCount = doneCount + plannedCount;
   const adherencePct = activeCount > 0 ? Math.round((doneCount / activeCount) * 100) : 0;
   return { plannedTotal, realizedTotal, doneCount, plannedCount, canceledCount, activeCount, adherencePct };
+}
+
+export type PlanCategoryCost = { kind: string; label: string; planned: number; realized: number };
+
+/** Custo realizado de um item concluído — do registro vinculado, com fallback. */
+function realizedOf(item: CropPlanItem, custoPorRegistro: Map<string, number>): number {
+  if (item.status !== "concluida") return 0;
+  const doRegistro = item.fieldRecordId ? custoPorRegistro.get(item.fieldRecordId) : undefined;
+  return doRegistro ?? item.realizedCost ?? 0;
+}
+
+/**
+ * Previsto × realizado do plano quebrado por categoria (kind). Só entram
+ * categorias com algum valor (previsto ou realizado); itens cancelados ficam de
+ * fora. Ordena pelo maior previsto, depois maior realizado.
+ */
+export function planCostByCategory(
+  plan: Pick<CropPlan, "items">,
+  records: { id: string; cost: number }[],
+): PlanCategoryCost[] {
+  const custoPorRegistro = new Map(records.map((r) => [r.id, r.cost]));
+  const porKind = new Map<string, { planned: number; realized: number }>();
+
+  for (const item of plan.items) {
+    if (item.status === "cancelada") continue;
+    const atual = porKind.get(item.kind) ?? { planned: 0, realized: 0 };
+    atual.planned += item.plannedCost > 0 ? item.plannedCost : 0;
+    atual.realized += realizedOf(item, custoPorRegistro);
+    porKind.set(item.kind, atual);
+  }
+
+  return [...porKind.entries()]
+    .filter(([, v]) => v.planned > 0 || v.realized > 0)
+    .map(([kind, v]) => ({ kind, label: KIND_LABEL[kind] ?? kind, planned: v.planned, realized: v.realized }))
+    .sort((a, b) => b.planned - a.planned || b.realized - a.realized);
 }

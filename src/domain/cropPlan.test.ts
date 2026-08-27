@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   generatePlanItems,
   mesFromEpoca,
+  planCostByCategory,
   sortPlanItems,
   summarizePlan,
   type CropPlan,
@@ -109,6 +110,39 @@ describe("summarizePlan", () => {
 
   it("plano vazio não divide por zero", () => {
     expect(summarizePlan(plan([]), []).adherencePct).toBe(0);
+  });
+});
+
+describe("planCostByCategory", () => {
+  function item(over: Partial<CropPlanItem>): CropPlanItem {
+    return {
+      id: over.id ?? "x", kind: "adubacao", title: "t", month: 1, plannedCost: 0,
+      quantity: "", unit: "", status: "planejada", notes: "", source: "manual", ...over,
+    };
+  }
+  const plan = (items: CropPlanItem[]): Pick<CropPlan, "items"> => ({ items });
+
+  it("agrega previsto e realizado por categoria e ignora canceladas", () => {
+    const cats = planCostByCategory(
+      plan([
+        item({ id: "a", kind: "adubacao", plannedCost: 300, status: "concluida", fieldRecordId: "r1" }),
+        item({ id: "b", kind: "adubacao", plannedCost: 200, status: "planejada" }),
+        item({ id: "c", kind: "colheita", plannedCost: 100, status: "planejada" }),
+        item({ id: "d", kind: "poda", plannedCost: 50, status: "cancelada" }),
+      ]),
+      [{ id: "r1", cost: 350 }],
+    );
+    // poda (só cancelada) não aparece
+    expect(cats.map((c) => c.kind)).toEqual(["adubacao", "colheita"]); // ordenado por previsto desc
+    const adub = cats.find((c) => c.kind === "adubacao")!;
+    expect(adub.planned).toBe(500); // 300 + 200
+    expect(adub.realized).toBe(350); // do registro vinculado
+    expect(adub.label).toBe("Adubação");
+    expect(cats.find((c) => c.kind === "colheita")!.realized).toBe(0);
+  });
+
+  it("plano sem custos retorna lista vazia", () => {
+    expect(planCostByCategory(plan([item({ plannedCost: 0 })]), [])).toEqual([]);
   });
 });
 

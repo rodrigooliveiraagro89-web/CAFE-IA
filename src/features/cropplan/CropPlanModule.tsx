@@ -20,7 +20,9 @@ import {
 } from "../../domain/coffeeFertility5a";
 import {
   KIND_LABEL,
+  findPlanForPlot,
   generatePlanItems,
+  safraLabel,
   sortPlanItems,
   summarizePlan,
   type CropPlanItem,
@@ -59,7 +61,7 @@ function loadCenario(plotId: string): CenarioId {
   return "media";
 }
 
-const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function blankManual(): Pick<CropPlanItem, "kind" | "title" | "month" | "plannedCost" | "quantity" | "unit"> {
   return { kind: "manejo", title: "", month: new Date().getMonth() + 1, plannedCost: 0, quantity: "", unit: "" };
@@ -83,11 +85,10 @@ export function CropPlanModule({
   // Um plano por (talhão × safra): a busca inclui a safra atual do talhão, senão
   // ao virar a safra (plot.season) o produtor ficaria preso no plano anterior,
   // sem como gerar o novo (o card de gerar só aparece com !plan).
-  const plan = useMemo(() => {
-    if (!plot) return null;
-    const safra = plot.season || "Safra atual";
-    return cropPlan.plans.find((p) => p.plotId === plot.id && p.safra === safra) ?? null;
-  }, [cropPlan.plans, plot]);
+  const plan = useMemo(
+    () => (plot ? findPlanForPlot(cropPlan.plans, plot.id, plot.season) : null),
+    [cropPlan.plans, plot],
+  );
   const plotRecords = useMemo(
     () => (plot ? records.filter((r) => r.plotId === plot.id) : []),
     [records, plot],
@@ -130,7 +131,7 @@ export function CropPlanModule({
     cropPlan.addPlan({
       propertyId: property.id,
       plotId: plot.id,
-      safra: plot.season || "Safra atual",
+      safra: safraLabel(plot.season),
       title: `Plano de safra — ${plot.name}`,
       items,
     });
@@ -210,7 +211,7 @@ export function CropPlanModule({
 
       {!plan ? (
         <section className="panel-card cropplan-generate">
-          <div className="panel-title"><Sparkles size={21} /><div><span className="eyebrow">{plot.season || "Safra atual"}</span><h2>Monte o plano do talhão</h2></div></div>
+          <div className="panel-title"><Sparkles size={21} /><div><span className="eyebrow">{safraLabel(plot.season)}</span><h2>Monte o plano do talhão</h2></div></div>
           <p>Geramos as operações a partir do calendário do cafeicultor e, se houver laudo, das parcelas de adubação da 5ª Aproximação. Depois você ajusta custos e datas.</p>
           <div className="form-actions">
             <button className="primary-button" type="button" onClick={() => criarPlano(gerarItens())}><Sparkles size={18} /> Gerar plano da safra</button>
