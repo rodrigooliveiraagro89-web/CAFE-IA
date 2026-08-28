@@ -18,6 +18,10 @@ import { BarChart } from "../reports/charts/BarChart";
 import { RadarChart } from "../reports/charts/RadarChart";
 import { buildMacroRadar, buildMicroRadar, temDadosRadar } from "./radar";
 import { ClassStrip } from "./ClassStrip";
+import { RastreabilidadePanel } from "./RastreabilidadePanel";
+import { buildSnapshot5a } from "./snapshot5a";
+import { saveSnapshot } from "./snapshotClient";
+import { shortHash } from "../../domain/recommendationSnapshot";
 import type { SoilAnalysis } from "../soil/soilStore";
 import {
   listRecommendations,
@@ -315,6 +319,33 @@ export function Fertility5aPanel({
   const formulacao = sugerirFormulacao(n, areaHa ?? null);
   const cronograma = cronogramaAdubacao(n, rec.doses_por_planta?.N_aplicacoes ?? 4);
 
+  // Snapshot de proveniência (rastreabilidade): congela laudo+base 5ª+params+dose.
+  // Memoizado nos primitivos estáveis (rec já é memoizado) para não re-hashear a
+  // cada render; a formulação é recalculada dentro do memo.
+  const provSnap = useMemo(
+    () =>
+      analysis && plotId
+        ? buildSnapshot5a({
+            plotId,
+            soilAnalysisId: analysis.id,
+            rec,
+            formulacao: sugerirFormulacao(rec.necessidade_nutrientes, areaHa ?? null),
+            vAlvo,
+            sacas: prod,
+            plantasPorHa: plantasHaNum ?? 0,
+            fase,
+          })
+        : null,
+    [analysis, plotId, rec, areaHa, vAlvo, prod, plantasHaNum, fase],
+  );
+  const laudoLabel = analysis
+    ? `${analysis.laboratory ?? "laudo"} · ${
+        analysis.analysisDate
+          ? new Date(`${analysis.analysisDate}T12:00:00`).toLocaleDateString("pt-BR")
+          : "sem data"
+      }`
+    : "";
+
   // Veredito e cartão de decisão (o que decide a ação, em linguagem simples).
   const precisaCalagem = (rec.correcao_solo.calagem_t_ha_produto ?? 0) > 0.1;
   const precisaGesso = rec.correcao_solo.gessagem_indicada;
@@ -420,13 +451,25 @@ export function Fertility5aPanel({
     setSaving(true);
     setSavedMsg("");
     const saved = await saveRecommendation(plotId, rec);
-    setSaving(false);
     if (saved) {
       setHistory((prev) => [saved, ...prev].slice(0, 10));
-      setSavedMsg("Recomendação salva no histórico do talhão.");
+      // Congela também a prova IMUTÁVEL (hash) em recommendation_snapshots e
+      // reflete o resultado com honestidade: o valor da rastreabilidade é a prova
+      // ter sido de fato registrada — não afirmamos "imutável" se a gravação falhou.
+      if (provSnap) {
+        const prova = await saveSnapshot(provSnap);
+        setSavedMsg(
+          prova.ok
+            ? `Recomendação salva e registrada de forma imutável (prova ${shortHash(prova.saved.hash)}).`
+            : `Recomendação salva no histórico. Prova imutável não registrada: ${prova.reason}`,
+        );
+      } else {
+        setSavedMsg("Recomendação salva no histórico do talhão.");
+      }
     } else {
       setSavedMsg("Não foi possível salvar. Tente novamente.");
     }
+    setSaving(false);
   }
 
   function baixarPdf() {
@@ -1227,6 +1270,8 @@ export function Fertility5aPanel({
         não estiver no laudo fica em branco. Decisão final e conversão em fertilizante são do
         responsável técnico. <em>Regra {rec.regra.versao} · catálogo {rec.regra.catalogo}.</em>
       </p>
+
+      {provSnap && <RastreabilidadePanel snapshot={provSnap} laudoLabel={laudoLabel} />}
 
       {history.length > 0 && (
         <div className="fert5a-history no-print">

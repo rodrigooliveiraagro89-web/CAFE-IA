@@ -566,3 +566,14 @@
 @media print {
   body.printing-fert5a .fert5a-print-area { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Rastreabilidade — proveniência + impressão digital (hash) da recomendação. */
+.rastreio { display: flex; flex-direction: column; gap: 0.9rem; }
+.rastreio-prov { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.2rem; margin: 0; }
+.rastreio-prov > div { display: flex; flex-direction: column; gap: 0.1rem; }
+.rastreio-prov dt { font-size: 0.72rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.03em; }
+.rastreio-prov dd { margin: 0; font-size: 0.9rem; color: var(--text); }
+.rastreio-hash-line { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text-soft); flex-wrap: wrap; }
+.rastreio-hash-line code { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; background: var(--surface-muted); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.15rem 0.45rem; color: var(--agryn-emerald); letter-spacing: 0.04em; }
+.rastreio-nota { margin: 0; font-size: 0.78rem; color: var(--text-faint); max-width: 70ch; }
+@media (max-width: 620px) { .rastreio-prov { grid-template-columns: 1fr; } }

@@ -11,11 +11,13 @@
 
 export type SnapshotParams = {
   vAlvo: number;
-  cobertura: string;
+  cobertura: string; // fórmula principal recomendada (na 5ª, a formulação escolhida)
   fonteP?: string;
   fonteK?: string;
   sacas: number;
   plantasPorHa: number;
+  fase?: string; // fase da lavoura (5ª): producao/formacao/...
+  catalogo?: string; // versão do catálogo de fórmulas usado
 };
 
 export type SnapshotNpk = { n: number; p2o5: number; k2o: number; s: number };
