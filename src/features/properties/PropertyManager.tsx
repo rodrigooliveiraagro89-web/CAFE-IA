@@ -36,7 +36,9 @@ import {
   listCollaborators,
   revokeCollaborator,
   type Collaborator,
+  type CollaboratorRole,
 } from "./collaboratorsClient";
+import { ReviewsPanel } from "./ReviewsPanel";
 
 type PropertyManagerProps = {
   agriculture: AgriculturalController;
@@ -115,6 +117,7 @@ const blankPlot: PlotInput = {
 function SharePanel({ propertyId, propertyName }: { propertyId: string; propertyName: string }) {
   const [colabs, setColabs] = useState<Collaborator[]>([]);
   const [email, setEmail] = useState("");
+  const [papel, setPapel] = useState<CollaboratorRole>("viewer");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [convite, setConvite] = useState<{ email: string; texto: string; whatsapp: string } | null>(null);
@@ -134,7 +137,7 @@ function SharePanel({ propertyId, propertyName }: { propertyId: string; property
     event.preventDefault();
     setBusy(true);
     setMsg(null);
-    const result = await inviteCollaborator(propertyId, email);
+    const result = await inviteCollaborator(propertyId, email, papel);
     if (result.ok) {
       setColabs((prev) => [...prev, result.collaborator]);
       const message = inviteMessage(propertyName, result.collaborator.invitedEmail);
@@ -170,6 +173,10 @@ function SharePanel({ propertyId, propertyName }: { propertyId: string; property
           aria-label="E-mail do convidado"
           required
         />
+        <select value={papel} onChange={(event) => setPapel(event.target.value as CollaboratorRole)} aria-label="Papel do convidado">
+          <option value="viewer">Leitura</option>
+          <option value="agronomist">Consultor técnico</option>
+        </select>
         <button className="primary-button" type="submit" disabled={busy}>
           <UserPlus size={16} /> {busy ? "Convidando…" : "Convidar"}
         </button>
@@ -202,7 +209,7 @@ function SharePanel({ propertyId, propertyName }: { propertyId: string; property
         <ul className="share-list">
           {colabs.map((item) => (
             <li key={item.id}>
-              <span><Eye size={13} aria-hidden="true" /> {item.invitedEmail}</span>
+              <span><Eye size={13} aria-hidden="true" /> {item.invitedEmail}<em className="share-role">{item.role === "agronomist" ? "consultor técnico" : "leitura"}</em></span>
               <button type="button" className="text-button" onClick={() => void revogar(item.id)}>
                 Remover acesso
               </button>
@@ -211,8 +218,8 @@ function SharePanel({ propertyId, propertyName }: { propertyId: string; property
         </ul>
       )}
       <p className="share-note">
-        Quem você convidar vê talhões, laudos, NDVI e recomendações — sem poder editar. Você pode
-        remover o acesso quando quiser.
+        <strong>Leitura</strong> vê talhões, laudos, NDVI e recomendações sem editar. <strong>Consultor
+        técnico</strong> também pode registrar pareceres. Você pode remover o acesso quando quiser.
       </p>
     </section>
   );
@@ -477,6 +484,10 @@ export function PropertyManager({
 
           {selectedProperty && !selectedShared && (
             <SharePanel propertyId={selectedProperty.id} propertyName={selectedProperty.name} />
+          )}
+
+          {selectedProperty && (
+            <ReviewsPanel propertyId={selectedProperty.id} propertyName={selectedProperty.name} userId={userId} />
           )}
 
           {selectedProperty && (

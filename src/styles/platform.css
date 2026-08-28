@@ -1019,3 +1019,18 @@ input[aria-invalid="true"] {
   .install-chip { padding: 0; width: 40px; justify-content: center; }
   .install-chip > span { display: none; }
 }
+
+/* Colaboração — papel do colaborador + pareceres técnicos (§22). */
+.share-invite select { padding: 0.55rem 0.6rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+.share-role { margin-left: 0.5rem; font-style: normal; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint); background: var(--surface-muted); border-radius: 999px; padding: 0.05rem 0.45rem; }
+.reviews-panel { display: flex; flex-direction: column; gap: 0.9rem; }
+.reviews-form { display: flex; flex-direction: column; gap: 0.6rem; }
+.reviews-form textarea { width: 100%; padding: 0.6rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); resize: vertical; font: inherit; }
+.reviews-form .primary-button { align-self: flex-start; }
+.reviews-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+.reviews-list li { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 0.7rem 0.85rem; background: var(--surface); }
+.reviews-meta { display: flex; align-items: center; gap: 0.6rem; font-size: 0.82rem; color: var(--text-soft); }
+.reviews-meta strong { color: var(--text); }
+.reviews-meta span { color: var(--text-faint); }
+.reviews-meta .ghost-icon { margin-left: auto; }
+.reviews-list p { margin: 0.35rem 0 0; white-space: pre-wrap; font-size: 0.9rem; color: var(--text); }

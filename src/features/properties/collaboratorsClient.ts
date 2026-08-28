@@ -30,9 +30,12 @@ export async function listCollaborators(propertyId: string): Promise<Collaborato
   }));
 }
 
+export type CollaboratorRole = "viewer" | "agronomist";
+
 export async function inviteCollaborator(
   propertyId: string,
   email: string,
+  role: CollaboratorRole = "viewer",
 ): Promise<{ ok: true; collaborator: Collaborator } | { ok: false; reason: string }> {
   const clean = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
@@ -48,7 +51,7 @@ export async function inviteCollaborator(
       property_id: propertyId,
       owner_id: ownerId,
       invited_email: clean,
-      role: "viewer",
+      role,
       status: "active",
     })
     .select("id, invited_email, role, status, created_at")
