@@ -24,6 +24,7 @@ export type AppView =
   | "diagnostico"
   | "clima"
   | "calculadoras"
+  | "diario-clima"
   | "caderno"
   | "custos"
   | "relatorios"

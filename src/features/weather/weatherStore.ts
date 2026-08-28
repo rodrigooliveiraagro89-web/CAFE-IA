@@ -35,6 +35,7 @@ export type WeatherState = {
   source: WeatherSource | null;
   current: CurrentConditions | null;
   forecast: DailyForecast[];
+  observed: DailyForecast[]; // dias passados (para o diário climático)
   hourly: HourItem[];
   sprayWindows: SprayHour[];
   balance: WaterBalance | null;
@@ -47,6 +48,7 @@ const INITIAL: WeatherState = {
   source: null,
   current: null,
   forecast: [],
+  observed: [],
   hourly: [],
   sprayWindows: [],
   balance: null,
@@ -108,10 +110,15 @@ function toState(raw: OpenMeteoResponse, label: string, source: WeatherSource): 
     };
   };
   const info = weatherCodeInfo(current.current?.weather_code ?? 0);
-  const today = new Date().toISOString().slice(0, 10);
+  // "Hoje" no FUSO da série (timezone=auto traz utc_offset_seconds), não em UTC —
+  // senão o dia local em curso entraria como "observado" no diário climático.
+  const offsetSec = (raw as OpenMeteoResponse & { utc_offset_seconds?: number }).utc_offset_seconds ?? 0;
+  const today = new Date(Date.now() + offsetSec * 1000).toISOString().slice(0, 10);
   // A série vem com dias passados (past_days): a previsão exibida é só de hoje
   // em diante; os dias passados alimentam a chuva acumulada e o balanço.
-  const forecast = mapDailyForecast(raw.daily).filter((d) => d.date.slice(0, 10) >= today).slice(0, 7);
+  const allDaily = mapDailyForecast(raw.daily);
+  const forecast = allDaily.filter((d) => d.date.slice(0, 10) >= today).slice(0, 7);
+  const observed = allDaily.filter((d) => d.date.slice(0, 10) < today);
   const daily = raw.daily;
   const balanceDays = (daily?.time ?? []).map((date, i) => ({
     date,
@@ -133,6 +140,7 @@ function toState(raw: OpenMeteoResponse, label: string, source: WeatherSource): 
         }
       : null,
     forecast,
+    observed,
     hourly: mapHourly(raw.hourly, new Date().toISOString(), 72),
     sprayWindows: buildSprayWindows(raw.hourly, new Date().toISOString()),
     balance: balanceDays.length ? computeWaterBalance(balanceDays, today) : null,

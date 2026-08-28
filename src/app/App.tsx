@@ -42,6 +42,7 @@ const PrivacyModule = lazy(() => retryImport(() => import("../features/privacy/P
 const WeatherModule = lazy(() => retryImport(() => import("../features/weather/WeatherModule")).then((m) => ({ default: m.WeatherModule })));
 const FieldNotebook = lazy(() => retryImport(() => import("../features/fieldbook/FieldNotebook")).then((m) => ({ default: m.FieldNotebook })));
 const CropPlanModule = lazy(() => retryImport(() => import("../features/cropplan/CropPlanModule")).then((m) => ({ default: m.CropPlanModule })));
+const ClimateDiaryModule = lazy(() => retryImport(() => import("../features/climate/ClimateDiaryModule")).then((m) => ({ default: m.ClimateDiaryModule })));
 const ModuleHub = lazy(() => retryImport(() => import("../features/modules/ModuleHub")).then((m) => ({ default: m.ModuleHub })));
 const MappingModule = lazy(() => retryImport(() => import("../features/mapping/MappingModule")).then((m) => ({ default: m.MappingModule })));
 const NdviModule = lazy(() => retryImport(() => import("../features/ndvi/NdviModule")).then((m) => ({ default: m.NdviModule })));
@@ -56,6 +57,7 @@ import { useAgriculturalContext } from "../lib/useAgriculturalContext";
 import { useAuth } from "../lib/useAuth";
 import { useFieldRecords } from "../lib/useFieldRecords";
 import { useCropPlans } from "../features/cropplan/useCropPlan";
+import { useClimateDiary } from "../features/climate/climateDiaryStore";
 import { loadPreferences, savePreferences, type ThemePreference } from "../lib/preferences";
 import type { AppView } from "./navigation";
 import { createProCheckout } from "../features/billing/billingClient";
@@ -95,6 +97,7 @@ export function App() {
   const agriculture = useAgriculturalContext(auth.userId);
   const fieldBook = useFieldRecords(auth.userId);
   const cropPlan = useCropPlans(auth.userId);
+  const climateDiary = useClimateDiary(auth.userId);
   const ndviHistory = useNdviHistory(auth.userId);
   const soil = useSoilAnalyses(auth.userId, agriculture.demoActive);
   const safety = useMemo(() => {
@@ -366,7 +369,10 @@ export function App() {
       {activeView === "diagnostico" && (
         <DiagnosisModule accessToken={auth.session?.access_token ?? ""} onNavigate={navigate} />
       )}
-      {activeView === "clima" && <WeatherModule agriculture={agriculture} onNavigate={navigate} />}
+      {activeView === "clima" && <WeatherModule agriculture={agriculture} climateDiary={climateDiary} onNavigate={navigate} />}
+      {activeView === "diario-clima" && (
+        <ClimateDiaryModule agriculture={agriculture} climateDiary={climateDiary} onNavigate={navigate} />
+      )}
       {activeView === "calculadoras" && (
         <CalculatorsModule agriculture={agriculture} onNavigate={navigate} />
       )}

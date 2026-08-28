@@ -19,7 +19,7 @@ import {
   Wind,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AppView } from "../../app/navigation";
 import type { AgriculturalController } from "../../lib/useAgriculturalContext";
 import { SPRAY_RATING_LABEL, type HourItem, type SprayHour } from "../../domain/weather";
@@ -31,6 +31,7 @@ import {
   monthLabel,
 } from "../../domain/coffeeCalendar";
 import { useWeather, type WeatherSource } from "./weatherStore";
+import type { ClimateDiaryController } from "../climate/climateDiaryStore";
 import "./weather.css";
 
 const RISK_LABEL: Record<RiskLevel, string> = { baixo: "Baixo", medio: "Médio", alto: "Alto" };
@@ -71,6 +72,7 @@ const TONE_ORDER: Record<WeatherGuidance["tone"], number> = {
 
 type WeatherModuleProps = {
   agriculture: AgriculturalController;
+  climateDiary: ClimateDiaryController;
   onNavigate: (view: AppView) => void;
 };
 
@@ -86,8 +88,30 @@ const SOURCE_LABEL: Record<WeatherSource, string> = {
  * quando pulverizar. A localização vem do talhão desenhado, da cidade
  * cadastrada ou do GPS do aparelho.
  */
-export function WeatherModule({ agriculture, onNavigate }: WeatherModuleProps) {
+export function WeatherModule({ agriculture, climateDiary, onNavigate }: WeatherModuleProps) {
   const weather = useWeather(agriculture);
+  const plotId = agriculture.selectedPlot?.id;
+
+  // Memória climática (§9): quando o clima do TALHÃO carrega, registra os dias
+  // observados no diário do talhão. A captura é idempotente (no-op se nada muda),
+  // então rodar a cada carga é seguro. Só quando a fonte é o próprio talhão
+  // (centro do polígono) — cidade/GPS não são específicos do talhão.
+  useEffect(() => {
+    if (weather.status !== "ready" || weather.source !== "talhao" || !plotId) return;
+    if (weather.observed.length === 0) return;
+    climateDiary.capture(
+      plotId,
+      weather.observed.map((d) => ({
+        date: d.date.slice(0, 10),
+        tmin: d.tempMin,
+        tmax: d.tempMax,
+        precip: d.precipitation,
+      })),
+    );
+    // capture é estável; observed muda de identidade só quando há nova carga.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weather.status, weather.source, weather.observed, plotId]);
+
   const month = new Date().getMonth() + 1;
   const monthActivities = activitiesForMonth(month);
   const guidance = [

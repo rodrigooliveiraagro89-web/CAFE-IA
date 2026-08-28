@@ -1,0 +1,100 @@
+/* Diário climático — memória do talhão. Usa tokens globais confirmados
+   (--agryn-emerald, --info, --warning, --line, --surface, --text-*). */
+
+.climate-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.climate-stats article {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.climate-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.climate-stats strong {
+  font-size: 1.35rem;
+  font-family: var(--font-display, inherit);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.climate-stats small {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.climate-stats article[data-flag="cold"] { border-color: var(--info); }
+.climate-stats article[data-flag="warn"] { border-color: var(--warning); }
+
+.climate-rain-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.climate-rain-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 2.4rem;
+  flex: 1 0 auto;
+}
+
+.climate-rain-bar-wrap {
+  display: flex;
+  align-items: flex-end;
+  height: 120px;
+  width: 100%;
+}
+
+.climate-rain-bar-wrap i {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: color-mix(in srgb, var(--info) 70%, var(--agryn-emerald));
+  transition: height 0.3s ease;
+}
+
+.climate-rain-mm {
+  font-size: 0.72rem;
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.climate-rain-ym {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  text-transform: capitalize;
+}
+
+.climate-note {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin: 0;
+  max-width: 70ch;
+}
+
+@media (max-width: 720px) {
+  .climate-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

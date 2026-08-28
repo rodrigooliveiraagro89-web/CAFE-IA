@@ -7,6 +7,7 @@ import {
   FileText,
   FlaskConical,
   CalendarRange,
+  CloudRain,
   History,
   LandPlot,
   MapPinned,
@@ -42,6 +43,7 @@ export type AgrynModule = {
 export const moduleCatalog: AgrynModule[] = [
   { id: "linha-do-tempo", label: "Linha do tempo", description: "Rastreabilidade completa do talhão", icon: History, accent: "emerald", group: "Gestão", href: "./?view=linha-do-tempo", badge: "Novo" },
   { id: "clima", label: "Clima", description: "Previsão e janela operacional", icon: CloudSun, accent: "cyan", group: "Monitoramento", href: "./?view=clima", badge: "Ao vivo" },
+  { id: "diario-clima", label: "Diário climático", description: "Memória de chuva, geada e calor do talhão", icon: CloudRain, accent: "cyan", group: "Monitoramento", href: "./?view=diario-clima", badge: "Novo" },
   { id: "solo", label: "Solo", description: "Laudos, nutrientes e interpretação", icon: FlaskConical, accent: "emerald", group: "Análises", href: "./?view=analise-solo", badge: "IA" },
   { id: "ndvi", label: "NDVI por satélite", description: "Vigor espectral, cenas e evolução", icon: Satellite, accent: "lime", group: "Monitoramento", href: "./?view=ndvi", badge: "Fonte pública" },
   { id: "visao", label: "Visão computacional", description: "Diagnóstico de sintomas por imagem", icon: ScanLine, accent: "violet", group: "Inteligência Artificial", href: "./?view=diagnostico", badge: "IA" },
